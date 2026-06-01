@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Nexus: PS4/PS5 Payload Injector</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ps5-blue: #00439c;
+      --ps5-light-blue: #2e82ff;
+      --ps5-accent: #00e5ff;
+      --bg-gradient: radial-gradient(circle at top right, #0d1730, #04060c 80%);
+    }
+
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+      background: #04060c;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .bg-canvas-container {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: var(--bg-gradient);
+      z-index: 1;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+    }
+
+    .app-card {
+      position: relative;
+      z-index: 10;
+      background: rgba(255, 255, 255, 0.02);
+      backdrop-filter: blur(25px);
+      -webkit-backdrop-filter: blur(25px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 28px;
+      padding: 45px 35px;
+      width: 88%;
+      max-width: 400px;
+      box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+      text-align: center;
+    }
+
+    h2 {
+      font-weight: 600;
+      font-size: 26px;
+      letter-spacing: 2px;
+      background: linear-gradient(to right, #fff, var(--ps5-accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.4);
+      margin-bottom: 35px;
+      letter-spacing: 3px;
+    }
+
+    .input-group { 
+      margin-bottom: 20px; 
+      text-align: left;
+    }
+    
+    .input-group label {
+      display: block;
+      font-size: 11px;
+      margin-bottom: 8px;
+      color: rgba(255, 255, 255, 0.6);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 14px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      color: #fff;
+      font-size: 16px;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    input[type="text"]:focus, input[type="number"]:focus {
+      border-color: var(--ps5-accent);
+      background: rgba(0, 0, 0, 0.6);
+      box-shadow: 0 0 15px rgba(0, 229, 255, 0.15);
+    }
+
+    .file-wrapper {
+      position: relative;
+      margin-bottom: 30px;
+    }
+    
+    .file-wrapper input[type="file"] {
+      position: absolute;
+      width: 100%; height: 100%;
+      opacity: 0; cursor: pointer;
+      z-index: 2;
+    }
+    
+    .file-custom-btn {
+      width: 100%;
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px dashed rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.8);
+      transition: all 0.3s ease;
+    }
+
+    button.send-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--ps5-light-blue), var(--ps5-blue));
+      color: white;
+      border: none;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      cursor: pointer;
+      box-shadow: 0 12px 24px rgba(0, 67, 156, 0.3);
+      transition: all 0.2s ease;
+    }
+    
+    button.send-btn:active {
+      transform: scale(0.98);
+      background: linear-gradient(135deg, var(--ps5-accent), var(--ps5-light-blue));
+    }
+
+    .credits {
+      margin-top: 25px;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.25);
+      letter-spacing: 1px;
+    }
+    .credits span { color: var(--ps5-accent); font-weight: 600; }
+  </style>
+</head>
+<body>
+
+  <div class="bg-canvas-container">
+    <canvas id="vfxCanvas"></canvas>
+  </div>
+
+  <div class="app-card">
+    <h2>NEXUS</h2>
+    <div class="subtitle">PS4 / PS5 PAYLOAD INJECTOR</div>
+    
+    <div class="input-group">
+      <label>Host Console IP</label>
+      <input type="text" id="ip" value="192.168.1.100" spellcheck="false">
+    </div>
+
+    <div class="input-group">
+      <label>Target Port</label>
+      <input type="number" id="port" value="9020">
+    </div>
+    
+    <div class="file-wrapper">
+      <input type="file" id="fileInput" accept=".bin,.elf,.js,.lua" onchange="handleFileSelected()">
+      <div class="file-custom-btn" id="fileLabel">Ready to Select Target File</div>
+    </div>
+    
+    <button class="send-btn" id="injectBtn" onclick="transmitPayloadNative()">Send Payload</button>
+    
+    <div class="credits"><span>@pixelpop</span></div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('vfxCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    });
+
+    class Bubble {
+      constructor() { this.reset(); }
+      reset() {
+        this.x = Math.random() * width;
+        this.y = height + Math.random() * 100;
+        this.radius = Math.random() * 15 + 4;
+        this.speed = Math.random() * 0.8 + 0.3;
+        this.opacity = Math.random() * 0.3 + 0.1;
+        this.wobble = Math.random() * 2;
+        this.wobbleSpeed = Math.random() * 0.02;
+      }
+      update() {
+        this.y -= this.speed;
+        this.wobble += this.wobbleSpeed;
+        this.x += Math.sin(this.wobble) * 0.2;
+        if (this.y < -50) this.reset();
+      }
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(0, 229, 255, ${this.opacity})`;
+        ctx.fill();
+      }
+    }
+
+    const bubbles = Array.from({ length: 22 }, () => new Bubble());
+    let lightningFlash = 0;
+    let zapTimer = 0;
+
+    function drawLightningArc(startX, startY, steps, rValue) {
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      let currentX = startX;
+      let currentY = startY;
+      for(let i = 0; i < steps; i++) {
+        currentY += (height / steps);
+        currentX += (Math.random() - 0.5) * rValue;
+        ctx.lineTo(currentX, currentY);
+      }
+      ctx.strokeStyle = 'rgba(0, 229, 255, 0.8)';
+      ctx.lineWidth = Math.random() * 2 + 1;
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#00e5ff';
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    function renderLoop() {
+      ctx.clearRect(0, 0, width, height);
+
+      // Lightning cycle: 4s total — 3.5s quiet, 0.5s active burst
+      zapTimer += 16.66;
+      if (zapTimer > 4000) { zapTimer = 0; }
+
+      if (zapTimer > 3500) {
+        if (Math.random() < 0.07) {
+          lightningFlash = Math.random() * 0.15;
+          drawLightningArc(Math.random() * width, 0, 12, 50);
+        }
+      }
+
+      if (lightningFlash > 0) {
+        ctx.fillStyle = `rgba(0, 229, 255, ${lightningFlash})`;
+        ctx.fillRect(0, 0, width, height);
+        lightningFlash -= 0.02;
+      }
+
+      bubbles.forEach(b => { b.update(); b.draw(); });
+      requestAnimationFrame(renderLoop);
+    }
+    renderLoop();
+
+    /* --- NATIVE BRIDGE --- */
+    function handleFileSelected() {
+      const input = document.getElementById('fileInput');
+      const label = document.getElementById('fileLabel');
+      if(input.files.length > 0) {
+        label.innerHTML = `Loaded: <strong style="color:#00e5ff">${input.files[0].name}</strong>`;
+      }
+    }
+
+    function arrayBufferToBase64(buffer) {
+      let binary = '';
+      const bytes = new Uint8Array(buffer);
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return window.btoa(binary);
+    }
+
+    async function transmitPayloadNative() {
+      const ip = document.getElementById('ip').value;
+      const port = parseInt(document.getElementById('port').value);
+      const fileInput = document.getElementById('fileInput');
+      const btn = document.getElementById('injectBtn');
+
+      if (!fileInput.files[0]) {
+        alert("Please load a payload file first.");
+        return;
+      }
+
+      btn.textContent = "Streaming...";
+      btn.disabled = true;
+
+      const file = fileInput.files[0];
+      const arrayBuffer = await file.arrayBuffer();
+      const base64Payload = arrayBufferToBase64(arrayBuffer);
+
+      if (window.AndroidNativeTCP) {
+        window.AndroidNativeTCP.performRawStream(ip, port, base64Payload);
+      } else {
+        setTimeout(() => {
+          alert("Simulation: TCP stream routed successfully.");
+          btn.textContent = "Send Payload";
+          btn.disabled = false;
+        }, 1500);
+      }
+    }
+
+    function onNativeResponse(successFlag, messageString) {
+      const btn = document.getElementById('injectBtn');
+      btn.textContent = "Send Payload";
+      btn.disabled = false;
+      alert(messageString);
+    }
+  </script>
+</body>
+</html>

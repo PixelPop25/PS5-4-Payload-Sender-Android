@@ -1,30 +1,25 @@
-name: Unzip Nexus Injector
+name: Auto Unzip Files
 
 on:
   push:
-    branches:
-      - main
     paths:
-      - 'nexus-injector.zip'
-  workflow_dispatch:
+      - '**.zip'      # Trigger when any .zip file is pushed
+  workflow_dispatch:   # Allows manual trigger
 
 jobs:
-  unzip-archive:
+  unzip:
     runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write   # Required to push changes back to the repo
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Extract Nexus Injector to Root
-        run: |
-          unzip -o nexus-injector.zip -d .
-
-      - name: Delete original zip file
-        run: |
-          rm nexus-injector.zip
-
-      - name: Commit and push changes
-        uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Automated unzip: Extract and remove nexus-injector.zip [skip ci]"
+          # Fetch full history so we can commit/push
+          fetch-depth: 0
+
+      - name: Find and unzip all ZIP files to root
+        run: |
+          # Find all .zip files in

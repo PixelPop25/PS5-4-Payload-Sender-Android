@@ -8,8 +8,8 @@
 
     <application
         android:allowBackup="false"
-        android:icon="@android:drawable/ic_menu_manage"
-        android:label="Nexus Injector"
+        android:icon="@drawable/ic_nexus_bolt"
+        android:label="Nexus"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
         android:hardwareAccelerated="true"
         android:usesCleartextTraffic="true">

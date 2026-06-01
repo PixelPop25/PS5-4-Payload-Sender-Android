@@ -1,0 +1,30 @@
+name: Unzip Nexus Injector
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'nexus-injector.zip'
+  workflow_dispatch:
+
+jobs:
+  unzip-archive:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract Nexus Injector to Root
+        run: |
+          unzip -o nexus-injector.zip -d .
+
+      - name: Delete original zip file
+        run: |
+          rm nexus-injector.zip
+
+      - name: Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Automated unzip: Extract and remove nexus-injector.zip [skip ci]"

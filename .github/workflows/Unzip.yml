@@ -1,25 +1,54 @@
-name: Auto Unzip Files
+name: Auto Unzip to Root
 
 on:
-  push:
-    paths:
-      - '**.zip'      # Trigger when any .zip file is pushed
-  workflow_dispatch:   # Allows manual trigger
+  workflow_dispatch:  # Manual trigger (or change to push, pull_request, etc.)
+  # push:
+  #   branches: [ main ]
 
 jobs:
   unzip:
     runs-on: ubuntu-latest
-    
-    permissions:
-      contents: write   # Required to push changes back to the repo
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          # Fetch full history so we can commit/push
-          fetch-depth: 0
 
-      - name: Find and unzip all ZIP files to root
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'  # Optional: enables caching if you have package.json
+
+      - name: Download ZIP file (example)
         run: |
-          # Find all .zip files in
+          # Replace with your actual ZIP source
+          curl -L -o my-archive.zip https://example.com/your-file.zip
+          # Or download from GitHub release:
+          # gh release download -R owner/repo -p "*.zip"
+
+      - name: Unzip directly to repository root
+        run: |
+          # Unzip without creating extra top-level folder (using -j for junk paths)
+          unzip -o -q my-archive.zip -d .   # -o overwrite, -q quiet
+          
+          # Alternative: If you want to strip specific leading directories
+          # unzip -o my-archive.zip
+          # shopt -s dotglob nullglob
+          # mv */* . 2>/dev/null || true
+          # rm -rf */ my-archive.zip
+
+      - name: Clean up ZIP
+        run: rm -f my-archive.zip
+
+      - name: Verify files (optional)
+        run: ls -la
+
+      # Optional: Commit and push the unzipped files back to the repo
+      - name: Commit changes
+        if: github.event_name == 'workflow_dispatch'  # Only on manual trigger
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add .
+          git diff --staged --quiet || git commit -m "Auto-unzip files to root"
+          git push

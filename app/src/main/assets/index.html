@@ -114,24 +114,31 @@
     .file-wrapper {
       position: relative;
       margin-bottom: 30px;
+      width: 100%;
+      height: 50px;
     }
     
     .file-wrapper input[type="file"] {
       position: absolute;
+      top: 0; left: 0;
       width: 100%; height: 100%;
       opacity: 0; cursor: pointer;
       z-index: 2;
     }
     
     .file-custom-btn {
-      width: 100%;
-      padding: 15px;
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       background: rgba(255, 255, 255, 0.03);
       border: 1px dashed rgba(255, 255, 255, 0.2);
       border-radius: 12px;
       font-size: 13px;
       color: rgba(255, 255, 255, 0.8);
-      transition: all 0.3s ease;
+      pointer-events: none; /* Allows click to pass straight to the input layer */
     }
 
     button.send-btn {
@@ -175,12 +182,12 @@
     <div class="subtitle">PS4 / PS5 PAYLOAD INJECTOR</div>
     
     <div class="input-group">
-      <label>Host Console IP</label>
+      <label>TARGET IP</label>
       <input type="text" id="ip" value="192.168.1.100" spellcheck="false">
     </div>
 
     <div class="input-group">
-      <label>Target Port</label>
+      <label>PORT</label>
       <input type="number" id="port" value="9020">
     </div>
     
@@ -206,16 +213,17 @@
       height = canvas.height = window.innerHeight;
     });
 
+    // Authentic PS5 Home Screen Bokeh Particles
     class Bubble {
       constructor() { this.reset(); }
       reset() {
         this.x = Math.random() * width;
         this.y = height + Math.random() * 100;
-        this.radius = Math.random() * 15 + 4;
-        this.speed = Math.random() * 0.8 + 0.3;
-        this.opacity = Math.random() * 0.3 + 0.1;
+        this.radius = Math.random() * 3 + 1; // Tiny particles
+        this.speed = Math.random() * 0.3 + 0.1; // Extremely slow drift
+        this.opacity = Math.random() * 0.4 + 0.1; // Highly transparent
         this.wobble = Math.random() * 2;
-        this.wobbleSpeed = Math.random() * 0.02;
+        this.wobbleSpeed = Math.random() * 0.01;
       }
       update() {
         this.y -= this.speed;
@@ -226,12 +234,15 @@
       draw() {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(0, 229, 255, ${this.opacity})`;
+        ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+        ctx.shadowBlur = 6; // Out-of-focus bokeh effect
+        ctx.shadowColor = '#ffffff';
         ctx.fill();
+        ctx.shadowBlur = 0;
       }
     }
 
-    const bubbles = Array.from({ length: 22 }, () => new Bubble());
+    const bubbles = Array.from({ length: 40 }, () => new Bubble());
     let lightningFlash = 0;
     let zapTimer = 0;
 
@@ -256,12 +267,12 @@
     function renderLoop() {
       ctx.clearRect(0, 0, width, height);
 
-      // Lightning cycle: 4s total — 3.5s quiet, 0.5s active burst
+      // Faster lightning cycle: 2.5s total — 2s quiet, 0.5s active burst
       zapTimer += 16.66;
-      if (zapTimer > 4000) { zapTimer = 0; }
+      if (zapTimer > 2500) { zapTimer = 0; }
 
-      if (zapTimer > 3500) {
-        if (Math.random() < 0.07) {
+      if (zapTimer > 2000) {
+        if (Math.random() < 0.12) { // More frequent bursts during the active window
           lightningFlash = Math.random() * 0.15;
           drawLightningArc(Math.random() * width, 0, 12, 50);
         }

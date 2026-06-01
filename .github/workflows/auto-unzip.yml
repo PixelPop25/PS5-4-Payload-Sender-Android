@@ -4,8 +4,8 @@ on:
   push:
     branches: [ main, master ]
     paths:
-      - '**.zip'          # Trigger only when .zip files are added/modified
-  workflow_dispatch:     # Allow manual trigger
+      - '**.zip'
+  workflow_dispatch:
 
 jobs:
   unzip-and-push:
@@ -15,7 +15,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # Important for proper git history
+          fetch-depth: 0
+          token: ${{ secrets.ACTIONS_PAT }}     # ← Use PAT here
 
       - name: Setup Node.js 24
         uses: actions/setup-node@v4
@@ -32,19 +33,13 @@ jobs:
             exit 0
           fi
 
-          echo "Found ${#zip_files[@]} ZIP file(s). Extracting with folder structure..."
-
           for zip in "${zip_files[@]}"; do
             echo "📦 Extracting: $zip"
-            
-            # Unzip preserving full folder structure into root
             unzip -o -q "$zip" -d .
-            
             echo "✅ Extracted: $zip"
             
-            # Optional: Remove the ZIP after successful extraction
-            rm -f "$zip"
-            echo "🗑️  Removed ZIP: $zip"
+            rm -f "$zip"          # Remove ZIP after extraction
+            echo "🗑️  Removed: $zip"
           done
 
       - name: Commit and Push changes
@@ -52,7 +47,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
-          # Check if there are any changes
           if git diff --quiet HEAD --; then
             echo "No changes to commit."
             exit 0
@@ -62,4 +56,4 @@ jobs:
           git commit -m "🤖 Auto-unzip: Extracted ZIP files to repository root"
           git push
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.ACTIONS_PAT }}   # ← Use PAT here too

@@ -19,7 +19,6 @@ jobs:
           token: ${{ secrets.ACTIONS_PAT }}
 
       # 2. Auto-Unzip any .zip files in the repository
-      # This finds all zips, extracts them into folders of the same name, and deletes the original zip
       - name: Auto-Unzip Uploaded Archives
         run: |
           echo "Scanning repository for .zip files..."
@@ -39,17 +38,13 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # 4. Ensure the Gradle wrapper has execution permissions
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      # 5. Compile the app using Gradle
-
+      # 4. Setup Gradle and enforce version 8.7 for AGP 8.2 compatibility
       - name: Setup Gradle
-      - uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: '8.7'
           
+      # 5. Compile the app using the global Gradle installation
       - name: Build with Gradle
         run: gradle assembleDebug
 

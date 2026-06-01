@@ -45,7 +45,7 @@ jobs:
 
       # 5. Compile the app using Gradle
       - name: Build with Gradle
-        run: ./gradlew assembleDebug
+        run: gradle assembleDebug
 
       # 6. Grab the finished APK and upload it so you can download it
       - name: Upload APK Artifact

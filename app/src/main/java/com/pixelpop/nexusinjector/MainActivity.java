@@ -53,7 +53,6 @@ public class MainActivity extends Activity {
         
         webView.setWebViewClient(new WebViewClient());
 
-        // Enable File Chooser for the HTML <input type="file">
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
@@ -62,9 +61,12 @@ public class MainActivity extends Activity {
                 }
                 mFilePathCallback = filePathCallback;
 
-                Intent intent = fileChooserParams.createIntent();
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("*/*"); // CRUCIAL: Accepts ALL file extensions universally (.jar, .bin, etc.)
+
                 try {
-                    startActivityForResult(intent, FILECHOOSER_RESULTCODE);
+                    startActivityForResult(Intent.createChooser(intent, "Select Payload"), FILECHOOSER_RESULTCODE);
                 } catch (ActivityNotFoundException e) {
                     mFilePathCallback = null;
                     return false;
@@ -77,7 +79,6 @@ public class MainActivity extends Activity {
         webView.loadUrl("file:///android_asset/index.html");
     }
 
-    // Capture the file selected by the user and send it back to the WebView
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
         if (requestCode == FILECHOOSER_RESULTCODE) {

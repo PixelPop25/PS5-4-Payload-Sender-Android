@@ -30,7 +30,7 @@ Nexus is a raw TCP payload injector for those of us who prefer a clean, and quic
 
 Next up:
 
-​Make the app support all files in case anybody has other use cases than jailbreaking
+​Make the app support all files in case anybody has use cases other than jailbreaking
 
 ​To-Do List
 

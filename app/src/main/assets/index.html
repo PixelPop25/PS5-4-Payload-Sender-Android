@@ -10,6 +10,7 @@
       --ps5-blue: #00439c;
       --ps5-light-blue: #2e82ff;
       --ps5-accent: #00e5ff;
+      --ps5-error: #ff3366;
       --bg-gradient: radial-gradient(circle at top right, #0d1730, #04060c 80%);
     }
 
@@ -138,7 +139,7 @@
       border-radius: 12px;
       font-size: 13px;
       color: rgba(255, 255, 255, 0.8);
-      pointer-events: none; /* Allows click to pass straight to the input layer */
+      pointer-events: none;
     }
 
     button.send-btn {
@@ -161,6 +162,37 @@
       transform: scale(0.98);
       background: linear-gradient(135deg, var(--ps5-accent), var(--ps5-light-blue));
     }
+
+    /* Custom Beautiful Neon Toast Container */
+    .custom-toast {
+      position: fixed;
+      bottom: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(13, 23, 48, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding: 14px 28px;
+      border-radius: 50px;
+      font-size: 14px;
+      font-weight: 400;
+      white-space: nowrap;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      z-index: 9999;
+      transition: bottom 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+      opacity: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .custom-toast.show {
+      bottom: 40px;
+      opacity: 1;
+    }
+
+    .custom-toast.success { border: 1px solid var(--ps5-accent); color: #fff; }
+    .custom-toast.error { border: 1px solid var(--ps5-error); color: #fff; }
 
     .credits {
       margin-top: 25px;
@@ -192,7 +224,8 @@
     </div>
     
     <div class="file-wrapper">
-      <input type="file" id="fileInput" accept=".bin,.elf,.js,.lua" onchange="handleFileSelected()">
+      <!-- Universal file pick enabled -->
+      <input type="file" id="fileInput" onchange="handleFileSelected()">
       <div class="file-custom-btn" id="fileLabel">Ready to Select Target File</div>
     </div>
     
@@ -201,10 +234,13 @@
     <div class="credits"><span>@pixelpop</span></div>
   </div>
 
+  <!-- Smooth Neon Toast Popup Overlay -->
+  <div id="toastNotification" class="custom-toast"></div>
+
   <script>
+    /* --- VFX ANIMATION --- */
     const canvas = document.getElementById('vfxCanvas');
     const ctx = canvas.getContext('2d');
-
     let width = canvas.width = window.innerWidth;
     let height = canvas.height = window.innerHeight;
 
@@ -213,15 +249,14 @@
       height = canvas.height = window.innerHeight;
     });
 
-    // Authentic PS5 Home Screen Bokeh Particles
     class Bubble {
       constructor() { this.reset(); }
       reset() {
         this.x = Math.random() * width;
         this.y = height + Math.random() * 100;
-        this.radius = Math.random() * 3 + 1; // Tiny particles
-        this.speed = Math.random() * 0.3 + 0.1; // Extremely slow drift
-        this.opacity = Math.random() * 0.4 + 0.1; // Highly transparent
+        this.radius = Math.random() * 3 + 1;
+        this.speed = Math.random() * 0.3 + 0.1;
+        this.opacity = Math.random() * 0.4 + 0.1;
         this.wobble = Math.random() * 2;
         this.wobbleSpeed = Math.random() * 0.01;
       }
@@ -235,7 +270,7 @@
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
-        ctx.shadowBlur = 6; // Out-of-focus bokeh effect
+        ctx.shadowBlur = 6;
         ctx.shadowColor = '#ffffff';
         ctx.fill();
         ctx.shadowBlur = 0;
@@ -266,28 +301,34 @@
 
     function renderLoop() {
       ctx.clearRect(0, 0, width, height);
-
-      // Faster lightning cycle: 2.5s total — 2s quiet, 0.5s active burst
       zapTimer += 16.66;
       if (zapTimer > 2500) { zapTimer = 0; }
-
       if (zapTimer > 2000) {
-        if (Math.random() < 0.12) { // More frequent bursts during the active window
+        if (Math.random() < 0.12) {
           lightningFlash = Math.random() * 0.15;
           drawLightningArc(Math.random() * width, 0, 12, 50);
         }
       }
-
       if (lightningFlash > 0) {
         ctx.fillStyle = `rgba(0, 229, 255, ${lightningFlash})`;
         ctx.fillRect(0, 0, width, height);
         lightningFlash -= 0.02;
       }
-
       bubbles.forEach(b => { b.update(); b.draw(); });
       requestAnimationFrame(renderLoop);
     }
     renderLoop();
+
+    /* --- TOAST ENGINE --- */
+    function showNeonToast(message, type = 'success') {
+      const toast = document.getElementById('toastNotification');
+      toast.textContent = message;
+      toast.className = `custom-toast ${type} show`;
+      
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3500);
+    }
 
     /* --- NATIVE BRIDGE --- */
     function handleFileSelected() {
@@ -295,6 +336,7 @@
       const label = document.getElementById('fileLabel');
       if(input.files.length > 0) {
         label.innerHTML = `Loaded: <strong style="color:#00e5ff">${input.files[0].name}</strong>`;
+        showNeonToast("File attached successfully!");
       }
     }
 
@@ -314,7 +356,7 @@
       const btn = document.getElementById('injectBtn');
 
       if (!fileInput.files[0]) {
-        alert("Please load a payload file first.");
+        showNeonToast("Error: Load a file first.", "error");
         return;
       }
 
@@ -329,7 +371,7 @@
         window.AndroidNativeTCP.performRawStream(ip, port, base64Payload);
       } else {
         setTimeout(() => {
-          alert("Simulation: TCP stream routed successfully.");
+          showNeonToast("Simulation: Stream routed successfully.");
           btn.textContent = "Send Payload";
           btn.disabled = false;
         }, 1500);
@@ -340,7 +382,7 @@
       const btn = document.getElementById('injectBtn');
       btn.textContent = "Send Payload";
       btn.disabled = false;
-      alert(messageString);
+      showNeonToast(messageString, successFlag ? 'success' : 'error');
     }
   </script>
 </body>

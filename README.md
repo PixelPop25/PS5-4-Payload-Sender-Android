@@ -18,6 +18,8 @@ Nexus is a raw TCP payload injector for those of us who prefer a clean, and quic
 
 ## ​Supported Payloads
 
+All files including
+
 ​.bin
 
 ​.elf
@@ -26,11 +28,11 @@ Nexus is a raw TCP payload injector for those of us who prefer a clean, and quic
 
 ​.js
 
-​.jar (sh#!, I forgot about this at the time of writing)
+​.jar ~~(sh#!, I forgot about this at the time of writing)~~
 
 **Next up**
-
-​Make the app support all files in case anybody has use cases other than jailbreaking
+~~​Make the app support all files in case anybody has use cases other than jailbreaking~~
+Done!
 
 ​**To-Do List**
 

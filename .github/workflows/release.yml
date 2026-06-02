@@ -1,0 +1,19 @@
+name: Release
+on:
+  push:
+    tags:
+      - 'v*' # This triggers the release whenever you push a tag starting with 'v'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to create the release
+    steps:
+      - uses: actions/checkout@v4
+      # ... (Insert your existing build/compile steps here) ...
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/build/outputs/apk/release/*.apk

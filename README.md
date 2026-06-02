@@ -1,7 +1,12 @@
 Nexus Injector
-​Sigh... Finally, I can create a README now that the app is actually confirmed to work. We’ve moved past the "it crashes if you look at it wrong" phase. Nexus is a raw TCP payload injector for those of us who prefer a clean, console-inspired aesthetic over some clunky, boring utility.
+
+​Sigh... Finally, I can create a README now that the app is actually confirmed to work. We’ve moved past the "build failed if you look at it wrong" phase. 
+
+Nexus is a raw TCP payload injector for those of us who prefer a clean, console-inspired aesthetic over some clunky, boring utility.
+
 ​How to use
 ​It’s self-explanatory, lol.
+
 ​Be on the same network as your target console.
 ​Turn off your mobile data (seriously, don't let your phone try to route local traffic through a cell tower; it won't work).
 ​Input your IP and port.

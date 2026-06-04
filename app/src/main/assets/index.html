@@ -3,387 +3,1111 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Nexus: PS4/PS5 Payload Injector</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <title>Nexus: Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --ps5-blue: #00439c;
-      --ps5-light-blue: #2e82ff;
-      --ps5-accent: #00e5ff;
-      --ps5-error: #ff3366;
-      --bg-gradient: radial-gradient(circle at top right, #0d1730, #04060c 80%);
+      --ps5-blue: #003cc2;
+      --ps5-light-blue: #1a72ff;
+      --ps5-accent: #00f0ff;
+      --ps5-error: #ff2a5f;
+      --bg-gradient: radial-gradient(circle at top right, #091326, #020307 85%);
     }
 
-    * { 
-      box-sizing: border-box; 
-      margin: 0; 
-      padding: 0; 
-      user-select: none;
-      -webkit-user-select: none;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
 
     body, html {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      font-family: 'Inter', sans-serif;
-      background: #04060c;
-      color: #fff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      width: 100%; height: 100%; overflow: hidden; font-family: 'Inter', sans-serif;
+      background: #020307; color: #fff; display: flex; justify-content: center; align-items: center;
     }
-
+    
+    #wallpaper-layer {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background-size: cover; background-position: center; z-index: 0; opacity: 0.55;
+    }
     .bg-canvas-container {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: var(--bg-gradient);
-      z-index: 1;
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: var(--bg-gradient); z-index: 1; transition: background 0.5s ease;
     }
-
     canvas {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      pointer-events: none;
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2;
     }
 
     .app-card {
-      position: relative;
-      z-index: 10;
-      background: rgba(255, 255, 255, 0.02);
-      backdrop-filter: blur(25px);
-      -webkit-backdrop-filter: blur(25px);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 28px;
-      padding: 45px 35px;
-      width: 88%;
-      max-width: 400px;
-      box-shadow: 0 30px 60px rgba(0,0,0,0.6);
-      text-align: center;
+      position: relative; z-index: 10;
+      background: rgba(14, 20, 38, 0.45); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+      border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 28px;
+      padding: 25px 22px; width: 94%; max-width: 430px; box-shadow: 0 35px 70px rgba(0,0,0,0.85);
+      display: flex; flex-direction: column; max-height: 95%;
     }
 
+    .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .header-titles { flex: 1; text-align: center; margin-left: 24px; }
     h2 {
-      font-weight: 600;
-      font-size: 26px;
-      letter-spacing: 2px;
+      font-weight: 700; font-size: 24px; letter-spacing: 2px;
       background: linear-gradient(to right, #fff, var(--ps5-accent));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      text-transform: uppercase;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-transform: uppercase; margin-bottom: 2px;
     }
-
-    .subtitle {
-      font-size: 11px;
-      color: rgba(255, 255, 255, 0.4);
-      margin-bottom: 35px;
-      letter-spacing: 3px;
-    }
-
-    .input-group { 
-      margin-bottom: 20px; 
-      text-align: left;
-    }
+    .subtitle { font-size: 10px; color: rgba(255, 255, 255, 0.35); letter-spacing: 3px; text-transform: uppercase; }
     
-    .input-group label {
-      display: block;
-      font-size: 11px;
-      margin-bottom: 8px;
-      color: rgba(255, 255, 255, 0.6);
-      text-transform: uppercase;
-      letter-spacing: 1px;
+    .settings-btn {
+      background: none; border: none; font-size: 20px; color: rgba(255,255,255,0.6);
+      cursor: pointer; transition: 0.3s; padding: 5px; outline: none;
     }
+    .settings-btn:hover { color: #fff; transform: rotate(45deg); }
 
-    input[type="text"], input[type="number"] {
-      width: 100%;
-      padding: 14px;
-      background: rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 12px;
-      color: #fff;
-      font-size: 16px;
-      outline: none;
-      transition: all 0.3s ease;
-    }
-
-    input[type="text"]:focus, input[type="number"]:focus {
-      border-color: var(--ps5-accent);
-      background: rgba(0, 0, 0, 0.6);
-      box-shadow: 0 0 15px rgba(0, 229, 255, 0.15);
-    }
-
-    .file-wrapper {
-      position: relative;
-      margin-bottom: 30px;
-      width: 100%;
-      height: 50px;
-    }
+    .row { display: flex; gap: 10px; margin-bottom: 12px; }
+    .input-group { flex: 1; text-align: left; }
+    .input-group label { display: block; font-size: 10px; margin-bottom: 6px; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; letter-spacing: 1px; }
     
-    .file-wrapper input[type="file"] {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      opacity: 0; cursor: pointer;
-      z-index: 2;
+    input[type="text"], input[type="number"], select {
+      width: 100%; padding: 12px; background: rgba(0, 0, 0, 0.55); border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px; color: #fff; font-size: 14px; outline: none; transition: all 0.3s ease; font-family: 'Inter', sans-serif;
     }
-    
-    .file-custom-btn {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px dashed rgba(255, 255, 255, 0.2);
-      border-radius: 12px;
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.8);
-      pointer-events: none;
-    }
+    input:focus, select:focus { border-color: var(--ps5-accent); background: rgba(0, 0, 0, 0.7); box-shadow: 0 0 15px rgba(0, 240, 255, 0.15); }
 
-    button.send-btn {
-      width: 100%;
-      padding: 16px;
-      background: linear-gradient(135deg, var(--ps5-light-blue), var(--ps5-blue));
-      color: white;
-      border: none;
-      border-radius: 14px;
-      font-size: 15px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      cursor: pointer;
-      box-shadow: 0 12px 24px rgba(0, 67, 156, 0.3);
-      transition: all 0.2s ease;
+    select {
+      appearance: none; -webkit-appearance: none;
+      background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2300f0ff%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+      background-repeat: no-repeat; background-position: right 14px top 50%; background-size: 10px auto;
     }
-    
-    button.send-btn:active {
-      transform: scale(0.98);
-      background: linear-gradient(135deg, var(--ps5-accent), var(--ps5-light-blue));
-    }
+    select:hover { border-color: rgba(0, 240, 255, 0.3); }
+    select option { background: #0b1121; color: #fff; }
 
-    /* Custom Beautiful Neon Toast Container */
-    .custom-toast {
-      position: fixed;
-      bottom: -100px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(13, 23, 48, 0.85);
+    .tabs { 
+      display: flex; border-bottom: 1px solid rgba(255, 255, 255, 0.12); 
+      margin-bottom: 20px; padding: 0; background: transparent;
+    }
+    .tab-btn { 
+      flex: 1; padding: 12px 5px; background: transparent; border: none; 
+      color: rgba(255, 255, 255, 0.35); font-size: 13px; font-weight: 600; 
+      cursor: pointer; text-transform: uppercase; transition: all 0.2s ease; 
+      letter-spacing: 1px; outline: none; border-bottom: 2px solid transparent; 
+      margin-bottom: -1px;
+    }
+    .tab-btn.active { color: #1a72ff; border-bottom: 2px solid #1a72ff; }
+    
+    .tab-content { display: none; flex-direction: column; flex: 1; overflow-y: auto; padding-right: 4px; }
+    .tab-content.active { display: flex; }
+    .tab-content::-webkit-scrollbar { width: 4px; }
+    .tab-content::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+
+    .unified-control-deck { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; }
+    .cloud-deck { padding: 5px 0; }
+
+    .deck-divider {
+      display: flex; align-items: center; text-align: center; 
+      color: rgba(255,255,255,0.2); font-size: 10px; 
+      text-transform: uppercase; letter-spacing: 2px; margin: 10px 0;
+    }
+    .deck-divider::before, .deck-divider::after { content: ''; flex: 1; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .deck-divider:not(:empty)::before { margin-right: 10px; }
+    .deck-divider:not(:empty)::after { margin-left: 10px; }
+
+    /* Environment Switcher */
+    .env-switcher { 
+      display: flex; background: transparent; padding: 0; border: none; 
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12); margin-bottom: 15px;
+    }
+    .env-btn { 
+      flex: 1; padding: 12px 5px; background: transparent; border: none; 
+      color: rgba(255, 255, 255, 0.35); font-size: 13px; font-weight: 600; 
+      cursor: pointer; text-transform: uppercase; transition: all 0.2s ease; 
+      letter-spacing: 1px; outline: none; border-bottom: 2px solid transparent; 
+      margin-bottom: -1px;
+    }
+    .env-btn.active { color: #1a72ff; border-bottom: 2px solid #1a72ff; }
+
+    /* Circular Local File Upload */
+    .circular-upload { top: 10px; position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .circular-upload input[type="file"] { display: none; }
+    .file-label-circle {
+      display: flex; align-items: center; justify-content: center;
+      width: 65px; height: 65px; border-radius: 50%;
+      background: rgba(26, 114, 255, 0.16); border: 1px solid rgba(26, 114, 190, 0.35);
+      color: #fff; cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    }
+    .file-label-circle:hover { 
+      background: rgba(26, 114, 255, 0.28); border-color: var(--ps5-accent);
+      box-shadow: 0 0 18px rgba(0, 240, 255, 0.25); transform: scale(1.05); 
+    }
+    .file-label-circle:active { transform: scale(0.95); box-shadow: 0 2px 8px rgba(0, 240, 255, 0.15); }
+    .upload-icon { stroke: var(--ps5-accent); }
+    .file-name-display { text-align: center; font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 12px; margin-bottom: 2px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+
+    /* PS4 Face Buttons for Cloud Scripts */
+    .ps4-btn-group { display: flex; gap: 12px; margin-top: 15px; justify-content: center; }
+    .ps4-cloud-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+      background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px; padding: 14px 5px; color: rgba(255,255,255,0.7);
+      cursor: pointer; transition: all 0.2s ease; font-size: 11px; font-weight: 600; text-transform: uppercase; outline: none;
+    }
+    .ps4-cloud-btn:hover { border-color: var(--ps5-accent); background: rgba(0,240,255,0.08); color: #fff; box-shadow: 0 4px 15px rgba(0, 240, 255, 0.15); transform: translateY(-2px); }
+    .ps4-cloud-btn:active { transform: translateY(1px); }
+    .ps4-icon { width: 28px; height: 28px; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.2s; }
+    .ps4-icon.square { stroke: #df00f5; }
+    .ps4-icon.cross { stroke: #1a72ff; }
+    .ps4-icon.circle { stroke: #ff2a5f; }
+    .ps4-icon.triangle { stroke: #00f0ff; }
+
+    .zone-title { font-size: 10px; text-transform: uppercase; color: var(--ps5-accent); margin-bottom: 5px; letter-spacing: 1px; text-align: center; }
+
+    .payload-cb-list {
+      background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px;
+      min-height: 120px; max-height: 240px; overflow-y: auto; padding: 6px;
+      display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; flex: 1;
+    }
+    .payload-cb-list::-webkit-scrollbar { width: 4px; }
+    .payload-cb-list::-webkit-scrollbar-thumb { background: rgba(0,240,255,0.15); border-radius: 10px; }
+
+    .payload-cb-empty { text-align: center; font-size: 11px; color: rgba(255,255,255,0.3); padding: 28px 10px; }
+
+    .payload-cb-row {
+      display: flex; align-items: center; gap: 10px; background: rgba(11, 19, 43, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08); padding: 9px 12px; border-radius: 8px;
+      cursor: pointer; transition: border-color 0.18s, background 0.18s; -webkit-tap-highlight-color: transparent;
+    }
+    .payload-cb-row:hover { border-color: rgba(0, 240, 255, 0.4); }
+    .payload-cb-row.is-checked { border-color: rgba(0, 240, 255, 0.55); background: rgba(0, 240, 255, 0.06); }
+
+    .payload-cb-row input[type="checkbox"] { display: none; }
+    .cb-box {
+      flex-shrink: 0; width: 17px; height: 17px; border-radius: 5px; border: 1.5px solid rgba(255,255,255,0.22);
+      background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.18s, background 0.18s, box-shadow 0.18s; position: relative;
+    }
+    .payload-cb-row.is-checked .cb-box { border-color: var(--ps5-accent); background: rgba(0, 240, 255, 0.12); box-shadow: 0 0 7px rgba(0, 240, 255, 0.4); }
+    .cb-box::after {
+      content: ''; display: block; width: 4px; height: 8px; border: 2px solid var(--ps5-accent); border-top: none; border-left: none;
+      transform: rotate(45deg) translate(-1px, -1px); opacity: 0; transition: opacity 0.14s;
+    }
+    .payload-cb-row.is-checked .cb-box::after { opacity: 1; }
+    .cb-label { flex: 1; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.18s; }
+    .payload-cb-row.is-checked .cb-label { color: #fff; }
+    .cb-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; flex-shrink: 0; transition: color 0.18s, background 0.18s; }
+    .payload-cb-row.is-checked .cb-badge { color: var(--ps5-accent); background: rgba(0,240,255,0.1); }
+    .payload-cb-row.local-missing .cb-label { color: var(--ps5-error); text-decoration: line-through; }
+
+    /* Buttons */
+    button.primary-btn {
+      width: 100%; padding: 16px; 
+      background: rgba(26, 114, 255, 0.16);
+      color: #fff; border: 1px solid rgba(26, 114, 255, 0.35); 
+      border-radius: 50px; font-size: 14px; font-weight: 700; 
+      text-transform: uppercase; letter-spacing: 2px; cursor: pointer; 
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); 
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); margin-top: auto; outline: none;
+      display: flex; justify-content: center; align-items: center; gap: 8px; position: relative; overflow: hidden;
+    }
+    button.primary-btn:hover { 
+      background: rgba(26, 114, 255, 0.28); border-color: var(--ps5-accent);
+      box-shadow: 0 0 18px rgba(0, 240, 255, 0.25); color: #fff;
+    }
+    button.primary-btn:active { transform: scale(0.97); box-shadow: 0 2px 8px rgba(0, 240, 255, 0.15); }
+
+    .flex-row-buttons { display: flex; gap: 8px; margin-bottom: 12px; }
+    .btn-sync, .btn-folder, .btn-add-loadout { 
+      flex: 1; padding: 12px; background: rgba(255, 255, 255, 0.04); 
+      border: 1px solid rgba(255,255,255,0.08); color: #fff; border-radius: 12px; 
+      font-size: 11px; font-weight: 600; cursor: pointer; text-transform: uppercase; 
+      transition: 0.2s; letter-spacing: 0.5px; outline: none; display: flex; 
+      justify-content: center; align-items: center; gap: 6px; white-space: nowrap;
+    }
+    .btn-add-loadout { flex: 0.8; }
+    .btn-sync:hover, .btn-folder:hover, .btn-add-loadout:hover { background: rgba(255, 255, 255, 0.08); border-color: var(--ps5-accent); box-shadow: 0 0 10px rgba(0, 240, 255, 0.1); }
+
+    /* Loadout Selector Row */
+    .loadout-row { display: flex; margin-bottom: 12px; }
+    .loadout-row select { font-weight: 600; text-align: center; }
+
+    /* Settings Panel */
+    .settings-panel {
+      display: none; flex-direction: column; gap: 14px; background: rgba(8, 12, 23, 0.96);
+      border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 20px; padding: 20px;
+      position: absolute; top: 70px; right: 20px; left: 20px; z-index: 100; box-shadow: 0 20px 45px rgba(0,0,0,0.9);
       backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      padding: 14px 28px;
-      border-radius: 50px;
-      font-size: 14px;
-      font-weight: 400;
-      white-space: nowrap;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-      z-index: 9999;
-      transition: bottom 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
-      opacity: 0;
-      display: flex;
-      align-items: center;
-      gap: 10px;
     }
+    .settings-panel.active { display: flex; animation: fadeUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-    .custom-toast.show {
-      bottom: 40px;
-      opacity: 1;
+    .panel-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 2px; }
+    .panel-header h3 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: var(--ps5-accent); }
+    .close-panel-btn { background: none; border: none; color: #fff; font-size: 18px; cursor: pointer; transition: 0.3s; }
+    .close-panel-btn:hover { color: var(--ps5-error); transform: scale(1.1); }
+    
+    .panel-btn-row { display: flex; gap: 10px; width: 100%; margin-top: 4px; }
+    .panel-btn { 
+      flex: 1; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255,255,255,0.12); 
+      color: white; padding: 12px 10px; border-radius: 14px; cursor: pointer; 
+      font-size: 11px; text-transform: uppercase; font-weight: 600; text-align: center; 
+      transition: all 0.2s ease; text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 4px;
     }
+    .panel-btn:hover { border-color: var(--ps5-accent); background: rgba(0,240,255,0.08); box-shadow: 0 4px 12px rgba(0, 240, 255, 0.15); }
+    .panel-btn-icon { font-size: 18px; }
 
-    .custom-toast.success { border: 1px solid var(--ps5-accent); color: #fff; }
-    .custom-toast.error { border: 1px solid var(--ps5-error); color: #fff; }
-
-    .credits {
-      margin-top: 25px;
-      font-size: 11px;
-      color: rgba(255, 255, 255, 0.25);
-      letter-spacing: 1px;
+    /* Custom Radio/Toggle for VFX */
+    .vfx-toggle-group {
+      display: flex; flex-direction: column; gap: 12px; background: rgba(0,0,0,0.25); 
+      padding: 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.05); margin-top: 2px;
     }
-    .credits span { color: var(--ps5-accent); font-weight: 600; }
+    .vfx-toggle-title { font-size: 10px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    
+    .vfx-row { display: flex; justify-content: space-between; align-items: center; }
+    .vfx-label-text { font-size: 12px; color: rgba(255,255,255,0.8); font-weight: 600; }
+    
+    .custom-toggle { position: relative; display: inline-block; width: 46px; height: 26px; flex-shrink: 0; }
+    .custom-toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { 
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; 
+      background-color: rgba(255,255,255,0.1); transition: .4s; border-radius: 26px; 
+      box-shadow: inset 0 0 5px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); 
+    }
+    .toggle-slider:before { 
+      position: absolute; content: "0"; height: 20px; width: 20px; left: 2px; bottom: 2px; 
+      background-color: white; transition: .4s; border-radius: 50%; display: flex; 
+      justify-content: center; align-items: center; font-size: 11px; font-weight: 700; color: #333; 
+    }
+    .custom-toggle input:checked + .toggle-slider { background-color: rgba(26, 114, 255, 0.4); border-color: var(--ps5-light-blue); }
+    .custom-toggle input:checked + .toggle-slider:before { transform: translateX(20px); content: "1"; background-color: var(--ps5-accent); color: #000; box-shadow: 0 0 8px var(--ps5-accent); }
+
+    .custom-toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background: rgba(11, 19, 43, 0.96); padding: 14px 28px; border-radius: 50px; font-size: 13px; z-index: 9999; border: 1px solid var(--ps5-accent); white-space: nowrap; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); opacity: 0; box-shadow: 0 10px 30px rgba(0,0,0,0.8); font-weight: 600; }
+    .custom-toast.show { bottom: 40px; opacity: 1; }
+    .custom-toast.error { border-color: var(--ps5-error); color: #fff; }
   </style>
 </head>
 <body>
 
-  <div class="bg-canvas-container">
+  <div id="wallpaper-layer"></div>
+  <div class="bg-canvas-container" id="gradient-layer">
     <canvas id="vfxCanvas"></canvas>
   </div>
+  
+  <input type="file" id="bgUploader" accept="image/*" style="display: none;" onchange="handleBgUpload(event)">
+  <input type="file" id="folderUploader" webkitdirectory directory multiple style="display: none;" onchange="handleFolderSelected(event)">
 
   <div class="app-card">
-    <h2>NEXUS</h2>
-    <div class="subtitle">PS4 / PS5 PAYLOAD INJECTOR</div>
-    
-    <div class="input-group">
-      <label>TARGET IP</label>
-      <input type="text" id="ip" value="192.168.1.100" spellcheck="false">
+    <div class="settings-panel" id="configPanel">
+      <div class="panel-header">
+        <h3 data-i18n="settingsTitle">System Settings</h3>
+        <button class="close-panel-btn" onclick="togglePanel()">✕</button>
+      </div>
+      <div class="input-group">
+        <label data-i18n="langLabel">Interface Language</label>
+        <select id="langSelector" onchange="changeLanguage(this.value)">
+          <option value="en-US">English</option>
+          <option value="fr-FR">Français</option>
+          <option value="es-ES">Español</option>
+          <option value="pt-BR">Português</option>
+          <option value="eta-wen">ETAWEN</option>
+          <option value="ru-RU">Русский</option>
+          <option value="et-EE">Eesti (Estonian)</option>
+          <option value="ja-JP">日本語 (Japanese)</option>
+          <option value="ko-KR">한국어 (Korean)</option>
+          <option value="sw-KE">Swahili</option>
+          <option value="zh-CN">中文 (Mandarin)</option>
+          <option value="fi-FI">Suomi (Finnish)</option>
+          <option value="gd-GB">Gàidhlig (Scottish)</option>
+          <option value="ga-IE">Gaeilge (Irish)</option>
+          <option value="zu-ZA">isiZulu</option>
+          <option value="hi-IN">हिन्दी (Hindi)</option>
+          <option value="ar-SA">العربية (Arabic)</option>
+          <option value="ur-PK">اردو (Urdu)</option>
+          <option value="fa-IR">فارسی (Persian)</option>
+          <option value="tl-PH">Tagalog (Philippine)</option>
+          <option value="ta-IN">தமிழ் (Tamil)</option>
+          <option value="tr-TR">Türkçe</option>
+          <option value="ms-MY">Bahasa Melayu</option>
+          <option value="hu-HU">Magyar</option>
+          <option value="de-DE">Deutsch</option>
+          <option value="pl-PL">Polski</option>
+        </select>
+      </div>
+      
+      <div class="vfx-toggle-group">
+        <div class="vfx-toggle-title" data-i18n="vfxTitle">Atmospheric Subroutines</div>
+        
+        <div class="vfx-row">
+          <span class="vfx-label-text" data-i18n="vfxBubbles">Disable Ambient Bubbles</span>
+          <label class="custom-toggle">
+            <input type="checkbox" id="toggleBubbles" onchange="saveVfxConfig()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="vfx-row">
+          <span class="vfx-label-text" data-i18n="vfxLightning">Disable Lightning Flares</span>
+          <label class="custom-toggle">
+            <input type="checkbox" id="toggleLightning" onchange="saveVfxConfig()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="panel-btn-row">
+        <button class="panel-btn" onclick="triggerBgUpload()">
+          <span class="panel-btn-icon">🖼️</span>
+          <span data-i18n="bgBtn">Change Wallpaper</span>
+        </button>
+        <button class="panel-btn" onclick="resetWallpaper()">
+          <span class="panel-btn-icon">🗑️</span>
+          <span data-i18n="resetBgBtn">Reset Wallpaper</span>
+        </button>
+      </div>
     </div>
 
-    <div class="input-group">
-      <label>PORT</label>
-      <input type="number" id="port" value="9020">
+    <div class="header-bar">
+      <div style="width: 24px;"></div> 
+      <div class="header-titles">
+        <h2>NEXUS</h2>
+        <div class="subtitle" data-i18n="appSubtitle">PS4 / PS5 PAYLOAD INJECTOR</div>
+      </div>
+      <button class="settings-btn" onclick="togglePanel()">⚙️</button>
     </div>
     
-    <div class="file-wrapper">
-      <!-- Universal file pick enabled -->
-      <input type="file" id="fileInput" onchange="handleFileSelected()">
-      <div class="file-custom-btn" id="fileLabel">Ready to Select Target File</div>
+    <div class="row">
+      <div class="input-group">
+        <label data-i18n="ipLabel">Host Console IP</label>
+        <input type="text" id="ip" value="192.168.1.100" oninput="saveConfig()" spellcheck="false">
+      </div>
+      <div class="input-group" style="flex: 0.4;">
+        <label data-i18n="portLabel">Port</label>
+        <input type="number" id="port" value="9026" oninput="saveConfig()">
+      </div>
     </div>
-    
-    <button class="send-btn" id="injectBtn" onclick="transmitPayloadNative()">Send Payload</button>
-    
-    <div class="credits"><span>@pixelpop</span></div>
+
+    <div class="tabs">
+      <button class="tab-btn active" id="tabBtn-exploit" onclick="switchTab('exploit', this)" data-i18n="tabExploit">Exploits</button>
+      <button class="tab-btn" id="tabBtn-payloads" onclick="switchTab('payloads', this)" data-i18n="tabPayloads">Payloads</button>
+    </div>
+
+    <div id="tab-exploit" class="tab-content active">
+      <div class="unified-control-deck">
+        
+        <div class="circular-upload">
+          <label for="fileInput" class="file-label-circle">
+            <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </label>
+          <input type="file" id="fileInput" onchange="handleFileSelected()" accept=".bin,.elf,.js,.lua,.jar,.mjs">
+          <div id="fileNameText" class="file-name-display" data-i18n="loadLocal">Load Local Payload...</div>
+        </div>
+      
+        <div class="cloud-deck">
+          <div class="env-switcher">
+            <button class="env-btn active" id="env-luac0re" onclick="setExploitEnv('luac0re')">LuaC0re</button>
+            <button class="env-btn" id="env-y2jb" onclick="setExploitEnv('y2jb')">Y2JB</button>
+          </div>
+
+          
+          <div id="cloudBtnContainer" class="ps4-btn-group">
+            </div>
+        </div>
+
+      </div>
+      <button class="primary-btn" onclick="transmitLocalPayload(event)">
+          <span data-i18n="btnTransmit">Send</span> 
+        </button>
+
+    </div>
+
+    <div id="tab-payloads" class="tab-content">
+      
+      <div class="row loadout-row">
+        <div class="input-group">
+          <select id="loadoutSelector" onchange="handleLoadoutChange()">
+            <option value="default" data-i18n="allPayloads">-- All Payloads --</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex-row-buttons">
+        <button class="btn-sync" onclick="syncCloud()">
+          <span>🔄</span> <span data-i18n="syncBtn">Sync</span>
+        </button>
+        <button class="btn-folder" onclick="document.getElementById('folderUploader').click()">
+          <span>📁</span> <span data-i18n="folderBtn">Map</span>
+        </button>
+        <button class="btn-add-loadout" onclick="saveCurrentLoadout()">
+          <span>➕</span> <span data-i18n="saveLoadoutBtn">Save</span>
+        </button>
+      </div>
+
+      <div style="flex:1; display:flex; flex-direction:column;">
+        <div class="zone-title" id="armoryTitle" data-i18n="armoryCloudTitle">Cloud Armory</div>
+        <div class="payload-cb-list" id="payload-cb-list">
+          <div class="payload-cb-empty" data-i18n="armoryEmpty">Sync or choose a folder to populate...</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="input-group">
+          <label data-i18n="delayLabel">Injection Delay (ms)</label>
+          <input type="number" id="delay" value="4000" oninput="saveConfig()">
+        </div>
+      </div>
+
+      <button class="primary-btn" id="injectSeqBtn" onclick="executeSequence(event)">
+        <span data-i18n="btnInjectSeq">Inject Sequence</span>
+      </button>
+    </div>
   </div>
 
-  <!-- Smooth Neon Toast Popup Overlay -->
   <div id="toastNotification" class="custom-toast"></div>
 
   <script>
-    /* --- VFX ANIMATION --- */
-    const canvas = document.getElementById('vfxCanvas');
-    const ctx = canvas.getContext('2d');
-    let width = canvas.width = window.innerWidth;
-    let height = canvas.height = window.innerHeight;
+    const StorageEngine = {
+      setItem: (key, value) => { try { if (window.AndroidNativeStorage) { window.AndroidNativeStorage.setItem(key, value); } else { localStorage.setItem(key, value); } } catch (e) {} },
+      getItem: (key) => { try { return window.AndroidNativeStorage ? window.AndroidNativeStorage.getItem(key) : localStorage.getItem(key); } catch (e) { return null; } },
+      removeItem: (key) => { try { if (window.AndroidNativeStorage) { window.AndroidNativeStorage.removeItem(key); } else { localStorage.removeItem(key); } } catch (e) {} }
+    };
 
-    window.addEventListener('resize', () => {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-    });
+    const dictionary = {
+      "en-US": { appSubtitle: "PS5 / PS4 PAYLOAD INJECTOR", tabExploit: "Exploits", tabPayloads: "Payloads", ipLabel: "Host IP", portLabel: "Port", loadLocal: "Pick a file", cloudDivider: "too lazy to remove this", btnTransmit: "SEND ", syncBtn: "Sync", folderBtn: "Map", armoryCloudTitle: "Cloud Armory", armoryLocalTitle: "Local Armory", armoryEmpty: "Sync or choose a folder to populate...", delayLabel: "Delay (ms)", btnInjectSeq: "Start Sequence", settingsTitle: "System Settings", langLabel: "Interface Language", vfxTitle: "Atmospheric Subroutines", vfxBubbles: "Disable Ambient Bubbles", vfxLightning: "Disable Lightning Effects", bgBtn: "Change Wallpaper", resetBgBtn: "Reset Wallpaper", dragFallback: "Select payloads to inject first.", allPayloads: "All Payloads", saveLoadoutBtn: "Save" },
+      "eta-wen": { appSubtitle: "ETA WEN CFW UWU", tabExploit: "Kexps", tabPayloads: "Payloads", ipLabel: "Pawn IP", portLabel: "Port", loadLocal: "Go Dumpster diving", cloudDivider: "too lazy to remove this", btnTransmit: "Ping Dev", syncBtn: "Sync", folderBtn: "Map", armoryCloudTitle: "Vault of Fame", armoryLocalTitle: "Baked Potatoes", armoryEmpty: "Sync or go touch grass", delayLabel: "Delay (ms)", btnInjectSeq: "WET THE BED NYA", settingsTitle: "Wootings", langLabel: "For Casuals", vfxTitle: "Atmospheric Subroutines", vfxBubbles: "Disable the cool Bubbles", vfxLightning: "Disable the why did I keep this again? Effects", bgBtn: "Change Wallpaper (no lolli tho or banban)", resetBgBtn: "Hide your obviously pervy Wallpaper", dragFallback: "Let's find you a brain first.", allPayloads: "All Yumyums", saveLoadoutBtn: "Save" },
+      "sw-KE": { appSubtitle: "KIDUNGANZI CHA PS4 / PS5", tabExploit: "Matumizi", tabPayloads: "Mizigo", ipLabel: "IP ya Kifaa", portLabel: "Lango", loadLocal: "Pakia Mzigo wa Ndani...", cloudDivider: "AU TUMIA WINGU", btnTransmit: "Tuma Mzigo", syncBtn: "Sawazisha", folderBtn: "Folda", armoryCloudTitle: "Silaha za Wingu", armoryLocalTitle: "Silaha za Ndani", armoryEmpty: "Sawazisha au chagua folda...", delayLabel: "Kuchelewa (ms)", btnInjectSeq: "Anza Mlolongo", settingsTitle: "Mipangilio", langLabel: "Lugha ya Mfumo", vfxTitle: "Athari za Kuona", vfxBubbles: "Zima Mapovu", vfxLightning: "Zima Umeme", bgBtn: "Badilisha Karatasi", resetBgBtn: "Weka Upya Karatasi", dragFallback: "Chagua mzigo kwanza.", allPayloads: "-- Mizigo Yote --", saveLoadoutBtn: "Hifadhi" },
+      "fr-FR": { appSubtitle: "INJECTEUR DE PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", ipLabel: "IP de la Console", portLabel: "Port", loadLocal: "Charger Payload Local...", cloudDivider: "OU DÉPLOIEMENT CLOUD", btnTransmit: "Envoyer Payload", syncBtn: "Sync", folderBtn: "Dossier", armoryCloudTitle: "Arsenal Cloud", armoryLocalTitle: "Arsenal Local", armoryEmpty: "Synchronisez ou choisissez un dossier...", delayLabel: "Délai (ms)", btnInjectSeq: "Injecter Séquence", settingsTitle: "Paramètres Système", langLabel: "Langue", vfxTitle: "Effets Visuels", vfxBubbles: "Désactiver les Bulles", vfxLightning: "Désactiver les Éclairs", bgBtn: "Changer Fond", resetBgBtn: "Réinitialiser Fond", dragFallback: "Sélectionnez des payloads d'abord.", allPayloads: "-- Tous les Payloads --", saveLoadoutBtn: "Enregistrer" },
+      "es-ES": { appSubtitle: "INYECTOR DE PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", ipLabel: "IP de Consola", portLabel: "Puerto", loadLocal: "Cargar Payload Local...", cloudDivider: "O DESPLIEGUE EN LA NUBE", btnTransmit: "Enviar Payload", syncBtn: "Sync", folderBtn: "Mapear", armoryCloudTitle: "Arsenal en la Nube", armoryLocalTitle: "Arsenal Local", armoryEmpty: "Sincroniza o elige una carpeta...", delayLabel: "Retraso (ms)", btnInjectSeq: "Inyectar Secuencia", settingsTitle: "Ajustes de Sistema", langLabel: "Idioma", vfxTitle: "Efectos Visuales", vfxBubbles: "Desactivar Burbujas", vfxLightning: "Desactivar Relámpagos", bgBtn: "Cambiar Fondo", resetBgBtn: "Restaurar Fondo", dragFallback: "Selecciona payloads primero.", allPayloads: "-- Todos los Payloads --", saveLoadoutBtn: "Guardar" },
+      "pt-BR": { appSubtitle: "INJETOR DE PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", ipLabel: "IP do Console", portLabel: "Porta", loadLocal: "Carregar Payload Local...", cloudDivider: "OU DEPLOY NA NUVEM", btnTransmit: "Enviar Payload", syncBtn: "Sync", folderBtn: "Pasta", armoryCloudTitle: "Arsenal na Nuvem", armoryLocalTitle: "Arsenal Local", armoryEmpty: "Sincronize ou escolha uma pasta...", delayLabel: "Atraso (ms)", btnInjectSeq: "Injetar Sequência", settingsTitle: "Configurações", langLabel: "Idioma", vfxTitle: "Efeitos Visuais", vfxBubbles: "Desativar Bolhas", vfxLightning: "Desativar Raios", bgBtn: "Alterar Fundo", resetBgBtn: "Resetar Fundo", dragFallback: "Selecione payloads primeiro.", allPayloads: "-- Todos os Payloads --", saveLoadoutBtn: "Salvar" },
+      "et-EE": { appSubtitle: "PS4/PS5 PAYLOAD SÜSTIJA", tabExploit: "Eksploitid", tabPayloads: "Payloadid", ipLabel: "Konsooli IP", portLabel: "Port", loadLocal: "Laadi Kohalik Payload...", cloudDivider: "VÕI PILVE JUURUTAMINE", btnTransmit: "Saada Payload", syncBtn: "Sünkrooni", folderBtn: "Kaust", armoryCloudTitle: "Pilve Arsenal", armoryLocalTitle: "Kohalik Arsenal", armoryEmpty: "Sünkrooni või vali kaust...", delayLabel: "Viivitus (ms)", btnInjectSeq: "Süsti Järjestus", settingsTitle: "Süsteemi Seaded", langLabel: "Keel", vfxTitle: "Visuaalsed Efektid", vfxBubbles: "Keela Mullid", vfxLightning: "Keela Välk", bgBtn: "Muuda Tausta", resetBgBtn: "Lähtesta Taust", dragFallback: "Vali esmalt payloadid.", allPayloads: "-- Kõik Payloadid --", saveLoadoutBtn: "Salvesta" },
+      "ru-RU": { appSubtitle: "ИНЖЕКТОР ПЕЙЛОАДОВ PS4/PS5", tabExploit: "Эксплойты", tabPayloads: "Пейлоады", ipLabel: "IP Консоли", portLabel: "Порт", loadLocal: "Локальный Пейлоад...", cloudDivider: "ИЛИ ОБЛАЧНЫЙ СКРИПТ", btnTransmit: "Отправить Пейлоад", syncBtn: "Синхр", folderBtn: "Папка", armoryCloudTitle: "Облачный Арсенал", armoryLocalTitle: "Локальный Арсенал", armoryEmpty: "Синхронизируйте или выберите папку...", delayLabel: "Задержка (мс)", btnInjectSeq: "Запуск Серии", settingsTitle: "Настройки Системы", langLabel: "Язык Интерфейса", vfxTitle: "Визуальные Эффекты", vfxBubbles: "Отключить Пузыри", vfxLightning: "Отключить Молнии", bgBtn: "Изменить Обои", resetBgBtn: "Сбросить Обои", dragFallback: "Сначала выберите пейлоады.", allPayloads: "-- Все Пейлоады --", saveLoadoutBtn: "Сохранить" },
+      "ja-JP": { appSubtitle: "PS4/PS5 ペイロードインジェクタ", tabExploit: "エクスプロイト", tabPayloads: "ペイロード", ipLabel: "コンソールIP", portLabel: "ポート", loadLocal: "ローカルペイロードを読込...", cloudDivider: "またはクラウド展開", btnTransmit: "ペイロード送信", syncBtn: "同期", folderBtn: "フォルダ", armoryCloudTitle: "クラウド武器庫", armoryLocalTitle: "ローカル武器庫", armoryEmpty: "同期またはフォルダを選択...", delayLabel: "遅延 (ms)", btnInjectSeq: "連続インジェクト", settingsTitle: "システム設定", langLabel: "言語", vfxTitle: "視覚効果", vfxBubbles: "泡エフェクトを無効化", vfxLightning: "稲妻エフェクトを無効化", bgBtn: "壁紙を変更", resetBgBtn: "壁紙をリセット", dragFallback: "最初にペイロードを選択してください。", allPayloads: "-- 全てのペイロード --", saveLoadoutBtn: "保存" },
+      "ko-KR": { appSubtitle: "PS4/PS5 페이로드 인젝터", tabExploit: "익스플로잇", tabPayloads: "페이로드", ipLabel: "콘솔 IP", portLabel: "포트", loadLocal: "로컬 페이로드 로드...", cloudDivider: "또는 클라우드 배포", btnTransmit: "페이로드 전송", syncBtn: "동기화", folderBtn: "폴더", armoryCloudTitle: "클라우드 무기고", armoryLocalTitle: "로컬 무기고", armoryEmpty: "동기화 또는 폴더를 선택하세요...", delayLabel: "주입 지연 (ms)", btnInjectSeq: "시퀀스 주입", settingsTitle: "시스템 설정", langLabel: "언어", vfxTitle: "시각 효과", vfxBubbles: "버블 비활성화", vfxLightning: "번개 비활성화", bgBtn: "배경화면 변경", resetBgBtn: "배경화면 초기화", dragFallback: "먼저 페이로드를 선택하세요.", allPayloads: "-- 모든 페이로드 --", saveLoadoutBtn: "저장" },
+      "zh-CN": { appSubtitle: "PS4/PS5 有效载荷注入器", tabExploit: "漏洞利用", tabPayloads: "有效载荷", ipLabel: "主机 IP", portLabel: "端口", loadLocal: "加载本地有效载荷...", cloudDivider: "或使用云端部署", btnTransmit: "发送有效载荷", syncBtn: "同步", folderBtn: "文件夹", armoryCloudTitle: "云端武器库", armoryLocalTitle: "本地武器库", armoryEmpty: "同步或选择一个文件夹...", delayLabel: "注入延迟 (毫秒)", btnInjectSeq: "序列注入", settingsTitle: "系统设置", langLabel: "界面语言", vfxTitle: "视觉效果", vfxBubbles: "禁用气泡", vfxLightning: "禁用闪电", bgBtn: "更改壁纸", resetBgBtn: "重置壁纸", dragFallback: "请先选择有效载荷。", allPayloads: "-- 所有有效载荷 --", saveLoadoutBtn: "保存" },
+      "fi-FI": { appSubtitle: "PS4/PS5 PAYLOAD SYÖTTÄJÄ", tabExploit: "Exploitit", tabPayloads: "Payloadit", ipLabel: "Konsolin IP", portLabel: "Portti", loadLocal: "Lataa Paikallinen Payload...", cloudDivider: "TAI PILVIKÄYTTÖ", btnTransmit: "Lähetä Payload", syncBtn: "Synkronoi", folderBtn: "Kansio", armoryCloudTitle: "Pilviarsenaali", armoryLocalTitle: "Paikallinen Arsenaali", armoryEmpty: "Synkronoi tai valitse kansio...", delayLabel: "Viive (ms)", btnInjectSeq: "Syötä Sarja", settingsTitle: "Järjestelmäasetukset", langLabel: "Kieli", vfxTitle: "Visuaaliset Efektit", vfxBubbles: "Poista Kuplat", vfxLightning: "Poista Salamat", bgBtn: "Vaihda Taustakuva", resetBgBtn: "Nollaa Taustakuva", dragFallback: "Valitse payloadit ensin.", allPayloads: "-- Kaikki Payloadit --", saveLoadoutBtn: "Tallenna" },
+      "gd-GB": { appSubtitle: "INJECTOR PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", ipLabel: "IP a' Chonsail", portLabel: "Port", loadLocal: "Luchdaich Payload Ionadail...", cloudDivider: "NÒ CLEACHDADH CLOUD", btnTransmit: "Cuir Payload", syncBtn: "Sioncronaich", folderBtn: "Pasgan", armoryCloudTitle: "Armlann Cloud", armoryLocalTitle: "Armlann Ionadail", armoryEmpty: "Sioncronaich no tagh pasgan...", delayLabel: "Dàil (ms)", btnInjectSeq: "Cuir Sreath", settingsTitle: "Roghainnean Siostaim", langLabel: "Cànan", vfxTitle: "Buaidhean Lèirsinneach", vfxBubbles: "Cuir dheth builgeanan", vfxLightning: "Cuir dheth dealanach", bgBtn: "Atharraich Pàipear-balla", resetBgBtn: "Ath-shuidhich Pàipear-balla", dragFallback: "Tagh payloads an toiseach.", allPayloads: "-- Na h-Uile Payloads --", saveLoadoutBtn: "Sàbhail" },
+      "ga-IE": { appSubtitle: "INJECTOR PAYLOAD PS4/PS5", tabExploit: "Saothrú", tabPayloads: "Ualaí", ipLabel: "IP Consóil", portLabel: "Port", loadLocal: "Lódáil Ualach Áitiúil...", cloudDivider: "NÓ ÚSÁID NÉAL", btnTransmit: "Seol Ualach", syncBtn: "Sionc", folderBtn: "Fillteán", armoryCloudTitle: "Armlann Néal", armoryLocalTitle: "Armlann Áitiúil", armoryEmpty: "Sioncronaigh nó roghnaigh fillteán...", delayLabel: "Moill (ms)", btnInjectSeq: "Instealladh Seicheamh", settingsTitle: "Socruithe Córais", langLabel: "Teanga", vfxTitle: "Éifeachtaí Físiúla", vfxBubbles: "Díchumasaigh Boilgeoga", vfxLightning: "Díchumasaigh Tintreach", bgBtn: "Athraigh Cúlbhrat", resetBgBtn: "Athshocraigh Cúlbhrat", dragFallback: "Roghnaigh ualaí ar dtús.", allPayloads: "-- Gach Ualach --", saveLoadoutBtn: "Sábháil" },
+      "zu-ZA": { appSubtitle: "UMFAKI WE-PAYLOAD WE-PS4/PS5", tabExploit: "Ukusetshenziswa", tabPayloads: "Imithwalo", ipLabel: "I-IP Yekhonsoli", portLabel: "Imbobo", loadLocal: "Layisha Umthwalo Wasendaweni...", cloudDivider: "NOMA UKUSEBENZISA IFU", btnTransmit: "Thumela Umthwalo", syncBtn: "Vumelanisa", folderBtn: "Ifolda", armoryCloudTitle: "Izikhali Zefu", armoryLocalTitle: "Izikhali Zasendaweni", armoryEmpty: "Vumelanisa noma khetha ifolda...", delayLabel: "Ukulibaziseka (ms)", btnInjectSeq: "Faka Ukulandelana", settingsTitle: "Izilungiselelo", langLabel: "Ulimi", vfxTitle: "Imiphumela Ebonakalayo", vfxBubbles: "Khubaza Amabhamuza", vfxLightning: "Khubaza Umbani", bgBtn: "Shintsha Isizinda", resetBgBtn: "Setha Kabusha Isizinda", dragFallback: "Khetha imithwalo kuqala.", allPayloads: "-- Yonke Imithwalo --", saveLoadoutBtn: "Londoloza" },
+      "hi-IN": { appSubtitle: "PS4/PS5 पेलोड इंजेक्टर", tabExploit: "एक्सप्लॉइट्स", tabPayloads: "पेलोड्स", ipLabel: "कंसोल IP", portLabel: "पोर्ट", loadLocal: "स्थानीय पेलोड लोड करें...", cloudDivider: "या क्लाउड डिप्लॉयमेंट", btnTransmit: "पेलोड भेजें", syncBtn: "सिंक", folderBtn: "फ़ोल्डर", armoryCloudTitle: "क्लाउड शस्त्रागार", armoryLocalTitle: "स्थानीय शस्त्रागार", armoryEmpty: "फ़ोल्डर सिंक करें या चुनें...", delayLabel: "इंजेक्शन देरी (ms)", btnInjectSeq: "अनुक्रम इंजेक्ट करें", settingsTitle: "सिस्टम सेटिंग्स", langLabel: "भाषा", vfxTitle: "दृश्य प्रभाव", vfxBubbles: "बुलबुले अक्षम करें", vfxLightning: "बिजली अक्षम करें", bgBtn: "वॉलपेपर बदलें", resetBgBtn: "वॉलपेपर रीसेट करें", dragFallback: "पहले पेलोड चुनें।", allPayloads: "-- सभी पेलोड्स --", saveLoadoutBtn: "सहेजें" },
+      "ar-SA": { appSubtitle: "حاقن الحمولات PS4/PS5", tabExploit: "الثغرات", tabPayloads: "الحمولات", ipLabel: "عنوان IP لجهاز التحكم", portLabel: "المنفذ", loadLocal: "تحميل حمولة محلية...", cloudDivider: "أو النشر السحابي", btnTransmit: "إرسال الحمولة", syncBtn: "مزامنة", folderBtn: "مجلد", armoryCloudTitle: "ترسانة السحابة", armoryLocalTitle: "ترسانة محلية", armoryEmpty: "قم بالمزامنة أو اختر مجلداً...", delayLabel: "تأخير الحقن (ملي ثانية)", btnInjectSeq: "حقن تسلسلي", settingsTitle: "إعدادات النظام", langLabel: "اللغة", vfxTitle: "مؤثرات بصرية", vfxBubbles: "تعطيل الفقاعات", vfxLightning: "تعطيل البرق", bgBtn: "تغيير الخلفية", resetBgBtn: "إعادة ضبط الخلفية", dragFallback: "اختر الحمولات أولاً.", allPayloads: "-- كل الحمولات --", saveLoadoutBtn: "حفظ" },
+      "ur-PK": { appSubtitle: "PS4/PS5 پے لوڈ انجیکٹر", tabExploit: "ایکسپلائٹس", tabPayloads: "پے لوڈز", ipLabel: "کنسول آئی پی", portLabel: "پورٹ", loadLocal: "مقامی پے لوڈ لوڈ کریں...", cloudDivider: "یا کلاؤڈ ڈپلائمنٹ", btnTransmit: "پے لوڈ بھیجیں", syncBtn: "سنک", folderBtn: "فولڈر", armoryCloudTitle: "کلاؤڈ اسلحہ خانہ", armoryLocalTitle: "مقامی اسلحہ خانہ", armoryEmpty: "سنک کریں یا فولڈر منتخب کریں...", delayLabel: "انجیکشن تاخیر (ms)", btnInjectSeq: "سلسلہ انجیکٹ کریں", settingsTitle: "سسٹم سیٹنگز", langLabel: "زبان", vfxTitle: "بصری اثرات", vfxBubbles: "بلبلے غیر فعال کریں", vfxLightning: "بجلی غیر فعال کریں", bgBtn: "وال پیپر تبدیل کریں", resetBgBtn: "وال پیپر ری سیٹ کریں", dragFallback: "پہلے پے لوڈز منتخب کریں۔", allPayloads: "-- تمام پے لوڈز --", saveLoadoutBtn: "محفوظ کریں" },
+      "fa-IR": { appSubtitle: "تزریق‌کننده پی‌لود PS4/PS5", tabExploit: "اکسپلویت‌ها", tabPayloads: "پی‌لودها", ipLabel: "IP کنسول", portLabel: "پورت", loadLocal: "بارگذاری پی‌لود محلی...", cloudDivider: "یا استقرار ابری", btnTransmit: "ارسال پی‌لود", syncBtn: "همگام‌سازی", folderBtn: "پوشه", armoryCloudTitle: "زرادخانه ابری", armoryLocalTitle: "زرادخانه محلی", armoryEmpty: "همگام‌سازی یا انتخاب پوشه...", delayLabel: "تاخیر تزریق (ms)", btnInjectSeq: "تزریق متوالی", settingsTitle: "تنظیمات سیستم", langLabel: "زبان", vfxTitle: "جلوه‌های بصری", vfxBubbles: "غیرفعال کردن حباب‌ها", vfxLightning: "غیرفعال کردن رعد و برق", bgBtn: "تغییر تصویر پس‌زمینه", resetBgBtn: "بازنشانی تصویر پس‌زمینه", dragFallback: "ابتدا پی‌لودها را انتخاب کنید.", allPayloads: "-- تمام پی‌لودها --", saveLoadoutBtn: "ذخیره" },
+      "tl-PH": { appSubtitle: "PS4/PS5 PAYLOAD INJECTOR", tabExploit: "Exploits", tabPayloads: "Payloads", ipLabel: "Console IP", portLabel: "Port", loadLocal: "Mag-load ng Lokal na Payload...", cloudDivider: "O CLOUD DEPLOYMENT", btnTransmit: "Ipadala ang Payload", syncBtn: "I-sync", folderBtn: "Folder", armoryCloudTitle: "Cloud Armory", armoryLocalTitle: "Lokal na Armory", armoryEmpty: "I-sync o pumili ng folder...", delayLabel: "Injection Delay (ms)", btnInjectSeq: "I-inject ang Sequence", settingsTitle: "Mga Setting", langLabel: "Wika", vfxTitle: "Visual Effects", vfxBubbles: "I-disable ang Bubbles", vfxLightning: "I-disable ang Lightning", bgBtn: "Baguhin ang Wallpaper", resetBgBtn: "I-reset ang Wallpaper", dragFallback: "Pumili muna ng payloads.", allPayloads: "-- Lahat ng Payloads --", saveLoadoutBtn: "I-save" },
+      "ta-IN": { appSubtitle: "PS4/PS5 பேலோடு இன்ஜெக்டர்", tabExploit: "எக்ஸ்ப்ளாயிட்ஸ்", tabPayloads: "பேலோடுகள்", ipLabel: "கன்சோல் IP", portLabel: "போர்ட்", loadLocal: "உள்ளூர் பேலோடை ஏற்றவும்...", cloudDivider: "அல்லது கிளவுட் வரிசைப்படுத்தல்", btnTransmit: "பேலோடை அனுப்பு", syncBtn: "ஒத்திசை", folderBtn: "கோப்புறை", armoryCloudTitle: "கிளவுட் ஆயுதக்கிடங்கு", armoryLocalTitle: "உள்ளூர் ஆயுதக்கிடங்கு", armoryEmpty: "ஒத்திசைக்கவும் அல்லது கோப்புறையைத் தேர்ந்தெடுக்கவும்...", delayLabel: "ஊசி தாமதம் (ms)", btnInjectSeq: "வரிசையை ஊசி போடு", settingsTitle: "கணினி அமைப்புகள்", langLabel: "மொழி", vfxTitle: "காட்சி விளைவுகள்", vfxBubbles: "குமிழ்களை முடக்கு", vfxLightning: "மின்னலை முடக்கு", bgBtn: "வால்பேப்பரை மாற்று", resetBgBtn: "வால்பேப்பரை மீட்டமை", dragFallback: "முதலில் பேலோடுகளைத் தேர்ந்தெடுக்கவும்.", allPayloads: "-- அனைத்து பேலோடுகள் --", saveLoadoutBtn: "சேமி" },
+      "tr-TR": { appSubtitle: "PS4/PS5 PAYLOAD ENJEKTÖRÜ", tabExploit: "Açıklar", tabPayloads: "Payloadlar", ipLabel: "Konsol IP'si", portLabel: "Port", loadLocal: "Yerel Payload Yükle...", cloudDivider: "VEYA BULUT DAĞITIMI", btnTransmit: "Payload Gönder", syncBtn: "Senkronize", folderBtn: "Klasör", armoryCloudTitle: "Bulut Cephaneliği", armoryLocalTitle: "Yerel Cephanelik", armoryEmpty: "Senkronize edin veya klasör seçin...", delayLabel: "Enjeksiyon Gecikmesi (ms)", btnInjectSeq: "Sıralı Enjekte Et", settingsTitle: "Sistem Ayarları", langLabel: "Arayüz Dili", vfxTitle: "Görsel Efektler", vfxBubbles: "Baloncukları Kapat", vfxLightning: "Şimşeği Kapat", bgBtn: "Duvar Kağıdını Değiştir", resetBgBtn: "Duvar Kağıdını Sıfırla", dragFallback: "Önce payload seçmelisiniz.", allPayloads: "-- Tüm Payloadlar --", saveLoadoutBtn: "Kaydet" },
+      "ms-MY": { appSubtitle: "PENYUNTIK PAYLOAD PS4/PS5", tabExploit: "Eksploit", tabPayloads: "Payload", ipLabel: "IP Konsol", portLabel: "Port", loadLocal: "Muat Payload Tempatan...", cloudDivider: "ATAU AWAN DEPLOYMENT", btnTransmit: "Hantar Payload", syncBtn: "Segerak", folderBtn: "Folder", armoryCloudTitle: "Gudang Senjata Awan", armoryLocalTitle: "Gudang Senjata Tempatan", armoryEmpty: "Segerak atau pilih folder...", delayLabel: "Lengah Suntikan (ms)", btnInjectSeq: "Suntik Jujukan", settingsTitle: "Tetapan Sistem", langLabel: "Bahasa", vfxTitle: "Kesan Visual", vfxBubbles: "Nyahaktif Gelembung", vfxLightning: "Nyahaktif Kilat", bgBtn: "Tukar Kertas Dinding", resetBgBtn: "Tetap Semula Kertas Dinding", dragFallback: "Pilih payload dahulu.", allPayloads: "-- Semua Payload --", saveLoadoutBtn: "Simpan" },
+      "hu-HU": { appSubtitle: "PS4/PS5 PAYLOAD INJEKTOR", tabExploit: "Exploitok", tabPayloads: "Payloadok", ipLabel: "Konzol IP", portLabel: "Port", loadLocal: "Helyi Payload Betöltése...", cloudDivider: "VAGY FELHŐ TELEPÍTÉS", btnTransmit: "Payload Küldése", syncBtn: "Szinkr", folderBtn: "Mappa", armoryCloudTitle: "Felhő Fegyvertár", armoryLocalTitle: "Helyi Fegyvertár", armoryEmpty: "Szinkronizálj vagy válassz mappát...", delayLabel: "Injektálási Késleltetés (ms)", btnInjectSeq: "Szekvencia Injektálása", settingsTitle: "Rendszerbeállítások", langLabel: "Nyelv", vfxTitle: "Vizuális Efektek", vfxBubbles: "Buborékok Kikapcs.", vfxLightning: "Villámok Kikapcs.", bgBtn: "Háttérkép Módosítása", resetBgBtn: "Háttérkép Visszaállítása", dragFallback: "Válassz payloadokat előbb.", allPayloads: "-- Összes Payload --", saveLoadoutBtn: "Mentés" },
+      "de-DE": { appSubtitle: "PS4/PS5 PAYLOAD INJEKTOR", tabExploit: "Exploits", tabPayloads: "Payloads", ipLabel: "Konsolen-IP", portLabel: "Port", loadLocal: "Lokalen Payload laden...", cloudDivider: "ODER CLOUD-BEREITSTELLUNG", btnTransmit: "Payload Senden", syncBtn: "Sync", folderBtn: "Ordner", armoryCloudTitle: "Cloud Waffenkammer", armoryLocalTitle: "Lokale Waffenkammer", armoryEmpty: "Synchronisieren oder Ordner wählen...", delayLabel: "Injektionsverzögerung (ms)", btnInjectSeq: "Sequenz Injezieren", settingsTitle: "Systemeinstellungen", langLabel: "Sprache", vfxTitle: "Visuelle Effekte", vfxBubbles: "Blasen Deaktivieren", vfxLightning: "Blitze Deaktivieren", bgBtn: "Hintergrund Ändern", resetBgBtn: "Hintergrund Zurücksetzen", dragFallback: "Zuerst Payloads auswählen.", allPayloads: "-- Alle Payloads --", saveLoadoutBtn: "Speichern" },
+      "pl-PL": { appSubtitle: "INIEKTOR PAYLOADÓW PS4/PS5", tabExploit: "Exploity", tabPayloads: "Payloady", ipLabel: "IP Konsoli", portLabel: "Port", loadLocal: "Załaduj Lokalny Payload...", cloudDivider: "LUB WDROŻENIE W CHMURZE", btnTransmit: "Wyślij Payload", syncBtn: "Sync", folderBtn: "Folder", armoryCloudTitle: "Arsenał w Chmurze", armoryLocalTitle: "Arsenał Lokalny", armoryEmpty: "Zsynchronizuj lub wybierz folder...", delayLabel: "Opóźnienie Iniekcji (ms)", btnInjectSeq: "Iniekcja Sekwencji", settingsTitle: "Ustawienia Systemu", langLabel: "Język", vfxTitle: "Efekty Wizualne", vfxBubbles: "Wyłącz Bąbelki", vfxLightning: "Wyłącz Błyskawice", bgBtn: "Zmień Tapetę", resetBgBtn: "Zresetuj Tapetę", dragFallback: "Najpierw wybierz payloady.", allPayloads: "-- Wszystkie Payloady --", saveLoadoutBtn: "Zapisz" }
+    };
 
-    class Bubble {
-      constructor() { this.reset(); }
-      reset() {
-        this.x = Math.random() * width;
-        this.y = height + Math.random() * 100;
-        this.radius = Math.random() * 3 + 1;
-        this.speed = Math.random() * 0.3 + 0.1;
-        this.opacity = Math.random() * 0.4 + 0.1;
-        this.wobble = Math.random() * 2;
-        this.wobbleSpeed = Math.random() * 0.01;
-      }
-      update() {
-        this.y -= this.speed;
-        this.wobble += this.wobbleSpeed;
-        this.x += Math.sin(this.wobble) * 0.2;
-        if (this.y < -50) this.reset();
-      }
-      draw() {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
-        ctx.shadowBlur = 6;
-        ctx.shadowColor = '#ffffff';
-        ctx.fill();
-        ctx.shadowBlur = 0;
-      }
-    }
+    let currentLang = "en-US";
+    let bubblesDisabled = false;
+    let lightningDisabled = false;
 
-    const bubbles = Array.from({ length: 40 }, () => new Bubble());
-    let lightningFlash = 0;
-    let zapTimer = 0;
+    function changeLanguage(langCode) {
+      if(!dictionary[langCode]) return;
+      currentLang = langCode;
+      StorageEngine.setItem('nexus_lang', langCode);
+      document.getElementById('langSelector').value = langCode;
 
-    function drawLightningArc(startX, startY, steps, rValue) {
-      ctx.beginPath();
-      ctx.moveTo(startX, startY);
-      let currentX = startX;
-      let currentY = startY;
-      for(let i = 0; i < steps; i++) {
-        currentY += (height / steps);
-        currentX += (Math.random() - 0.5) * rValue;
-        ctx.lineTo(currentX, currentY);
-      }
-      ctx.strokeStyle = 'rgba(0, 229, 255, 0.8)';
-      ctx.lineWidth = Math.random() * 2 + 1;
-      ctx.shadowBlur = 15;
-      ctx.shadowColor = '#00e5ff';
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    }
-
-    function renderLoop() {
-      ctx.clearRect(0, 0, width, height);
-      zapTimer += 16.66;
-      if (zapTimer > 2500) { zapTimer = 0; }
-      if (zapTimer > 2000) {
-        if (Math.random() < 0.12) {
-          lightningFlash = Math.random() * 0.15;
-          drawLightningArc(Math.random() * width, 0, 12, 50);
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if(dictionary[currentLang][key]) {
+          el.textContent = dictionary[currentLang][key];
         }
-      }
-      if (lightningFlash > 0) {
-        ctx.fillStyle = `rgba(0, 229, 255, ${lightningFlash})`;
-        ctx.fillRect(0, 0, width, height);
-        lightningFlash -= 0.02;
-      }
-      bubbles.forEach(b => { b.update(); b.draw(); });
-      requestAnimationFrame(renderLoop);
-    }
-    renderLoop();
-
-    /* --- TOAST ENGINE --- */
-    function showNeonToast(message, type = 'success') {
-      const toast = document.getElementById('toastNotification');
-      toast.textContent = message;
-      toast.className = `custom-toast ${type} show`;
+      });
       
-      setTimeout(() => {
-        toast.classList.remove('show');
-      }, 3500);
+      const fileInput = document.getElementById('fileInput');
+      if(fileInput && fileInput.files.length === 0) {
+        document.getElementById('fileNameText').textContent = dictionary[currentLang].loadLocal;
+      }
+      
+      refreshLoadoutSelector();
+      updateArmoryTitle();
     }
 
-    /* --- NATIVE BRIDGE --- */
+    function updateArmoryTitle() {
+      const titleEl = document.getElementById('armoryTitle');
+      if(!titleEl) return;
+      if(localFolderMode) {
+        titleEl.textContent = dictionary[currentLang].armoryLocalTitle;
+      } else {
+        titleEl.textContent = dictionary[currentLang].armoryCloudTitle;
+      }
+    }
+
+    function saveVfxConfig() {
+      bubblesDisabled = document.getElementById('toggleBubbles').checked;
+      lightningDisabled = document.getElementById('toggleLightning').checked;
+      StorageEngine.setItem('nexus_disable_bubbles', bubblesDisabled ? 'true' : 'false');
+      StorageEngine.setItem('nexus_disable_lightning', lightningDisabled ? 'true' : 'false');
+    }
+
+    function getShapeSVG(shape) {
+      let path = '';
+      if (shape === 'square') path = `<rect x="4" y="4" width="16" height="16" rx="2"/>`;
+      else if (shape === 'cross') path = `<line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/>`;
+      else if (shape === 'circle') path = `<circle cx="12" cy="12" r="8"/>`;
+      else if (shape === 'triangle') path = `<path d="M12 3 L21 19 L3 19 Z"/>`;
+      return `<svg class="ps4-icon ${shape}" viewBox="0 0 24 24">${path}</svg>`;
+    }
+
+    const CLOUD_URL = "https://raw.githubusercontent.com/PixelPop25/Nexus-Payloads/main/";
+    let currentEnv = 'luac0re';
+    let localFolderMode = false;
+    let localPayloadFiles = [];
+
+    window.onload = () => {
+      if(StorageEngine.getItem('nexus_ip')) document.getElementById('ip').value = StorageEngine.getItem('nexus_ip');
+      if(StorageEngine.getItem('nexus_port')) document.getElementById('port').value = StorageEngine.getItem('nexus_port');
+      if(StorageEngine.getItem('nexus_delay')) document.getElementById('delay').value = StorageEngine.getItem('nexus_delay');
+      
+      bubblesDisabled = StorageEngine.getItem('nexus_disable_bubbles') === 'true';
+      lightningDisabled = StorageEngine.getItem('nexus_disable_lightning') === 'true';
+      document.getElementById('toggleBubbles').checked = bubblesDisabled;
+      document.getElementById('toggleLightning').checked = lightningDisabled;
+
+      const savedLang = StorageEngine.getItem('nexus_lang') || "en-US";
+      changeLanguage(savedLang);
+
+      const savedBg = StorageEngine.getItem('nexus_bg');
+      if(savedBg) {
+        document.getElementById('wallpaper-layer').style.backgroundImage = `url(${savedBg})`;
+        document.getElementById('gradient-layer').style.background = 'transparent';
+      }
+
+      refreshLoadoutSelector();
+      const lastLoadout = StorageEngine.getItem('nexus_last_loadout');
+      if (lastLoadout) {
+          const loadouts = JSON.parse(StorageEngine.getItem('nexus_loadouts') || '[]');
+          if (loadouts.some(l => l.id === lastLoadout)) {
+              document.getElementById('loadoutSelector').value = lastLoadout;
+          }
+      }
+
+      if(StorageEngine.getItem('nexus_cloud_manifest')) {
+        renderExploits();
+        renderPayloads();
+      } else {
+          syncCloud(0);
+      }
+    };
+
+    function saveConfig() {
+      StorageEngine.setItem('nexus_ip', document.getElementById('ip').value);
+      StorageEngine.setItem('nexus_port', document.getElementById('port').value);
+      StorageEngine.setItem('nexus_delay', document.getElementById('delay').value);
+    }
+
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toastNotification');
+      toast.textContent = msg; 
+      toast.className = `custom-toast ${type} show`;
+      setTimeout(() => { toast.classList.remove('show'); }, 3000);
+    }
+
+    function togglePanel() { document.getElementById('configPanel').classList.toggle('active'); }
+    function triggerBgUpload() { document.getElementById('bgUploader').click(); }
+
+    function resetWallpaper() {
+      StorageEngine.removeItem('nexus_bg');
+      document.getElementById('wallpaper-layer').style.backgroundImage = 'none';
+      document.getElementById('gradient-layer').style.background = 'var(--bg-gradient)';
+      showToast("Visual parameters reverted to factory defaults.");
+    }
+
+    function handleBgUpload(event) {
+      const file = event.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const b64 = e.target.result;
+        document.getElementById('wallpaper-layer').style.backgroundImage = `url(${b64})`;
+        document.getElementById('gradient-layer').style.background = 'transparent';
+        try { 
+          StorageEngine.setItem('nexus_bg', b64); 
+          showToast("Aesthetic upgrade complete. New background initialized.");
+        } catch(err) { 
+          showToast("System fault: Image dimensions exceed storage limits.", "error"); 
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function switchTab(tabId, btnElement) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      btnElement.classList.add('active');
+      document.getElementById(`tab-${tabId}`).classList.add('active');
+      const portInput = document.getElementById('port');
+      let lastExploitPort = StorageEngine.getItem('last_exploit_port') || 9026;
+      if (tabId === 'payloads') {
+          lastExploitPort = portInput.value;
+          StorageEngine.setItem('last_exploit_port', lastExploitPort);
+          portInput.value = 9021;
+        } else {
+          portInput.value = lastExploitPort;
+        }
+    }
+
+    function setExploitEnv(env) {
+      currentEnv = env;
+      document.getElementById('env-luac0re').classList.remove('active');
+      document.getElementById('env-y2jb').classList.remove('active');
+      document.getElementById(`env-${env}`).classList.add('active');
+      
+      const portInput = document.getElementById('port');
+      document.getElementById('fileNameText').innerText = dictionary[currentLang].loadLocal;
+      document.getElementById('fileInput').value = ""; 
+      
+      if (env === 'y2jb') { portInput.value = 50000; }
+      else if (env === 'luac0re') { portInput.value = 9026; } 
+      saveConfig();
+      renderExploits();
+    }
+
     function handleFileSelected() {
       const input = document.getElementById('fileInput');
-      const label = document.getElementById('fileLabel');
+      const labelText = document.getElementById('fileNameText');
       if(input.files.length > 0) {
-        label.innerHTML = `Loaded: <strong style="color:#00e5ff">${input.files[0].name}</strong>`;
-        showNeonToast("File attached successfully!");
+        labelText.innerHTML = `<span style="color:var(--ps5-accent)">${input.files[0].name}</span>`;
       }
+    }
+
+    async function syncCloud(showerr=1) {
+      showToast("Establishing connection to cloud network...");
+      try {
+        const res = await fetch(CLOUD_URL + "manifest.json");
+        if(!res.ok) throw new Error("Manifest acquisition mapping failure.");
+        const manifest = await res.json();
+        
+        StorageEngine.setItem('nexus_cloud_manifest', JSON.stringify(manifest));
+        
+        const allFiles = [...(manifest.luac0re || []), ...(manifest.y2jb || []), ...(manifest.payloads || [])];
+        for(let item of allFiles) {
+          try {
+            let normalizedPath = item.file;
+            const fRes = await fetch(CLOUD_URL + normalizedPath);
+            if (!fRes.ok) continue;
+            
+            const buf = await fRes.arrayBuffer();
+            let bin = '';
+            const b = new Uint8Array(buf);
+            for(let i=0; i<b.byteLength; i++) bin += String.fromCharCode(b[i]);
+            StorageEngine.setItem(`cloud_cache_${item.id}`, window.btoa(bin));
+          } catch(err) { console.error("Asset ingestion dropped: " + item.name); }
+        }
+
+        localFolderMode = false;
+        updateArmoryTitle();
+        renderExploits();
+        renderPayloads();
+        showToast("Cloud directory successfully synchronized.");
+      } catch(e) {
+        if (showerr) showToast("Network error: Failed to connect to repository.", "error");
+      }
+    }
+
+    function renderExploits() {
+      const manifestStr = StorageEngine.getItem('nexus_cloud_manifest');
+      const container = document.getElementById('cloudBtnContainer');
+      container.innerHTML = '';
+      if(!manifestStr) return;
+      
+      const manifest = JSON.parse(manifestStr);
+      if(manifest[currentEnv] && manifest[currentEnv].length > 0) {
+        const shapePool = currentEnv === 'luac0re' ? ['square', 'cross'] : ['circle', 'triangle'];
+        manifest[currentEnv].forEach((item, idx) => {
+          const shape = shapePool[idx % shapePool.length];
+          const btn = document.createElement('button');
+          btn.className = `ps4-cloud-btn ${shape}`;
+          btn.innerHTML = getShapeSVG(shape) + `<span>${item.name}</span>`;
+          btn.onclick = (e) => transmitCloudPayload(item.id, item.name, e);
+          container.appendChild(btn);
+        });
+      }
+    }
+
+    async function handleFolderSelected(event) {
+      const files = event.target.files;
+      if (files.length === 0) return;
+
+      localPayloadFiles = [];
+      const validExtensions = ['.bin', '.elf', '.js', '.lua'];
+
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        const ext = f.name.substring(f.name.lastIndexOf('.')).toLowerCase();
+        if (validExtensions.includes(ext)) { localPayloadFiles.push(f); }
+      }
+
+      if (localPayloadFiles.length > 0) {
+        localFolderMode = true;
+        updateArmoryTitle();
+        renderPayloads();
+        showToast(`Storage payload matrix loaded with ${localPayloadFiles.length} files.`);
+      } else {
+        showToast("Directory scan negative: No compatible payload binaries detected.", "error");
+      }
+    }
+
+    /* LOADOUT SYSTEM LOGIC */
+    function saveCurrentLoadout() {
+      const checkedRows = document.querySelectorAll('#payload-cb-list .payload-cb-row.is-checked');
+      if (checkedRows.length === 0) return showToast(dictionary[currentLang].dragFallback || "Select payloads first.", "error");
+
+      const loadoutName = prompt("Enter a name for this Loadout:", "My Loadout");
+      if (!loadoutName) return;
+
+      const payloads = [];
+      checkedRows.forEach(row => {
+          const source = row.dataset.source;
+          const name = row.querySelector('.cb-label').textContent;
+          const id = row.dataset.id;
+          if (source === 'cloud') {
+              payloads.push({ source: 'cloud', id: id, name: name });
+          } else if (source === 'local' || source === 'local_missing') {
+              payloads.push({ source: 'local', name: name });
+          }
+      });
+
+      const loadouts = JSON.parse(StorageEngine.getItem('nexus_loadouts') || '[]');
+      const newLoadout = { id: Date.now().toString(), name: loadoutName, payloads: payloads };
+      loadouts.push(newLoadout);
+      
+      StorageEngine.setItem('nexus_loadouts', JSON.stringify(loadouts));
+      StorageEngine.setItem('nexus_last_loadout', newLoadout.id);
+
+      refreshLoadoutSelector();
+      document.getElementById('loadoutSelector').value = newLoadout.id;
+      renderPayloads();
+      showToast("Loadout saved successfully.");
+    }
+
+    function handleLoadoutChange() {
+      const val = document.getElementById('loadoutSelector').value;
+      if(val === 'default') {
+         StorageEngine.removeItem('nexus_last_loadout');
+      } else {
+         StorageEngine.setItem('nexus_last_loadout', val);
+      }
+      renderPayloads();
+    }
+
+    function refreshLoadoutSelector() {
+      const selector = document.getElementById('loadoutSelector');
+      if(!selector) return;
+      const currentVal = selector.value;
+      const loadouts = JSON.parse(StorageEngine.getItem('nexus_loadouts') || '[]');
+      
+      selector.innerHTML = `<option value="default" data-i18n="allPayloads">${dictionary[currentLang].allPayloads}</option>`;
+      loadouts.forEach(l => {
+          const opt = document.createElement('option');
+          opt.value = l.id;
+          opt.textContent = l.name;
+          selector.appendChild(opt);
+      });
+      selector.value = currentVal;
+      if(selector.selectedIndex === -1) selector.value = 'default';
+    }
+
+    function renderPayloads() {
+      const list = document.getElementById('payload-cb-list');
+      list.innerHTML = '';
+
+      const loadoutSelector = document.getElementById('loadoutSelector');
+      const activeLoadoutId = loadoutSelector ? loadoutSelector.value : 'default';
+
+      if (activeLoadoutId !== 'default') {
+          const loadouts = JSON.parse(StorageEngine.getItem('nexus_loadouts') || '[]');
+          const target = loadouts.find(l => l.id == activeLoadoutId);
+          if (target && target.payloads.length > 0) {
+              target.payloads.forEach((p, index) => {
+                  let badge = 'MISSING';
+                  let uid = `loadout_${index}`;
+                  if (p.source === 'cloud') {
+                      const isCached = StorageEngine.getItem(`cloud_cache_${p.id}`) !== null;
+                      badge = isCached ? 'CACHED' : 'SYNC REQ';
+                      const row = makeCheckRow(uid, p.name, badge, 'cloud', null, p.id);
+                      row.classList.add('is-checked');
+                      row.querySelector('input[type="checkbox"]').checked = true;
+                      list.appendChild(row);
+                  } else if (p.source === 'local') {
+                      const localIdx = localPayloadFiles.findIndex(f => f.name === p.name);
+                      if (localIdx !== -1) {
+                          badge = p.name.substring(p.name.lastIndexOf('.') + 1).toUpperCase();
+                          const row = makeCheckRow(uid, p.name, badge, 'local', String(localIdx), null);
+                          row.classList.add('is-checked');
+                          row.querySelector('input[type="checkbox"]').checked = true;
+                          list.appendChild(row);
+                      } else {
+                          const row = makeCheckRow(uid, p.name, 'UNMAPPED', 'local_missing', null, null);
+                          row.classList.add('local-missing', 'is-checked');
+                          row.querySelector('input[type="checkbox"]').checked = true;
+                          list.appendChild(row);
+                      }
+                  }
+              });
+              return;
+          } else {
+              list.innerHTML = `<div class="payload-cb-empty">${dictionary[currentLang].armoryEmpty}</div>`;
+              return;
+          }
+      }
+
+      if (localFolderMode) {
+        if (localPayloadFiles.length === 0) {
+          list.innerHTML = `<div class="payload-cb-empty">${dictionary[currentLang].armoryEmpty}</div>`;
+          return;
+        }
+        localPayloadFiles.forEach((file, index) => {
+          const ext = file.name.substring(file.name.lastIndexOf('.') + 1).toUpperCase();
+          list.appendChild(makeCheckRow(`local_${index}`, file.name, ext, 'local', String(index), null));
+        });
+      } else {
+        const manifestStr = StorageEngine.getItem('nexus_cloud_manifest');
+        if (!manifestStr) {
+          list.innerHTML = `<div class="payload-cb-empty">${dictionary[currentLang].armoryEmpty}</div>`;
+          return;
+        }
+        const manifest = JSON.parse(manifestStr);
+        if (!manifest.payloads || manifest.payloads.length === 0) {
+          list.innerHTML = `<div class="payload-cb-empty">${dictionary[currentLang].armoryEmpty}</div>`;
+          return;
+        }
+        manifest.payloads.forEach(item => {
+          const isCached = StorageEngine.getItem(`cloud_cache_${item.id}`) !== null;
+          const badge = isCached ? 'CACHED' : 'SYNC REQ';
+          list.appendChild(makeCheckRow(`cloud_${item.id}`, item.name, badge, 'cloud', null, item.id));
+        });
+      }
+    }
+
+    function makeCheckRow(uid, name, badge, source, index, id) {
+      const row = document.createElement('div');
+      row.className = 'payload-cb-row';
+      row.dataset.source = source;
+      if (index !== null) row.dataset.index = index;
+      if (id !== null) row.dataset.id = id;
+      row.innerHTML = `
+        <input type="checkbox" id="cb_${uid}">
+        <div class="cb-box"></div>
+        <label class="cb-label" for="cb_${uid}">${name}</label>
+        <span class="cb-badge">${badge}</span>
+      `;
+      row.addEventListener('click', () => {
+        row.classList.toggle('is-checked');
+        row.querySelector('input[type="checkbox"]').checked = row.classList.contains('is-checked');
+      });
+      return row;
     }
 
     function arrayBufferToBase64(buffer) {
       let binary = '';
       const bytes = new Uint8Array(buffer);
-      for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
+      for (let i = 0; i < bytes.byteLength; i++) { binary += String.fromCharCode(bytes[i]); }
       return window.btoa(binary);
     }
 
-    async function transmitPayloadNative() {
+    function executeRawStream(base64Data) {
       const ip = document.getElementById('ip').value;
       const port = parseInt(document.getElementById('port').value);
-      const fileInput = document.getElementById('fileInput');
-      const btn = document.getElementById('injectBtn');
-
-      if (!fileInput.files[0]) {
-        showNeonToast("Error: Load a file first.", "error");
-        return;
+      
+      if (window.AndroidNativeTCP) {
+        window.AndroidNativeTCP.performRawStream(ip, port, base64Data);
+      } else {
+        setTimeout(() => { showToast("Diagnostic mode: Stream routed through native subroutines."); }, 1000);
       }
+    }
 
-      btn.textContent = "Streaming...";
+    // Direct local sending ONLY
+    async function transmitLocalPayload(event) {
+      if(event) triggerFountain(event);
+      const fileInput = document.getElementById('fileInput');
+
+      if (fileInput.files.length > 0) {
+          const file = fileInput.files[0];
+          const arrayBuffer = await file.arrayBuffer();
+          executeRawStream(arrayBufferToBase64(arrayBuffer));
+          showToast(`Initiating payload injection: ${file.name}`);
+      } else {
+          showToast(dictionary[currentLang].loadLocal || "Select a local payload first.", "error");
+      }
+    }
+
+    function transmitCloudPayload(id, name, event) {
+      if(event) triggerFountain(event);
+      const b64 = StorageEngine.getItem(`cloud_cache_${id}`);
+      if (b64) {
+          showToast(`Executing cloud deployment: ${name}...`);
+          executeRawStream(b64);
+      } else {
+          showToast("Execution failed: Script not found in local cache.", "error");
+      }
+    }
+
+    async function executeSequence(event) {
+      if (event) triggerFountain(event);
+      const checkedRows = document.querySelectorAll('#payload-cb-list .payload-cb-row.is-checked');
+
+      if (checkedRows.length === 0) return showToast(dictionary[currentLang].dragFallback || "Select payloads first.", "error");
+
+      const btnTextSpan = document.querySelector('#injectSeqBtn span[data-i18n]');
+      const originalText = dictionary[currentLang].btnInjectSeq;
+      const btn = document.getElementById('injectSeqBtn');
+      
+      const delayMs = parseInt(document.getElementById('delay').value) || 4000;
       btn.disabled = true;
 
-      const file = fileInput.files[0];
-      const arrayBuffer = await file.arrayBuffer();
-      const base64Payload = arrayBufferToBase64(arrayBuffer);
+      for (let i = 0; i < checkedRows.length; i++) {
+        const card = checkedRows[i];
+        let b64Data = "";
+        const source = card.dataset.source;
 
-      if (window.AndroidNativeTCP) {
-        window.AndroidNativeTCP.performRawStream(ip, port, base64Payload);
-      } else {
-        setTimeout(() => {
-          showNeonToast("Simulation: Stream routed successfully.");
-          btn.textContent = "Send Payload";
-          btn.disabled = false;
-        }, 1500);
+        if (source === "local_missing") {
+           showToast(`Sequence alert: ${card.querySelector('.cb-label').textContent} is missing. Map folder.`, "error");
+           continue;
+        }
+
+        if (source === "local") {
+          const index = parseInt(card.dataset.index);
+          const file = localPayloadFiles[index];
+          const buffer = await file.arrayBuffer();
+          b64Data = arrayBufferToBase64(buffer);
+        } else if (source === "cloud") {
+          const id = card.dataset.id;
+          b64Data = StorageEngine.getItem(`cloud_cache_${id}`);
+        }
+
+        if (!b64Data) { showToast(`Sequence alert: Unmapped asset skipped.`, "error"); continue; }
+
+        btnTextSpan.textContent = `Transmission: ${i+1}/${checkedRows.length}...`;
+        executeRawStream(b64Data);
+
+        if (i < checkedRows.length - 1) { await new Promise(resolve => setTimeout(resolve, delayMs)); }
+      }
+
+      btnTextSpan.textContent = originalText;
+      btn.disabled = false;
+      showToast("Injection array complete. Standby for console response.");
+    }
+
+    function onNativeResponse(successFlag, messageString) { showToast(messageString, successFlag ? 'success' : 'error'); }
+
+    const canvas = document.getElementById('vfxCanvas');
+    const ctx = canvas.getContext('2d');
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+
+    window.addEventListener('resize', () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; });
+
+    class Bubble {
+      constructor() { this.reset(); }
+      reset() {
+        this.x = Math.random() * width; this.y = height + Math.random() * 100;
+        this.radius = Math.random() * 4 + 1.5; this.speed = Math.random() * 2.0 + 0.8; 
+        this.opacity = Math.random() * 0.4 + 0.15; this.wobble = Math.random() * 2;
+        this.wobbleSpeed = Math.random() * 0.04 + 0.02; 
+      }
+      update() {
+        this.y -= this.speed; this.wobble += this.wobbleSpeed; this.x += Math.sin(this.wobble) * 0.4;
+        if (this.y < -50) this.reset();
+      }
+      draw() {
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(235, 184, 76, ${this.opacity})`; ctx.fill(); ctx.shadowBlur = 0;
       }
     }
-
-    function onNativeResponse(successFlag, messageString) {
-      const btn = document.getElementById('injectBtn');
-      btn.textContent = "Send Payload";
-      btn.disabled = false;
-      showNeonToast(messageString, successFlag ? 'success' : 'error');
+    
+    // JS Engine for the fountain particle effect
+    class FountainParticle {
+       constructor(x, y, shape) {
+           this.x = x; this.y = y;
+           this.vx = (Math.random() - 0.5) * 8;
+           this.vy = -(Math.random() * 6 + 6);
+           this.gravity = 0.5;
+           this.shape = shape;
+           this.life = 1.0;
+           this.decay = Math.random() * 0.015 + 0.015;
+           this.size = Math.random() * 8 + 8;
+           this.rot = Math.random() * Math.PI * 2;
+           this.vrot = (Math.random() - 0.5) * 0.3;
+       }
+       update() {
+           this.x += this.vx; this.y += this.vy; this.vy += this.gravity;
+           this.rot += this.vrot; this.life -= this.decay;
+       }
+       draw(ctx) {
+           if (this.life <= 0) return;
+           ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.rot);
+           
+           if(this.shape === 'square') ctx.strokeStyle = `rgba(223, 0, 245, ${this.life})`;
+           else if(this.shape === 'cross') ctx.strokeStyle = `rgba(26, 114, 255, ${this.life})`;
+           else if(this.shape === 'circle') ctx.strokeStyle = `rgba(255, 42, 95, ${this.life})`;
+           else if(this.shape === 'triangle') ctx.strokeStyle = `rgba(0, 240, 255, ${this.life})`;
+           
+           ctx.lineWidth = 2.5; ctx.beginPath();
+           if (this.shape === 'circle') {
+               ctx.arc(0, 0, this.size/2, 0, Math.PI*2);
+           } else if (this.shape === 'square') {
+               ctx.rect(-this.size/2, -this.size/2, this.size, this.size);
+           } else if (this.shape === 'triangle') {
+               ctx.moveTo(0, -this.size/2); ctx.lineTo(this.size/2, this.size/2); ctx.lineTo(-this.size/2, this.size/2); ctx.closePath();
+           } else if (this.shape === 'cross') {
+               ctx.moveTo(-this.size/2, -this.size/2); ctx.lineTo(this.size/2, this.size/2);
+               ctx.moveTo(this.size/2, -this.size/2); ctx.lineTo(-this.size/2, this.size/2);
+           }
+           ctx.stroke(); ctx.restore();
+       }
     }
+
+    const bubbles = Array.from({ length: 65 }, () => new Bubble());
+    let lightningFlash = 0; let zapTimer = 0;
+    const fParticles = [];
+
+    function triggerFountain(event) {
+       const rect = event.currentTarget.getBoundingClientRect();
+       const x = rect.left + rect.width / 2;
+       const y = rect.top;
+       const shapes = ['circle', 'square', 'triangle', 'cross'];
+       for(let i=0; i<15; i++) {
+           fParticles.push(new FountainParticle(x, y, shapes[Math.floor(Math.random()*shapes.length)]));
+       }
+    }
+
+    function drawLightningArc(startX, startY, steps, rValue) {
+      ctx.beginPath(); ctx.moveTo(startX, startY);
+      let currentX = startX; let currentY = startY;
+      for(let i = 0; i < steps; i++) {
+        currentY += (height / steps); currentX += (Math.random() - 0.5) * rValue;
+        ctx.lineTo(currentX, currentY);
+      }
+      ctx.strokeStyle = 'rgba(79, 70, 229, 0.45)'; ctx.lineWidth = Math.random() * 1.5 + 1;
+      ctx.shadowBlur = 10; ctx.shadowColor = '#4f46e5'; ctx.stroke(); ctx.shadowBlur = 0;
+    }
+
+    function renderLoop() {
+      ctx.clearRect(0, 0, width, height);
+      zapTimer += 16.66; 
+      if (zapTimer > 13000) { zapTimer = 0; }
+      
+      if (!lightningDisabled) {
+        if (zapTimer > 10000 && Math.random() < 0.07) {
+          lightningFlash = Math.random() * 0.12;
+          drawLightningArc(Math.random() * width, 0, 12, 50);
+        }
+        if (lightningFlash > 0) {
+          ctx.fillStyle = `rgba(79, 70, 229, ${lightningFlash * 0.35})`; ctx.fillRect(0, 0, width, height);
+          lightningFlash -= 0.02;
+        }
+      }
+      
+      if (!bubblesDisabled) { bubbles.forEach(b => { b.update(); b.draw(); }); }
+      
+      for(let i = fParticles.length - 1; i >= 0; i--) {
+          fParticles[i].update();
+          fParticles[i].draw(ctx);
+          if(fParticles[i].life <= 0) fParticles.splice(i, 1);
+      }
+      
+      requestAnimationFrame(renderLoop);
+    }
+    renderLoop();
   </script>
 </body>
 </html>

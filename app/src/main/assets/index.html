@@ -87,7 +87,7 @@
     }
     .tab-btn.active { color: #1a72ff; border-bottom: 2px solid #1a72ff; }
     
-    .tab-content { display: none; flex-direction: column; flex: 1; overflow-y: auto; padding-right: 4px; }
+    .tab-content { display: none; flex-direction: column; flex: 1; overflow-y: auto; padding-right: 4px; position: relative; }
     .tab-content.active { display: flex; }
     .tab-content::-webkit-scrollbar { width: 4px; }
     .tab-content::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
@@ -154,17 +154,16 @@
 
     .zone-title { font-size: 10px; text-transform: uppercase; color: var(--ps5-accent); margin-bottom: 5px; letter-spacing: 1px; text-align: center; }
 
+    /* Doom Scrollable Payload List */
     .payload-cb-list {
       background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px;
-      min-height: 120px; max-height: 240px; overflow-y: auto; padding: 6px;
-      display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; flex: 1;
+      padding: 6px; display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; flex: 1;
     }
-    .payload-cb-list::-webkit-scrollbar { width: 4px; }
-    .payload-cb-list::-webkit-scrollbar-thumb { background: rgba(0,240,255,0.15); border-radius: 10px; }
 
     .payload-cb-empty { text-align: center; font-size: 11px; color: rgba(255,255,255,0.3); padding: 28px 10px; }
 
     .payload-cb-row {
+      content-visibility: auto; contain-intrinsic-size: 40px;
       display: flex; align-items: center; gap: 10px; background: rgba(11, 19, 43, 0.85);
       border: 1px solid rgba(255, 255, 255, 0.08); padding: 9px 12px; border-radius: 8px;
       cursor: pointer; transition: border-color 0.18s, background 0.18s; -webkit-tap-highlight-color: transparent;
@@ -190,19 +189,28 @@
     .payload-cb-row.is-checked .cb-badge { color: var(--ps5-accent); background: rgba(0,240,255,0.1); }
     .payload-cb-row.local-missing .cb-label { color: var(--ps5-error); text-decoration: line-through; }
 
+    /* Sticky Footer for Doom Scrolling effect */
+    .sticky-footer {
+      position: sticky;
+      bottom: -4px;
+      border-radius: 45PX;
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+    }
+
     /* Buttons */
     button.primary-btn {
       width: 100%; padding: 16px; 
       background: rgba(26, 114, 255, 0.16);
       color: #fff; border: 1px solid rgba(26, 114, 255, 0.35); 
-      border-radius: 50px; font-size: 14px; font-weight: 700; 
+      border-radius: 45px; font-size: 14px; font-weight: 700; 
       text-transform: uppercase; letter-spacing: 2px; cursor: pointer; 
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); 
       transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); margin-top: auto; outline: none;
       display: flex; justify-content: center; align-items: center; gap: 8px; position: relative; overflow: hidden;
     }
     button.primary-btn:hover { 
-      background: rgba(26, 114, 255, 0.28); border-color: var(--ps5-accent);
+      background: rgba(26, 114, 200, 0.28); border-color: var(--ps5-accent);
       box-shadow: 0 0 18px rgba(0, 240, 255, 0.25); color: #fff;
     }
     button.primary-btn:active { transform: scale(0.97); box-shadow: 0 2px 8px rgba(0, 240, 255, 0.15); }
@@ -275,6 +283,39 @@
     .custom-toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background: rgba(11, 19, 43, 0.96); padding: 14px 28px; border-radius: 50px; font-size: 13px; z-index: 9999; border: 1px solid var(--ps5-accent); white-space: nowrap; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); opacity: 0; box-shadow: 0 10px 30px rgba(0,0,0,0.8); font-weight: 600; }
     .custom-toast.show { bottom: 40px; opacity: 1; }
     .custom-toast.error { border-color: var(--ps5-error); color: #fff; }
+
+    /* Custom Prompt Modal CSS */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      z-index: 10000; display: none; justify-content: center; align-items: center;
+      opacity: 0; transition: opacity 0.3s ease;
+    }
+    .modal-overlay.active { display: flex; opacity: 1; }
+    .custom-prompt-box {
+      background: rgba(14, 20, 38, 0.95); border: 1px solid rgba(26, 114, 255, 0.5);
+      border-radius: 20px; padding: 24px; width: 90%; max-width: 320px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8); display: flex; flex-direction: column; gap: 15px;
+      transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .modal-overlay.active .custom-prompt-box { transform: translateY(0); }
+    .custom-prompt-title { font-size: 14px; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 1px; text-align: center;}
+    .custom-prompt-input { 
+      width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); 
+      background: rgba(0,0,0,0.5); color: #fff; outline: none; font-family: 'Inter', sans-serif; font-size: 14px;
+    }
+    .custom-prompt-input:focus { border-color: var(--ps5-accent); box-shadow: 0 0 10px rgba(0, 240, 255, 0.15); }
+    .custom-prompt-actions { display: flex; gap: 10px; margin-top: 5px; }
+    .prompt-btn { 
+      flex: 1; padding: 12px; border-radius: 12px; font-size: 12px; font-weight: 700; 
+      cursor: pointer; text-transform: uppercase; letter-spacing: 1px; border: none; outline: none; transition: 0.2s;
+    }
+    .prompt-btn.cancel { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.1); }
+    .prompt-btn.cancel:hover { background: rgba(255,255,255,0.15); }
+    .prompt-btn.confirm { background: rgba(26, 114, 255, 0.2); color: #fff; border: 1px solid var(--ps5-light-blue); }
+    .prompt-btn.confirm:hover { background: rgba(26, 114, 255, 0.4); border-color: var(--ps5-accent); box-shadow: 0 0 15px rgba(0, 240, 255, 0.2); }
+
   </style>
 </head>
 <body>
@@ -300,7 +341,7 @@
           <option value="fr-FR">Français</option>
           <option value="es-ES">Español</option>
           <option value="pt-BR">Português</option>
-          <option value="eta-wen">ETAWEN</option>
+          <option value="eta-wen">Eta-Wen</option>
           <option value="ru-RU">Русский</option>
           <option value="et-EE">Eesti (Estonian)</option>
           <option value="ja-JP">日本語 (Japanese)</option>
@@ -402,8 +443,6 @@
             <button class="env-btn active" id="env-luac0re" onclick="setExploitEnv('luac0re')">LuaC0re</button>
             <button class="env-btn" id="env-y2jb" onclick="setExploitEnv('y2jb')">Y2JB</button>
           </div>
-
-          
           <div id="cloudBtnContainer" class="ps4-btn-group">
             </div>
         </div>
@@ -411,7 +450,7 @@
       </div>
       <button class="primary-btn" onclick="transmitLocalPayload(event)">
           <span data-i18n="btnTransmit">Send</span> 
-        </button>
+      </button>
 
     </div>
 
@@ -443,32 +482,89 @@
           <div class="payload-cb-empty" data-i18n="armoryEmpty">Sync or choose a folder to populate...</div>
         </div>
       </div>
-
       <div class="row">
-        <div class="input-group">
-          <label data-i18n="delayLabel">Injection Delay (ms)</label>
-          <input type="number" id="delay" value="4000" oninput="saveConfig()">
+          <div class="input-group">
+            <label data-i18n="delayLabel">Injection Delay (ms)</label>
+            <input type="number" id="delay" value="4000" oninput="saveConfig()">
+          </div>
         </div>
+        <br/>
+      <div class="sticky-footer">
+        
+        <button class="primary-btn" id="injectSeqBtn" onclick="executeSequence(event)">
+          <span data-i18n="btnInjectSeq">Inject Sequence</span>
+        </button>
       </div>
-
-      <button class="primary-btn" id="injectSeqBtn" onclick="executeSequence(event)">
-        <span data-i18n="btnInjectSeq">Inject Sequence</span>
-      </button>
     </div>
   </div>
 
   <div id="toastNotification" class="custom-toast"></div>
 
+  <div class="modal-overlay" id="customPromptModal">
+    <div class="custom-prompt-box">
+      <div class="custom-prompt-title" id="promptTitle">Enter a name for this Loadout:</div>
+      <input type="text" class="custom-prompt-input" id="promptInput" value="My Loadout">
+      <div class="custom-prompt-actions">
+        <button class="prompt-btn cancel" id="promptCancel">Cancel</button>
+        <button class="prompt-btn confirm" id="promptConfirm">Save</button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    // Asynchronous IndexedDB Storage Wrapper replacing synchronous localStorage caching
     const StorageEngine = {
-      setItem: (key, value) => { try { if (window.AndroidNativeStorage) { window.AndroidNativeStorage.setItem(key, value); } else { localStorage.setItem(key, value); } } catch (e) {} },
-      getItem: (key) => { try { return window.AndroidNativeStorage ? window.AndroidNativeStorage.getItem(key) : localStorage.getItem(key); } catch (e) { return null; } },
-      removeItem: (key) => { try { if (window.AndroidNativeStorage) { window.AndroidNativeStorage.removeItem(key); } else { localStorage.removeItem(key); } } catch (e) {} }
+      db: null,
+      initDB: function() {
+        return new Promise((resolve, reject) => {
+          if (this.db) return resolve(this.db);
+          const req = indexedDB.open("NexusDB", 1);
+          req.onupgradeneeded = e => { e.target.result.createObjectStore("store"); };
+          req.onsuccess = e => { this.db = e.target.result; resolve(this.db); };
+          req.onerror = e => reject(e);
+        });
+      },
+      setItem: async function(key, value) {
+        try {
+          if (window.AndroidNativeStorage) { window.AndroidNativeStorage.setItem(key, value); return; }
+          const db = await this.initDB();
+          return new Promise((resolve, reject) => {
+            const tx = db.transaction("store", "readwrite");
+            tx.objectStore("store").put(value, key);
+            tx.oncomplete = () => resolve();
+            tx.onerror = e => reject(e);
+          });
+        } catch (e) { console.error("Storage write failure:", e); }
+      },
+      getItem: async function(key) {
+        try {
+          if (window.AndroidNativeStorage) { return window.AndroidNativeStorage.getItem(key); }
+          const db = await this.initDB();
+          return new Promise((resolve, reject) => {
+            const tx = db.transaction("store", "readonly");
+            const req = tx.objectStore("store").get(key);
+            req.onsuccess = () => resolve(req.result !== undefined ? req.result : null);
+            req.onerror = e => reject(e);
+          });
+        } catch (e) { console.error("Storage read failure:", e); return null; }
+      },
+      removeItem: async function(key) {
+        try {
+          if (window.AndroidNativeStorage) { window.AndroidNativeStorage.removeItem(key); return; }
+          const db = await this.initDB();
+          return new Promise((resolve, reject) => {
+            const tx = db.transaction("store", "readwrite");
+            tx.objectStore("store").delete(key);
+            tx.oncomplete = () => resolve();
+            tx.onerror = e => reject(e);
+          });
+        } catch (e) { console.error("Storage delete failure:", e); }
+      }
     };
 
     const dictionary = {
       "en-US": { appSubtitle: "PS5 / PS4 PAYLOAD INJECTOR", tabExploit: "Exploits", tabPayloads: "Payloads", ipLabel: "Host IP", portLabel: "Port", loadLocal: "Pick a file", cloudDivider: "too lazy to remove this", btnTransmit: "SEND ", syncBtn: "Sync", folderBtn: "Map", armoryCloudTitle: "Cloud Armory", armoryLocalTitle: "Local Armory", armoryEmpty: "Sync or choose a folder to populate...", delayLabel: "Delay (ms)", btnInjectSeq: "Start Sequence", settingsTitle: "System Settings", langLabel: "Interface Language", vfxTitle: "Atmospheric Subroutines", vfxBubbles: "Disable Ambient Bubbles", vfxLightning: "Disable Lightning Effects", bgBtn: "Change Wallpaper", resetBgBtn: "Reset Wallpaper", dragFallback: "Select payloads to inject first.", allPayloads: "All Payloads", saveLoadoutBtn: "Save" },
-      "eta-wen": { appSubtitle: "ETA WEN CFW UWU", tabExploit: "Kexps", tabPayloads: "Payloads", ipLabel: "Pawn IP", portLabel: "Port", loadLocal: "Go Dumpster diving", cloudDivider: "too lazy to remove this", btnTransmit: "Ping Dev", syncBtn: "Sync", folderBtn: "Map", armoryCloudTitle: "Vault of Fame", armoryLocalTitle: "Baked Potatoes", armoryEmpty: "Sync or go touch grass", delayLabel: "Delay (ms)", btnInjectSeq: "WET THE BED NYA", settingsTitle: "Wootings", langLabel: "For Casuals", vfxTitle: "Atmospheric Subroutines", vfxBubbles: "Disable the cool Bubbles", vfxLightning: "Disable the why did I keep this again? Effects", bgBtn: "Change Wallpaper (no lolli tho or banban)", resetBgBtn: "Hide your obviously pervy Wallpaper", dragFallback: "Let's find you a brain first.", allPayloads: "All Yumyums", saveLoadoutBtn: "Save" },
+      "eta-wen": { appSubtitle: "ETA WEN CFW UWU PAWN ADDICTED", tabExploit: "Kexps", tabPayloads: "Payloads", ipLabel: "IP TO PAWN", portLabel: "Port", loadLocal: "Go Dumpster diving", cloudDivider: "too lazy to remove this", btnTransmit: "Ping Dev", syncBtn: "Sync", folderBtn: "Map", armoryCloudTitle: "Vault of Fame", armoryLocalTitle: "Baked Potatoes", armoryEmpty: "Sync or go touch grass", delayLabel: "Delay (ms)", btnInjectSeq: "WET THE BED NYA", settingsTitle: "Wootings", langLabel: "For Casuals", vfxTitle: "Atmospheric Subroutines", vfxBubbles: "Disable the cool Bubbles", vfxLightning: "Disable the why did I keep this again? Effects", bgBtn: "Change Wallpaper (no lolli tho or banban)", resetBgBtn: "Hide your obviously pervy Wallpaper", dragFallback: "Let's find you a brain first.", allPayloads: "All Yumyums", saveLoadoutBtn: "Save" },
       "sw-KE": { appSubtitle: "KIDUNGANZI CHA PS4 / PS5", tabExploit: "Matumizi", tabPayloads: "Mizigo", ipLabel: "IP ya Kifaa", portLabel: "Lango", loadLocal: "Pakia Mzigo wa Ndani...", cloudDivider: "AU TUMIA WINGU", btnTransmit: "Tuma Mzigo", syncBtn: "Sawazisha", folderBtn: "Folda", armoryCloudTitle: "Silaha za Wingu", armoryLocalTitle: "Silaha za Ndani", armoryEmpty: "Sawazisha au chagua folda...", delayLabel: "Kuchelewa (ms)", btnInjectSeq: "Anza Mlolongo", settingsTitle: "Mipangilio", langLabel: "Lugha ya Mfumo", vfxTitle: "Athari za Kuona", vfxBubbles: "Zima Mapovu", vfxLightning: "Zima Umeme", bgBtn: "Badilisha Karatasi", resetBgBtn: "Weka Upya Karatasi", dragFallback: "Chagua mzigo kwanza.", allPayloads: "-- Mizigo Yote --", saveLoadoutBtn: "Hifadhi" },
       "fr-FR": { appSubtitle: "INJECTEUR DE PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", ipLabel: "IP de la Console", portLabel: "Port", loadLocal: "Charger Payload Local...", cloudDivider: "OU DÉPLOIEMENT CLOUD", btnTransmit: "Envoyer Payload", syncBtn: "Sync", folderBtn: "Dossier", armoryCloudTitle: "Arsenal Cloud", armoryLocalTitle: "Arsenal Local", armoryEmpty: "Synchronisez ou choisissez un dossier...", delayLabel: "Délai (ms)", btnInjectSeq: "Injecter Séquence", settingsTitle: "Paramètres Système", langLabel: "Langue", vfxTitle: "Effets Visuels", vfxBubbles: "Désactiver les Bulles", vfxLightning: "Désactiver les Éclairs", bgBtn: "Changer Fond", resetBgBtn: "Réinitialiser Fond", dragFallback: "Sélectionnez des payloads d'abord.", allPayloads: "-- Tous les Payloads --", saveLoadoutBtn: "Enregistrer" },
       "es-ES": { appSubtitle: "INYECTOR DE PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", ipLabel: "IP de Consola", portLabel: "Puerto", loadLocal: "Cargar Payload Local...", cloudDivider: "O DESPLIEGUE EN LA NUBE", btnTransmit: "Enviar Payload", syncBtn: "Sync", folderBtn: "Mapear", armoryCloudTitle: "Arsenal en la Nube", armoryLocalTitle: "Arsenal Local", armoryEmpty: "Sincroniza o elige una carpeta...", delayLabel: "Retraso (ms)", btnInjectSeq: "Inyectar Secuencia", settingsTitle: "Ajustes de Sistema", langLabel: "Idioma", vfxTitle: "Efectos Visuales", vfxBubbles: "Desactivar Burbujas", vfxLightning: "Desactivar Relámpagos", bgBtn: "Cambiar Fondo", resetBgBtn: "Restaurar Fondo", dragFallback: "Selecciona payloads primero.", allPayloads: "-- Todos los Payloads --", saveLoadoutBtn: "Guardar" },
@@ -497,12 +593,43 @@
 
     let currentLang = "en-US";
     let bubblesDisabled = false;
-    let lightningDisabled = false;
+    let lightningDisabled = true;
 
-    function changeLanguage(langCode) {
+     // Custom Async Prompt
+    function showCustomPrompt(titleText, defaultText) {
+      return new Promise((resolve) => {
+        const modal = document.getElementById('customPromptModal');
+        const title = document.getElementById('promptTitle');
+        const input = document.getElementById('promptInput');
+        const cancelBtn = document.getElementById('promptCancel');
+        const confirmBtn = document.getElementById('promptConfirm');
+
+        title.textContent = titleText;
+        input.value = defaultText;
+        modal.classList.add('active');
+        input.focus();
+
+        const cleanup = () => {
+          modal.classList.remove('active');
+          cancelBtn.onclick = null;
+          confirmBtn.onclick = null;
+          input.onkeydown = null;
+        };
+
+        cancelBtn.onclick = () => { cleanup(); resolve(null); };
+        confirmBtn.onclick = () => { cleanup(); resolve(input.value); };
+        
+        input.onkeydown = (e) => {
+          if (e.key === 'Enter') { cleanup(); resolve(input.value); }
+          if (e.key === 'Escape') { cleanup(); resolve(null); }
+        };
+      });
+    }
+
+    async function changeLanguage(langCode) {
       if(!dictionary[langCode]) return;
       currentLang = langCode;
-      StorageEngine.setItem('nexus_lang', langCode);
+      await StorageEngine.setItem('nexus_lang', langCode);
       document.getElementById('langSelector').value = langCode;
 
       document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -517,7 +644,7 @@
         document.getElementById('fileNameText').textContent = dictionary[currentLang].loadLocal;
       }
       
-      refreshLoadoutSelector();
+      await refreshLoadoutSelector();
       updateArmoryTitle();
     }
 
@@ -531,11 +658,11 @@
       }
     }
 
-    function saveVfxConfig() {
+    async function saveVfxConfig() {
       bubblesDisabled = document.getElementById('toggleBubbles').checked;
       lightningDisabled = document.getElementById('toggleLightning').checked;
-      StorageEngine.setItem('nexus_disable_bubbles', bubblesDisabled ? 'true' : 'false');
-      StorageEngine.setItem('nexus_disable_lightning', lightningDisabled ? 'true' : 'false');
+      await StorageEngine.setItem('nexus_disable_bubbles', bubblesDisabled ? 'true' : 'false');
+      await StorageEngine.setItem('nexus_disable_lightning', lightningDisabled ? 'true' : 'false');
     }
 
     function getShapeSVG(shape) {
@@ -552,60 +679,66 @@
     let localFolderMode = false;
     let localPayloadFiles = [];
 
-    window.onload = () => {
-      if(StorageEngine.getItem('nexus_ip')) document.getElementById('ip').value = StorageEngine.getItem('nexus_ip');
-      if(StorageEngine.getItem('nexus_port')) document.getElementById('port').value = StorageEngine.getItem('nexus_port');
-      if(StorageEngine.getItem('nexus_delay')) document.getElementById('delay').value = StorageEngine.getItem('nexus_delay');
+    window.onload = async () => {
+      const ip = await StorageEngine.getItem('nexus_ip');
+      if(ip) document.getElementById('ip').value = ip;
       
-      bubblesDisabled = StorageEngine.getItem('nexus_disable_bubbles') === 'true';
-      lightningDisabled = StorageEngine.getItem('nexus_disable_lightning') === 'true';
+      const port = await StorageEngine.getItem('nexus_port');
+      if(port) document.getElementById('port').value = port;
+      
+      const delay = await StorageEngine.getItem('nexus_delay');
+      if(delay) document.getElementById('delay').value = delay;
+      
+      bubblesDisabled = (await StorageEngine.getItem('nexus_disable_bubbles')) === 'true';
+      lightningDisabled = (await StorageEngine.getItem('nexus_disable_lightning')) === 'true';
       document.getElementById('toggleBubbles').checked = bubblesDisabled;
       document.getElementById('toggleLightning').checked = lightningDisabled;
 
-      const savedLang = StorageEngine.getItem('nexus_lang') || "en-US";
-      changeLanguage(savedLang);
+      const savedLang = await StorageEngine.getItem('nexus_lang') || "en-US";
+      await changeLanguage(savedLang);
 
-      const savedBg = StorageEngine.getItem('nexus_bg');
+      const savedBg = await StorageEngine.getItem('nexus_bg');
       if(savedBg) {
         document.getElementById('wallpaper-layer').style.backgroundImage = `url(${savedBg})`;
         document.getElementById('gradient-layer').style.background = 'transparent';
       }
 
-      refreshLoadoutSelector();
-      const lastLoadout = StorageEngine.getItem('nexus_last_loadout');
+      await refreshLoadoutSelector();
+      const lastLoadout = await StorageEngine.getItem('nexus_last_loadout');
       if (lastLoadout) {
-          const loadouts = JSON.parse(StorageEngine.getItem('nexus_loadouts') || '[]');
+          const loadouts = JSON.parse(await StorageEngine.getItem('nexus_loadouts') || '[]');
           if (loadouts.some(l => l.id === lastLoadout)) {
               document.getElementById('loadoutSelector').value = lastLoadout;
           }
       }
 
-      if(StorageEngine.getItem('nexus_cloud_manifest')) {
-        renderExploits();
-        renderPayloads();
+      const manifestStr = await StorageEngine.getItem('nexus_cloud_manifest');
+      if(manifestStr) {
+        await renderExploits();
+        await renderPayloads();
       } else {
-          syncCloud(0);
+        await syncCloud(0);
       }
     };
 
-    function saveConfig() {
-      StorageEngine.setItem('nexus_ip', document.getElementById('ip').value);
-      StorageEngine.setItem('nexus_port', document.getElementById('port').value);
-      StorageEngine.setItem('nexus_delay', document.getElementById('delay').value);
+    async function saveConfig() {
+      await StorageEngine.setItem('nexus_ip', document.getElementById('ip').value);
+      await StorageEngine.setItem('nexus_port', document.getElementById('port').value);
+      await StorageEngine.setItem('nexus_delay', document.getElementById('delay').value);
     }
 
     function showToast(msg, type = 'success') {
       const toast = document.getElementById('toastNotification');
       toast.textContent = msg; 
       toast.className = `custom-toast ${type} show`;
-      setTimeout(() => { toast.classList.remove('show'); }, 3000);
+      setTimeout(() => { toast.classList.remove('show'); }, 2000);
     }
 
     function togglePanel() { document.getElementById('configPanel').classList.toggle('active'); }
     function triggerBgUpload() { document.getElementById('bgUploader').click(); }
 
-    function resetWallpaper() {
-      StorageEngine.removeItem('nexus_bg');
+    async function resetWallpaper() {
+      await StorageEngine.removeItem('nexus_bg');
       document.getElementById('wallpaper-layer').style.backgroundImage = 'none';
       document.getElementById('gradient-layer').style.background = 'var(--bg-gradient)';
       showToast("Visual parameters reverted to factory defaults.");
@@ -615,12 +748,12 @@
       const file = event.target.files[0];
       if(!file) return;
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = async function(e) {
         const b64 = e.target.result;
         document.getElementById('wallpaper-layer').style.backgroundImage = `url(${b64})`;
         document.getElementById('gradient-layer').style.background = 'transparent';
         try { 
-          StorageEngine.setItem('nexus_bg', b64); 
+          await StorageEngine.setItem('nexus_bg', b64); 
           showToast("Aesthetic upgrade complete. New background initialized.");
         } catch(err) { 
           showToast("System fault: Image dimensions exceed storage limits.", "error"); 
@@ -629,23 +762,24 @@
       reader.readAsDataURL(file);
     }
 
-    function switchTab(tabId, btnElement) {
+    async function switchTab(tabId, btnElement) {
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
       btnElement.classList.add('active');
       document.getElementById(`tab-${tabId}`).classList.add('active');
+      
       const portInput = document.getElementById('port');
-      let lastExploitPort = StorageEngine.getItem('last_exploit_port') || 9026;
+      let lastExploitPort = await StorageEngine.getItem('last_exploit_port') || 9026;
       if (tabId === 'payloads') {
           lastExploitPort = portInput.value;
-          StorageEngine.setItem('last_exploit_port', lastExploitPort);
+          await StorageEngine.setItem('last_exploit_port', lastExploitPort);
           portInput.value = 9021;
-        } else {
+      } else {
           portInput.value = lastExploitPort;
-        }
+      }
     }
 
-    function setExploitEnv(env) {
+    async function setExploitEnv(env) {
       currentEnv = env;
       document.getElementById('env-luac0re').classList.remove('active');
       document.getElementById('env-y2jb').classList.remove('active');
@@ -657,8 +791,8 @@
       
       if (env === 'y2jb') { portInput.value = 50000; }
       else if (env === 'luac0re') { portInput.value = 9026; } 
-      saveConfig();
-      renderExploits();
+      await saveConfig();
+      await renderExploits();
     }
 
     function handleFileSelected() {
@@ -676,7 +810,7 @@
         if(!res.ok) throw new Error("Manifest acquisition mapping failure.");
         const manifest = await res.json();
         
-        StorageEngine.setItem('nexus_cloud_manifest', JSON.stringify(manifest));
+        await StorageEngine.setItem('nexus_cloud_manifest', JSON.stringify(manifest));
         
         const allFiles = [...(manifest.luac0re || []), ...(manifest.y2jb || []), ...(manifest.payloads || [])];
         for(let item of allFiles) {
@@ -689,22 +823,22 @@
             let bin = '';
             const b = new Uint8Array(buf);
             for(let i=0; i<b.byteLength; i++) bin += String.fromCharCode(b[i]);
-            StorageEngine.setItem(`cloud_cache_${item.id}`, window.btoa(bin));
+            await StorageEngine.setItem(`cloud_cache_${item.id}`, window.btoa(bin));
           } catch(err) { console.error("Asset ingestion dropped: " + item.name); }
         }
 
         localFolderMode = false;
         updateArmoryTitle();
-        renderExploits();
-        renderPayloads();
-        showToast("Cloud directory successfully synchronized.");
+        await renderExploits();
+        await renderPayloads();
+        showToast("Repo successfully synchronized.");
       } catch(e) {
         if (showerr) showToast("Network error: Failed to connect to repository.", "error");
       }
     }
 
-    function renderExploits() {
-      const manifestStr = StorageEngine.getItem('nexus_cloud_manifest');
+    async function renderExploits() {
+      const manifestStr = await StorageEngine.getItem('nexus_cloud_manifest');
       const container = document.getElementById('cloudBtnContainer');
       container.innerHTML = '';
       if(!manifestStr) return;
@@ -728,7 +862,7 @@
       if (files.length === 0) return;
 
       localPayloadFiles = [];
-      const validExtensions = ['.bin', '.elf', '.js', '.lua'];
+      const validExtensions = ['.bin', '.elf'];
 
       for (let i = 0; i < files.length; i++) {
         const f = files[i];
@@ -739,19 +873,19 @@
       if (localPayloadFiles.length > 0) {
         localFolderMode = true;
         updateArmoryTitle();
-        renderPayloads();
+        await renderPayloads();
         showToast(`Storage payload matrix loaded with ${localPayloadFiles.length} files.`);
       } else {
-        showToast("Directory scan negative: No compatible payload binaries detected.", "error");
+        showToast("No compatible payload binaries detected.", "error");
       }
     }
 
     /* LOADOUT SYSTEM LOGIC */
-    function saveCurrentLoadout() {
+    async function saveCurrentLoadout() {
       const checkedRows = document.querySelectorAll('#payload-cb-list .payload-cb-row.is-checked');
       if (checkedRows.length === 0) return showToast(dictionary[currentLang].dragFallback || "Select payloads first.", "error");
 
-      const loadoutName = prompt("Enter a name for this Loadout:", "My Loadout");
+      const loadoutName = await showCustomPrompt("Enter a name for this Loadout:", "My Loadout");
       if (!loadoutName) return;
 
       const payloads = [];
@@ -766,34 +900,37 @@
           }
       });
 
-      const loadouts = JSON.parse(StorageEngine.getItem('nexus_loadouts') || '[]');
+      const loadoutsStr = await StorageEngine.getItem('nexus_loadouts');
+      const loadouts = JSON.parse(loadoutsStr || '[]');
       const newLoadout = { id: Date.now().toString(), name: loadoutName, payloads: payloads };
       loadouts.push(newLoadout);
       
-      StorageEngine.setItem('nexus_loadouts', JSON.stringify(loadouts));
-      StorageEngine.setItem('nexus_last_loadout', newLoadout.id);
+      await StorageEngine.setItem('nexus_loadouts', JSON.stringify(loadouts));
+      await StorageEngine.setItem('nexus_last_loadout', newLoadout.id);
 
-      refreshLoadoutSelector();
+      await refreshLoadoutSelector();
       document.getElementById('loadoutSelector').value = newLoadout.id;
-      renderPayloads();
+      await renderPayloads();
       showToast("Loadout saved successfully.");
     }
 
-    function handleLoadoutChange() {
+    async function handleLoadoutChange() {
       const val = document.getElementById('loadoutSelector').value;
       if(val === 'default') {
-         StorageEngine.removeItem('nexus_last_loadout');
+         await StorageEngine.removeItem('nexus_last_loadout');
       } else {
-         StorageEngine.setItem('nexus_last_loadout', val);
+         await StorageEngine.setItem('nexus_last_loadout', val);
       }
-      renderPayloads();
+      await renderPayloads();
     }
 
-    function refreshLoadoutSelector() {
+    async function refreshLoadoutSelector() {
       const selector = document.getElementById('loadoutSelector');
       if(!selector) return;
       const currentVal = selector.value;
-      const loadouts = JSON.parse(StorageEngine.getItem('nexus_loadouts') || '[]');
+      
+      const loadoutsStr = await StorageEngine.getItem('nexus_loadouts');
+      const loadouts = JSON.parse(loadoutsStr || '[]');
       
       selector.innerHTML = `<option value="default" data-i18n="allPayloads">${dictionary[currentLang].allPayloads}</option>`;
       loadouts.forEach(l => {
@@ -806,27 +943,30 @@
       if(selector.selectedIndex === -1) selector.value = 'default';
     }
 
-    function renderPayloads() {
+    async function renderPayloads() {
       const list = document.getElementById('payload-cb-list');
       list.innerHTML = '';
+      const fragment = document.createDocumentFragment();
 
       const loadoutSelector = document.getElementById('loadoutSelector');
       const activeLoadoutId = loadoutSelector ? loadoutSelector.value : 'default';
 
       if (activeLoadoutId !== 'default') {
-          const loadouts = JSON.parse(StorageEngine.getItem('nexus_loadouts') || '[]');
+          const loadoutsStr = await StorageEngine.getItem('nexus_loadouts');
+          const loadouts = JSON.parse(loadoutsStr || '[]');
           const target = loadouts.find(l => l.id == activeLoadoutId);
           if (target && target.payloads.length > 0) {
-              target.payloads.forEach((p, index) => {
+              for (let i = 0; i < target.payloads.length; i++) {
+                  const p = target.payloads[i];
                   let badge = 'MISSING';
-                  let uid = `loadout_${index}`;
+                  let uid = `loadout_${i}`;
                   if (p.source === 'cloud') {
-                      const isCached = StorageEngine.getItem(`cloud_cache_${p.id}`) !== null;
-                      badge = isCached ? 'CACHED' : 'SYNC REQ';
+                      const cached = await StorageEngine.getItem(`cloud_cache_${p.id}`);
+                      badge = cached !== null ? 'READY' : 'SYNC REQ';
                       const row = makeCheckRow(uid, p.name, badge, 'cloud', null, p.id);
                       row.classList.add('is-checked');
                       row.querySelector('input[type="checkbox"]').checked = true;
-                      list.appendChild(row);
+                      fragment.appendChild(row);
                   } else if (p.source === 'local') {
                       const localIdx = localPayloadFiles.findIndex(f => f.name === p.name);
                       if (localIdx !== -1) {
@@ -834,15 +974,16 @@
                           const row = makeCheckRow(uid, p.name, badge, 'local', String(localIdx), null);
                           row.classList.add('is-checked');
                           row.querySelector('input[type="checkbox"]').checked = true;
-                          list.appendChild(row);
+                          fragment.appendChild(row);
                       } else {
                           const row = makeCheckRow(uid, p.name, 'UNMAPPED', 'local_missing', null, null);
                           row.classList.add('local-missing', 'is-checked');
                           row.querySelector('input[type="checkbox"]').checked = true;
-                          list.appendChild(row);
+                          fragment.appendChild(row);
                       }
                   }
-              });
+              }
+              list.appendChild(fragment);
               return;
           } else {
               list.innerHTML = `<div class="payload-cb-empty">${dictionary[currentLang].armoryEmpty}</div>`;
@@ -857,10 +998,11 @@
         }
         localPayloadFiles.forEach((file, index) => {
           const ext = file.name.substring(file.name.lastIndexOf('.') + 1).toUpperCase();
-          list.appendChild(makeCheckRow(`local_${index}`, file.name, ext, 'local', String(index), null));
+          fragment.appendChild(makeCheckRow(`local_${index}`, file.name, ext, 'local', String(index), null));
         });
+        list.appendChild(fragment);
       } else {
-        const manifestStr = StorageEngine.getItem('nexus_cloud_manifest');
+        const manifestStr = await StorageEngine.getItem('nexus_cloud_manifest');
         if (!manifestStr) {
           list.innerHTML = `<div class="payload-cb-empty">${dictionary[currentLang].armoryEmpty}</div>`;
           return;
@@ -870,11 +1012,12 @@
           list.innerHTML = `<div class="payload-cb-empty">${dictionary[currentLang].armoryEmpty}</div>`;
           return;
         }
-        manifest.payloads.forEach(item => {
-          const isCached = StorageEngine.getItem(`cloud_cache_${item.id}`) !== null;
-          const badge = isCached ? 'CACHED' : 'SYNC REQ';
-          list.appendChild(makeCheckRow(`cloud_${item.id}`, item.name, badge, 'cloud', null, item.id));
-        });
+        for (let item of manifest.payloads) {
+          const cached = await StorageEngine.getItem(`cloud_cache_${item.id}`);
+          const badge = cached !== null ? '' : 'SYNC REQ';
+          fragment.appendChild(makeCheckRow(`cloud_${item.id}`, item.name, badge, 'cloud', null, item.id));
+        }
+        list.appendChild(fragment);
       }
     }
 
@@ -930,11 +1073,11 @@
       }
     }
 
-    function transmitCloudPayload(id, name, event) {
+    async function transmitCloudPayload(id, name, event) {
       if(event) triggerFountain(event);
-      const b64 = StorageEngine.getItem(`cloud_cache_${id}`);
+      const b64 = await StorageEngine.getItem(`cloud_cache_${id}`);
       if (b64) {
-          showToast(`Executing cloud deployment: ${name}...`);
+          showToast(`Sending ${name}`);
           executeRawStream(b64);
       } else {
           showToast("Execution failed: Script not found in local cache.", "error");
@@ -951,7 +1094,7 @@
       const originalText = dictionary[currentLang].btnInjectSeq;
       const btn = document.getElementById('injectSeqBtn');
       
-      const delayMs = parseInt(document.getElementById('delay').value) || 4000;
+      const delayMs = parseInt(document.getElementById('delay').value) || 8000;
       btn.disabled = true;
 
       for (let i = 0; i < checkedRows.length; i++) {
@@ -971,7 +1114,7 @@
           b64Data = arrayBufferToBase64(buffer);
         } else if (source === "cloud") {
           const id = card.dataset.id;
-          b64Data = StorageEngine.getItem(`cloud_cache_${id}`);
+          b64Data = await StorageEngine.getItem(`cloud_cache_${id}`);
         }
 
         if (!b64Data) { showToast(`Sequence alert: Unmapped asset skipped.`, "error"); continue; }
@@ -984,7 +1127,7 @@
 
       btnTextSpan.textContent = originalText;
       btn.disabled = false;
-      showToast("Injection array complete. Standby for console response.");
+      showToast("Transmission completed successfully.");
     }
 
     function onNativeResponse(successFlag, messageString) { showToast(messageString, successFlag ? 'success' : 'error'); }
@@ -1019,14 +1162,14 @@
        constructor(x, y, shape) {
            this.x = x; this.y = y;
            this.vx = (Math.random() - 0.5) * 8;
-           this.vy = -(Math.random() * 6 + 6);
+           this.vy = -(Math.random() * 8 + 8);
            this.gravity = 0.5;
            this.shape = shape;
-           this.life = 1.0;
-           this.decay = Math.random() * 0.015 + 0.015;
-           this.size = Math.random() * 8 + 8;
+           this.life = 2.0;
+           this.decay = Math.random() * 0.005 + 0.005;
+           this.size = Math.random() * 10 + 10;
            this.rot = Math.random() * Math.PI * 2;
-           this.vrot = (Math.random() - 0.5) * 0.3;
+           this.vrot = (Math.random() - 0.7) * 0.5;
        }
        update() {
            this.x += this.vx; this.y += this.vy; this.vy += this.gravity;

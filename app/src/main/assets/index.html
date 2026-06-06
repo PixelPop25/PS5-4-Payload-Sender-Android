@@ -457,6 +457,14 @@
               <span class="toggle-slider"></span>
             </label>
         </div>
+
+        <div class="vfx-row">
+            <span class="vfx-label-text" data-i18n="vfxSounds">Disable Sound Effects</span>
+            <label class="custom-toggle">
+              <input type="checkbox" id="toggleSounds" onchange="saveVfxConfig()">
+              <span class="toggle-slider"></span>
+            </label>
+        </div>
       </div>
 
       <div class="panel-btn-row">
@@ -652,7 +660,7 @@
         delayLabel: "Delay (ms)", btnInjectSeq: "Send Sequence", settingsTitle: "System Settings",
         langLabel: "Interface Language", vfxTitle: "Lag Optimization Suite",
         vfxBubbles: "Disable Ambient Bubbles", vfxLightning: "Disable Lightning Effects",
-        vfxFountain: "Disable Touch Particles", bgBtn: "Change Wallpaper", resetBgBtn: "Reset Wallpaper",
+        vfxFountain: "Disable Touch Particles", vfxSounds: "Disable Sound Effects", bgBtn: "Change Wallpaper", resetBgBtn: "Reset Wallpaper",
         dragFallback: "No payloads selected.", allPayloads: "All Payloads", saveLoadoutBtn: "Save",
         // Toast strings
         toast_syncing: "Initiating cloud sync...",
@@ -703,9 +711,8 @@
       "pl-PL": { appSubtitle: "INIEKTOR PAYLOADÓW PS4/PS5", tabExploit: "Exploity", tabPayloads: "Payloady", ipLabel: "IP Konsoli", portLabel: "Port", loadLocal: "Załaduj Lokalny Payload...", cloudDivider: "LUB WDROŻENIE W CHMURZE", btnTransmit: "Wyślij Payload", syncBtn: "Sync", folderBtn: "Folder", armoryCloudTitle: "Arsenał w Chmurze", armoryLocalTitle: "Arsenał Lokalny", armoryEmpty: "Zsynchronizuj lub wybierz folder...", delayLabel: "Opóźnienie Iniekcji (ms)", btnInjectSeq: "Iniekcja Sekwencji", settingsTitle: "Ustawienia Systemu", langLabel: "Język", vfxTitle: "Efekty Wizualne", vfxBubbles: "Wyłącz Bąbelki", vfxLightning: "Wyłącz Błyskawice", vfxFountain: "Disable Touch Particles", bgBtn: "Zmień Tapetę", resetBgBtn: "Zresetuj Tapetę", dragFallback: "Najpierw wybierz payloady.", allPayloads: "-- Wszystkie Payloady --", saveLoadoutBtn: "Zapisz" }
     };
 
-    // Helper: get toast string for en-US key, fallback to raw string
     function T(key, fallback) {
-      if (dictionary[currentLang][key]) return dictionary[currentLang][key];
+      if (dictionary[currentLang] && dictionary[currentLang][key]) return dictionary[currentLang][key]; 
       return fallback || key;
     }
 
@@ -713,6 +720,7 @@
     let bubblesDisabled = true;
     let lightningDisabled = true;
     let fountainDisabled = true;
+    let soundsDisabled = true; 
 
     function showCustomPrompt(titleText, defaultText) {
       return new Promise((resolve) => {
@@ -767,9 +775,12 @@
       bubblesDisabled = document.getElementById('toggleBubbles').checked;
       lightningDisabled = document.getElementById('toggleLightning').checked;
       fountainDisabled = document.getElementById('toggleFountain').checked;
+      soundsDisabled = document.getElementById('toggleSounds').checked;
+      
       await StorageEngine.setItem('nexus_disable_bubbles', bubblesDisabled ? 'true' : 'false');
       await StorageEngine.setItem('nexus_disable_lightning', lightningDisabled ? 'true' : 'false');
       await StorageEngine.setItem('nexus_disable_fountain', fountainDisabled ? 'true' : 'false');
+      await StorageEngine.setItem('nexus_disable_sounds', soundsDisabled ? 'true' : 'false'); 
     }
 
     function getShapeSVG(shape) {
@@ -801,10 +812,13 @@
       lightningDisabled = lVal === null ? true : (lVal === 'true');
       let fVal = await StorageEngine.getItem('nexus_disable_fountain');
       fountainDisabled = fVal === null ? true : (fVal === 'true');
+      let sVal = await StorageEngine.getItem('nexus_disable_sounds');
+      soundsDisabled = sVal === null ? true : (sVal === 'true'); 
 
       document.getElementById('toggleBubbles').checked = bubblesDisabled;
       document.getElementById('toggleLightning').checked = lightningDisabled;
       document.getElementById('toggleFountain').checked = fountainDisabled;
+      document.getElementById('toggleSounds').checked = soundsDisabled; 
 
       const savedLang = await StorageEngine.getItem('nexus_lang') || "en-US";
       await changeLanguage(savedLang);
@@ -923,6 +937,12 @@
     }
 
     async function syncCloud(showerr = 1) {
+      if(localFolderMode){
+        localFolderMode = false;
+        updateArmoryTitle();
+        await renderPayloads();
+        return;
+      }
       if (_syncLock) return;
       _syncLock = true;
       const syncBtn = document.querySelector('.btn-sync');
@@ -985,7 +1005,6 @@
       }
     }
 
-    // ── Folder picker: prefer Android native folder selector, fall back to browser ──
     function triggerFolderPicker() {
       if (window.AndroidNativeFilePicker && typeof window.AndroidNativeFilePicker.openFolder === 'function') {
         window.AndroidNativeFilePicker.openFolder();
@@ -1011,8 +1030,6 @@
           continue; }
         // Skip duplicates by name
         if (localPayloadFiles.some(ex => ex.name === f.name)) {
-
-          showToast("Duplicate file!","error")
           continue;}
         localPayloadFiles.push(f);
         added++;
@@ -1300,6 +1317,7 @@
       if (event && !fountainDisabled) triggerFountain(event);
       const fileInput = document.getElementById('fileInput');
       if (fileInput.files.length > 0) {
+        playTurbo(); 
         const file = fileInput.files[0];
         const arrayBuffer = await file.arrayBuffer();
         showToast(T('toast_sending', `Sending ${file.name}...`).replace('${file.name}', file.name));
@@ -1313,7 +1331,8 @@
       if (event && !fountainDisabled) triggerFountain(event);
       const b64 = await StorageEngine.getItem(`cloud_cache_${id}`);
       if (b64) {
-        showToast(T('toast_sending', `Sending ${name}...`).replace('${name}', name));
+        playTurbo(); 
+        showToast(T(`Sending ${name}`));
         executeRawStream(b64);
       } else {
         showToast(T('toast_no_cache', "Script not in cache — run a sync first."), "error");
@@ -1325,6 +1344,8 @@
       const checkedRows = Array.from(document.querySelectorAll('#payload-cb-list .payload-cb-row.is-checked'));
       if (checkedRows.length === 0) return showToast(T('toast_no_payloads', dictionary[currentLang].dragFallback), "error");
 
+      playTurbo(); 
+      
       const btnTextSpan = document.querySelector('#injectSeqBtn span[data-i18n]');
       const progressFill = document.getElementById('injectProgressFill');
       const originalText = dictionary[currentLang].btnInjectSeq;
@@ -1378,6 +1399,100 @@
     }
 
     function onNativeResponse(successFlag, messageString) { showToast(messageString, successFlag ? 'success' : 'error'); }
+
+    // ── AUDIO ENGINE ──
+    const AppAudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx;
+    
+    function initAudio() {
+      if (!audioCtx) audioCtx = new AppAudioContext();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playClick() {
+      if (soundsDisabled) return;
+      initAudio();
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.05);
+      
+      gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+      
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.05);
+    }
+
+    function playTurbo() {
+      if (soundsDisabled) return;
+      initAudio();
+      
+      // Turbo Spool Up
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      
+      osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(3000, audioCtx.currentTime + 0.8);
+      
+      gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.005, audioCtx.currentTime + 0.1);
+      gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1.0);
+      
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 50);
+
+      // Blowoff Valve Flutter
+      setTimeout(() => {
+        if (soundsDisabled) return;
+        const bufferSize = audioCtx.sampleRate * 0.3;
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = buffer;
+        
+        const noiseFilter = audioCtx.createBiquadFilter();
+        noiseFilter.type = 'highpass';
+        noiseFilter.frequency.value = 3000;
+        
+        const noiseGain = audioCtx.createGain();
+        noiseGain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        noiseGain.gain.exponentialRampToValueAtTime(0.005, audioCtx.currentTime + 0.35);
+        
+        noise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(audioCtx.destination);
+        noise.start();
+      }, 700);
+    }
+
+    // Global Click Sound Binding
+    document.addEventListener('click', (e) => {
+      initAudio(); // Required to unlock audio contexts via user gesture
+      
+      const isInteractive = e.target.closest('button') || 
+                            e.target.closest('.custom-toggle') || 
+                            e.target.closest('.file-drop-zone') || 
+                            e.target.closest('.payload-cb-row') ||
+                            e.target.closest('.tab-btn') ||
+                            e.target.closest('.env-btn');
+                            
+      // Prevent double/overlapping sounds if the button already plays the turbo sound
+      const isTransmitBtn = e.target.closest('.primary-btn') || e.target.closest('.ps4-cloud-btn');
+      
+      if (isInteractive && !isTransmitBtn) {
+        playClick();
+      }
+    });
 
     // ── Canvas VFX ──
     const canvas = document.getElementById('vfxCanvas');

@@ -21,7 +21,7 @@
       background: #020307; color: #fff; display: flex; justify-content: center; align-items: center;
     }
 
-    /* ── FIX 1: Landscape rotation + tablet scaling ── */
+    
     @media (orientation: landscape) and (max-height: 500px) {
       /* Phone landscape: rotate the card so it reads portrait */
       .app-card {
@@ -58,7 +58,7 @@
 
     .app-card {
       position: relative; z-index: 10;
-      background: rgba(14, 20, 38, 0.45); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+      background: rgba(14, 20, 38, 0.45); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
       border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 28px;
       padding: 25px 22px; width: 94%; max-width: 430px; box-shadow: 0 35px 70px rgba(0,0,0,0.85);
       display: flex; flex-direction: column; max-height: 95%;
@@ -180,7 +180,7 @@
 
     .zone-title { font-size: 10px; text-transform: uppercase; color: var(--ps5-accent); margin-bottom: 5px; letter-spacing: 1px; text-align: center; }
 
-    /* ── FIX 7: content-visibility on rows for perf ── */
+    
     .payload-cb-list {
       background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px;
       padding: 6px; display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; flex: 1;
@@ -216,7 +216,7 @@
     .payload-cb-row.is-checked .cb-badge { color: var(--ps5-accent); background: rgba(0,240,255,0.1); }
     .payload-cb-row.local-missing .cb-label { color: var(--ps5-error); text-decoration: line-through; }
 
-    /* ── FIX 6: per-row remove button (loadout/local only) ── */
+    
     .cb-remove-btn {
       flex-shrink: 0; width: 22px; height: 22px; border-radius: 6px;
       background: transparent; border: 1px solid rgba(255,255,255,0.1);
@@ -284,7 +284,6 @@
       background: rgba(255, 42, 95, 0.1); box-shadow: 0 0 10px rgba(255, 42, 95, 0.2);
     }
 
-    /* ── FIX 5: delay row with clear button ── */
     .delay-clear-row { display: flex; gap: 8px; align-items: flex-end; }
     .delay-clear-row .input-group { flex: 1; }
     .btn-clear-list {
@@ -381,6 +380,7 @@
     .prompt-btn.cancel:hover { background: rgba(255,255,255,0.15); }
     .prompt-btn.confirm { background: rgba(26, 114, 255, 0.2); color: #fff; border: 1px solid var(--ps5-light-blue); }
     .prompt-btn.confirm:hover { background: rgba(26, 114, 255, 0.4); border-color: var(--ps5-accent); box-shadow: 0 0 15px rgba(0, 240, 255, 0.2); }
+
   </style>
 </head>
 <body>
@@ -391,7 +391,6 @@
   </div>
   
   <input type="file" id="bgUploader" accept="image/*" style="display: none;" onchange="handleBgUpload(event)">
-  <!-- File picker: accept=* so Android doesn't filter .bin/.elf before JS sees them; JS validates extensions -->
   <input type="file" id="folderUploader" accept="*/*" multiple style="display: none;" onchange="handleFolderSelected(event)">
 
   <div class="app-card">
@@ -462,14 +461,18 @@
 
       <div class="panel-btn-row">
         <button class="panel-btn" onclick="triggerBgUpload()">
-          <span class="panel-btn-icon">🖼️</span>
+          <span class="panel-btn-icon">🏞️</span>
           <span data-i18n="bgBtn">Change Wallpaper</span>
         </button>
         <button class="panel-btn" onclick="resetWallpaper()">
-          <span class="panel-btn-icon">🗑️</span>
+          <span class="panel-btn-icon">⟲</span>
           <span data-i18n="resetBgBtn">Reset Wallpaper</span>
         </button>
       </div>
+      <div>
+          <span>سُبْحَٰنَهُۥ وَتَعَٰلَىٰ</span>
+          <span>  قلبي يبكي لفلسطين  🇵🇸 </span>
+        </div>
     </div>
 
     <div class="header-bar">
@@ -550,7 +553,7 @@
         </div>
       </div>
       
-      <!-- FIX 5: Clear list button next to delay input -->
+     
       <div class="delay-clear-row">
         <div class="input-group">
           <label data-i18n="delayLabel">Injection Delay (ms)</label>
@@ -634,7 +637,6 @@
       }
     };
 
-    // ── FIX 7: debounced saveConfig to reduce write thrashing ──
     let _saveConfigTimer = null;
     function saveConfigDebounced() {
       clearTimeout(_saveConfigTimer);
@@ -644,10 +646,10 @@
     const dictionary = {
       "en-US": {
         appSubtitle: "PS5 / PS4 PAYLOAD INJECTOR", tabExploit: "Exploits", tabPayloads: "Payloads",
-        ipLabel: "Host IP", portLabel: "Port", loadLocal: "Select payload...", cloudDivider: "too lazy to remove this",
-        btnTransmit: "TRANSMIT", syncBtn: "Sync", folderBtn: "Map", armoryCloudTitle: "Cloud Armory",
-        armoryLocalTitle: "Local Armory", armoryEmpty: "Awaiting sync or folder map.",
-        delayLabel: "Delay (ms)", btnInjectSeq: "Inject Sequence", settingsTitle: "System Settings",
+        ipLabel: "Host IP", portLabel: "Port", loadLocal: "Select File...",
+        btnTransmit: "SEND", syncBtn: "Sync", folderBtn: "Map", armoryCloudTitle: "Scene Collective",
+        armoryLocalTitle: "Local Stash", armoryEmpty: "Awaiting sync or folder map.",
+        delayLabel: "Delay (ms)", btnInjectSeq: "Send Sequence", settingsTitle: "System Settings",
         langLabel: "Interface Language", vfxTitle: "Lag Optimization Suite",
         vfxBubbles: "Disable Ambient Bubbles", vfxLightning: "Disable Lightning Effects",
         vfxFountain: "Disable Touch Particles", bgBtn: "Change Wallpaper", resetBgBtn: "Reset Wallpaper",
@@ -674,7 +676,7 @@
         toast_item_removed: "Entry removed.",
         toast_diagnostic: "Diagnostic mode: stream routed through native bridge."
       },
-      "eta-wen": { appSubtitle: "ETA WEN? (The eternal question)", tabExploit: "Kexps", tabPayloads: "Digital Candy", ipLabel: "Host IP", portLabel: "Port", loadLocal: "Go Dumpster diving", btnTransmit: "Gaslight the System", syncBtn: "Sync", folderBtn: "Map", armoryCloudTitle: "Vault of Fame", armoryLocalTitle: "PWN STAsh", armoryEmpty: "Feed me or feed me files", delayLabel: "Procrastination (ms)", btnInjectSeq: "Initiate Panic Mode", settingsTitle: "IDU Mode", langLabel: "For Casuals", vfxTitle: "Lag Optimization Suite", vfxBubbles: "Pop the bubbles", vfxLightning: "Remove 'I talk to Skynet' evidence", vfxFountain: "Remove 'I touched the screen' evidence", bgBtn: "Embrace the Waifu", resetBgBtn: "Hide your shame", dragFallback: "How could I possibly be expected to handle your commands on a day like this?", allPayloads: "All the Yum-Yums", saveLoadoutBtn: "Save" },
+      "eta-wen": { appSubtitle: "ETA WEN? (The age old question)", tabExploit: "Kexps", tabPayloads: "Digital Candy", ipLabel: "Host IP", portLabel: "Port", loadLocal: "Go Dumpster diving", btnTransmit: "Gaslight the System", syncBtn: "Sync", folderBtn: "Map", armoryCloudTitle: "Vault of Fame", armoryLocalTitle: "PWN STAsh", armoryEmpty: "Feed me or feed me files", delayLabel: "Procrastination (ms)", btnInjectSeq: "Initiate Panic Mode", settingsTitle: "IDU Mode", langLabel: "For Casuals", vfxTitle: "Lag Optimization Suite", vfxBubbles: "Pop the bubbles", vfxLightning: "Remove 'I talk to Skynet' evidence", vfxFountain: "Remove 'I touched the screen' evidence", bgBtn: "TRAVELINSTYLE", resetBgBtn: "Hide your shame", dragFallback: "How could I possibly be expected to handle your commands on a day like this?", allPayloads: "All the Yum-Yums", saveLoadoutBtn: "Save" },
       "sw-KE": { appSubtitle: "KIDUNGUAJI CHA PS4 / PS5", tabExploit: "Matumizi", tabPayloads: "Mizigo", ipLabel: "IP ya Kifaa", portLabel: "Lango", loadLocal: "Pakia Mzigo wa Ndani...", cloudDivider: "AU TUMIA WINGU", btnTransmit: "Tuma Mzigo", syncBtn: "Sawazisha", folderBtn: "Folda", armoryCloudTitle: "Silaha za Wingu", armoryLocalTitle: "Silaha za Ndani", armoryEmpty: "Sawazisha au chagua folda...", delayLabel: "Kuchelewa (ms)", btnInjectSeq: "Anza Mlolongo", settingsTitle: "Mipangilio", langLabel: "Lugha ya Mfumo", vfxTitle: "Athari za Kuona", vfxBubbles: "Zima Mapovu", vfxLightning: "Zima Umeme", vfxFountain: "Disable Touch Particles", bgBtn: "Badilisha Karatasi", resetBgBtn: "Weka Upya Karatasi", dragFallback: "Chagua mzigo kwanza.", allPayloads: "-- Mizigo Yote --", saveLoadoutBtn: "Hifadhi" },
       "fr-FR": { appSubtitle: "INJECTEUR DE PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", ipLabel: "IP de la Console", portLabel: "Port", loadLocal: "Charger Payload Local...", cloudDivider: "OU DÉPLOIEMENT CLOUD", btnTransmit: "Envoyer Payload", syncBtn: "Sync", folderBtn: "Dossier", armoryCloudTitle: "Arsenal Cloud", armoryLocalTitle: "Arsenal Local", armoryEmpty: "Synchronisez ou choisissez un dossier...", delayLabel: "Délai (ms)", btnInjectSeq: "Injecter Séquence", settingsTitle: "Paramètres Système", langLabel: "Langue", vfxTitle: "Effets Visuels", vfxBubbles: "Désactiver les Bulles", vfxLightning: "Désactiver les Éclairs", vfxFountain: "Disable Touch Particles", bgBtn: "Changer Fond", resetBgBtn: "Réinitialiser Fond", dragFallback: "Sélectionnez des payloads d'abord.", allPayloads: "-- Tous les Payloads --", saveLoadoutBtn: "Enregistrer" },
       "es-ES": { appSubtitle: "INYECTOR DE PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", ipLabel: "IP de Consola", portLabel: "Puerto", loadLocal: "Cargar Payload Local...", cloudDivider: "O DESPLIEGUE EN LA NUBE", btnTransmit: "Enviar Payload", syncBtn: "Sync", folderBtn: "Mapear", armoryCloudTitle: "Arsenal en la Nube", armoryLocalTitle: "Arsenal Local", armoryEmpty: "Sincroniza o elige una carpeta...", delayLabel: "Retraso (ms)", btnInjectSeq: "Inyectar Secuencia", settingsTitle: "Ajustes de Sistema", langLabel: "Idioma", vfxTitle: "Efectos Visuales", vfxBubbles: "Desactivar Burbujas", vfxLightning: "Desactivar Relámpagos", vfxFountain: "Disable Touch Particles", bgBtn: "Cambiar Fondo", resetBgBtn: "Restaurar Fondo", dragFallback: "Selecciona payloads primero.", allPayloads: "-- Todos los Payloads --", saveLoadoutBtn: "Guardar" },
@@ -843,7 +845,6 @@
       await StorageEngine.setItem('nexus_delay', document.getElementById('delay').value);
     }
 
-    // FIX 7: toast uses a queue to avoid stacking
     let _toastTimer = null;
     function showToast(msg, type = 'success') {
       const toast = document.getElementById('toastNotification');
@@ -954,6 +955,11 @@
         showToast(T('toast_synced', "Sync complete. Assets cached."));
       } catch(e) {
         if (showerr) showToast(T('toast_sync_fail', "Connection failed. Repository unreachable."), "error");
+
+        localFolderMode = false;
+
+        updateArmoryTitle();
+        await renderPayloads();
       } finally {
         _syncLock = false;
         if (syncBtn) { syncBtn.disabled = false; syncBtn.style.opacity = ''; }
@@ -988,7 +994,7 @@
       }
     }
 
-    // ── FIX: accumulate files, auto-cache on add ──
+   
     async function handleFolderSelected(event) {
       const files = event.target.files;
 
@@ -1005,7 +1011,8 @@
           continue; }
         // Skip duplicates by name
         if (localPayloadFiles.some(ex => ex.name === f.name)) {
-          await showToast('Duplicate file!','error')
+
+          showToast("Duplicate file!","error")
           continue;}
         localPayloadFiles.push(f);
         added++;
@@ -1027,16 +1034,9 @@
       }
     }
 
-    // ── FIX 5: clear the payload list ──
     async function clearPayloadList() {
-      const loadoutVal = document.getElementById('loadoutSelector').value;
-      if (loadoutVal !== 'default') {
-        // Just switch to default (don't delete the saved loadout, just deselect)
-        document.getElementById('loadoutSelector').value = 'default';
-        await StorageEngine.removeItem('nexus_last_loadout');
-      }
+      
       localPayloadFiles = [];
-      localFolderMode = false;
       updateArmoryTitle();
       await renderPayloads();
     }
@@ -1103,7 +1103,9 @@
         await StorageEngine.removeItem('nexus_last_loadout');
       } else {
         await StorageEngine.setItem('nexus_last_loadout', val);
+
       }
+
       await renderPayloads();
     }
 
@@ -1123,7 +1125,7 @@
       if (selector.selectedIndex === -1) selector.value = 'default';
     }
 
-    // ── FIX 6: remove individual item from saved loadout or local list ──
+    
     async function removePayloadItem(rowEl, source, id, index) {
       const loadoutVal = document.getElementById('loadoutSelector').value;
 
@@ -1281,10 +1283,7 @@
       return window.btoa(binary);
     }
 
-    // ── FIX 4: executeRawStream with proper sequencing guard ──
-    // The TCP interrupted issue comes from firing a new stream before the previous
-    // socket fully closes. We add a small mandatory gap before each stream call
-    // when the native bridge is in use, and we never overlap calls.
+    
     let _streamBusy = false;
 
     function executeRawStream(base64Data) {
@@ -1371,7 +1370,7 @@
       }
 
       // Hold full bar briefly before reset
-      await new Promise(r => setTimeout(r, 380));
+      await new Promise(r => setTimeout(r, 4000));
       progressFill.style.width = '0%';
       btnTextSpan.textContent = originalText;
       btn.disabled = false;
@@ -1386,7 +1385,7 @@
     let width = canvas.width = window.innerWidth;
     let height = canvas.height = window.innerHeight;
 
-    // FIX 7: debounce resize to avoid hammering layout
+    
     let _resizeTimer = null;
     window.addEventListener('resize', () => {
       clearTimeout(_resizeTimer);
@@ -1399,17 +1398,20 @@
     class Bubble {
       constructor() { this.reset(); }
       reset() {
-        this.x = Math.random() * width; this.y = height + Math.random() * 300;
-        this.radius = Math.random() * 5 + 2.5; this.speed = Math.random() * 2.7 + 0.8;
-        this.opacity = Math.random() * 0.2 + 0.15; this.wobble = Math.random() * 5;
+        this.x = Math.random() * width; this.y = height + Math.random() * 5;
+        this.radius = Math.random() * 6 + 2.5; this.speed = Math.random() * 2.9 + 0.8;
+        this.opacity = Math.random() * 0.3 + 0.15; this.wobble = Math.random() * 15;
         this.wobbleSpeed = Math.random() * 0.09 + 0.01;
+
       }
       update() {
         this.y -= this.speed; this.wobble += this.wobbleSpeed; this.x += Math.sin(this.wobble) * 0.4;
+        this.drift = (Math.random() - 5.5) * 0.5;
         if (this.y < -50) this.reset();
       }
       draw() {
-        ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 5);
+            
         ctx.fillStyle = `rgba(205, 164, 76, ${this.opacity})`; ctx.fill();
       }
     }
@@ -1418,7 +1420,7 @@
       constructor(x, y, shape) {
         this.x = x; this.y = y;
         this.vx = (Math.random() - 0.5) * 10;
-        this.vy = -(Math.random() * 5 + 7);
+        this.vy = -(Math.random() * 4 + 5);
         this.gravity = 0.32; this.shape = shape;
         this.life = 2.0; this.decay = Math.random() * 0.005 + 0.005;
         this.size = Math.random() * 10 + 10;
@@ -1445,8 +1447,8 @@
       }
     }
 
-    // FIX 7: reduce bubble count for perf (65 is heavy on mobile)
-    const BUBBLE_COUNT = 35;
+    
+    const BUBBLE_COUNT = 300;
     const bubbles = Array.from({ length: BUBBLE_COUNT }, () => new Bubble());
     let lightningFlash = 0; let zapTimer = 0;
     const fParticles = [];
@@ -1471,14 +1473,15 @@
       ctx.shadowBlur = 10; ctx.shadowColor = '#4f46e5'; ctx.stroke(); ctx.shadowBlur = 0;
     }
 
-    // FIX 7: skip render frame if nothing visible is animating
+    
     let _rafId = null;
     function renderLoop() {
       ctx.clearRect(0, 0, width, height);
-      zapTimer += 16.66;
-      if (zapTimer > 13000) zapTimer = 0;
-
+      
       if (!lightningDisabled) {
+        zapTimer += 16.50;
+        if (zapTimer > 13000) zapTimer = 0;
+
         if (zapTimer > 10000 && Math.random() < 0.07) {
           lightningFlash = Math.random() * 0.12;
           drawLightningArc(Math.random() * width, 0, 12, 50);

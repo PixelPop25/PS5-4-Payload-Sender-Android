@@ -17,7 +17,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
 
     body, html {
-      width: 100%; height: 100%; overflow: hidden; font-family: 'Inter', sans-serif;
+      width: 100%; height: 100%; overflow: hidden; font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
       background: #020307; color: #fff; display: flex; justify-content: center; align-items: center;
     }
 
@@ -163,37 +163,75 @@
         text-transform: uppercase; letter-spacing: 1.5px; 
     }
 
-    .ps4-btn-group { display: flex; gap: 12px; margin-top: 15px; justify-content: center; }
-    .ps4-cloud-btn {
-      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
-      background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 16px; padding: 14px 5px; color: rgba(255,255,255,0.7);
-      cursor: pointer; transition: all 0.2s ease; font-size: 11px; font-weight: 600; text-transform: uppercase; outline: none;
-    }
+    .ps4-btn-group { 
+  display: flex; 
+  gap: 12px; 
+  margin-top: 15px; 
+  justify-content: center; 
+  flex-wrap: wrap; /* Allows buttons to drop to a new line gracefully instead of squishing */
+}
+
+.ps4-cloud-btn {
+  flex: 1; 
+  min-width: 90px; 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.1); 
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px; 
+  padding: 14px 8px; 
+  color: rgba(255, 255, 255, 0.55); 
+  cursor: pointer; 
+  transition: all 0.2s ease; 
+  font-size: 11px; 
+  font-weight: 600; 
+  text-transform: uppercase; 
+  letter-spacing: 0.5px; 
+  text-align: center; 
+  outline: none;
+}
     .ps4-cloud-btn:hover { border-color: var(--ps5-accent); background: rgba(0,240,255,0.08); color: #fff; box-shadow: 0 4px 15px rgba(0, 240, 255, 0.15); transform: translateY(-2px); }
     .ps4-cloud-btn:active { transform: translateY(1px); }
     .ps4-icon { width: 28px; height: 28px; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.2s; }
-    .ps4-icon.square { stroke: #df00f5; }
-    .ps4-icon.cross { stroke: #1a72ff; }
-    .ps4-icon.circle { stroke: #ff2a5f; }
-    .ps4-icon.triangle { stroke: #00f0ff; }
+    .ps4-icon.square { stroke: #ff00ff; }
+    .ps4-icon.cross { stroke: #0066ff; }
+    .ps4-icon.circle { stroke: #ff0a5f; }
+    .ps4-icon.triangle { stroke: #00ffcc; }
 
     .zone-title { font-size: 10px; text-transform: uppercase; color: var(--ps5-accent); margin-bottom: 5px; letter-spacing: 1px; text-align: center; }
 
     
     .payload-cb-list {
-      background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px;
-      padding: 6px; display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; flex: 1;
+      background: rgba(0, 0, 0, 0.3); 
+      border: 1px solid rgba(255, 255, 255, 0.1); 
+      border-radius: 5px;
+      padding: 6px; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 5px; 
+      margin-bottom: 12px; 
+      flex: 1;
       contain: content;
+      
     }
 
     .payload-cb-empty { text-align: center; font-size: 11px; color: rgba(255,255,255,0.3); padding: 28px 10px; }
 
     .payload-cb-row {
       contain: layout style;
-      display: flex; align-items: center; gap: 10px; background: rgba(11, 19, 43, 0.85);
-      border: 1px solid rgba(255, 255, 255, 0.08); padding: 9px 12px; border-radius: 8px;
-      cursor: pointer; transition: border-color 0.18s, background 0.18s; -webkit-tap-highlight-color: transparent;
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+      background: rgba(11, 19, 43, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08); 
+      padding: 9px 12px; 
+      border-radius: 8px;
+      cursor: pointer; 
+      transition: border-color 0.18s, background 0.18s; 
+      -webkit-tap-highlight-color: transparent;
     }
     .payload-cb-row:hover { border-color: rgba(0, 240, 255, 0.4); }
     .payload-cb-row.is-checked { border-color: rgba(0, 240, 255, 0.55); background: rgba(0, 240, 255, 0.06); }
@@ -210,7 +248,10 @@
       transform: rotate(45deg) translate(-1px, -1px); opacity: 0; transition: opacity 0.14s;
     }
     .payload-cb-row.is-checked .cb-box::after { opacity: 1; }
-    .cb-label { flex: 1; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.18s; }
+    .cb-label { flex: 1; font-size: 13px; font-weight: 200; color: rgba(255,255,255,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.18s;
+      
+      letter-spacing: 0.5px;
+     }
     .payload-cb-row.is-checked .cb-label { color: #fff; }
     .cb-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; flex-shrink: 0; transition: color 0.18s, background 0.18s; }
     .payload-cb-row.is-checked .cb-badge { color: var(--ps5-accent); background: rgba(0,240,255,0.1); }
@@ -346,7 +387,7 @@
     .custom-toggle input:checked + .toggle-slider { background-color: rgba(26, 114, 255, 0.4); border-color: var(--ps5-light-blue); }
     .custom-toggle input:checked + .toggle-slider:before { transform: translateX(20px); content: "1"; background-color: var(--ps5-accent); color: #000; box-shadow: 0 0 8px var(--ps5-accent); }
 
-    .custom-toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background: rgba(11, 19, 43, 0.96); padding: 14px 28px; border-radius: 50px; font-size: 13px; z-index: 9999; border: 1px solid var(--ps5-accent); white-space: nowrap; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); opacity: 0; box-shadow: 0 10px 30px rgba(0,0,0,0.8); font-weight: 600; }
+    .custom-toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background: rgba(11, 19, 43, 0.96); padding: 14px 28px; border-radius: 50px; font-size: 13px; z-index: 9999; border: 1px solid var(--ps5-accent); white-space: nowrap; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); opacity: 0; box-shadow: 0 10px 30px rgba(0,0,0,0.8); font-weight: 200; }
     .custom-toast.show { bottom: 40px; opacity: 1; }
     .custom-toast.error { border-color: var(--ps5-error); color: #fff; }
 
@@ -365,7 +406,7 @@
       transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
     .modal-overlay.active .custom-prompt-box { transform: translateY(0); }
-    .custom-prompt-title { font-size: 14px; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 1px; text-align: center;}
+    .custom-prompt-title { font-size: 14px; font-weight: 200; color: #fff; text-transform: uppercase; letter-spacing: 1px; text-align: center;}
     .custom-prompt-input { 
       width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); 
       background: rgba(0,0,0,0.5); color: #fff; outline: none; font-family: 'Inter', sans-serif; font-size: 14px;
@@ -515,13 +556,15 @@
             <div class="upload-icon">📁</div>
             <div id="fileNameText" class="file-name-display" data-i18n="loadLocal">Load Local Payload...</div>
           </label>
-          <input type="file" id="fileInput" onchange="handleFileSelected()" accept=".bin,.elf,.js,.lua,.jar,.mjs">
+          <input type="file" id="fileInput" onchange="handleFileSelected()" accept=".bin,.elf,.js,.lua,.jar,.mjs,.py">
         </div>
       
         <div class="cloud-deck">
           <div class="env-switcher">
             <button class="env-btn active" id="env-luac0re" onclick="setExploitEnv('luac0re')">LuaC0re</button>
             <button class="env-btn" id="env-y2jb" onclick="setExploitEnv('y2jb')">Y2JB</button>
+            <button class="env-btn" id="env-lua" onclick="setExploitEnv('lua')">LUA</button>
+            <button class="env-btn" id="env-yarp2jb" onclick="setExploitEnv('yarp2jb')">YarPy</button>
           </div>
           <div id="cloudBtnContainer" class="ps4-btn-group"></div>
         </div>
@@ -917,12 +960,15 @@
       currentEnv = env;
       document.getElementById('env-luac0re').classList.remove('active');
       document.getElementById('env-y2jb').classList.remove('active');
+      document.getElementById('env-lua').classList.remove('active');
+      document.getElementById('env-yarp2jb').classList.remove('active');
       document.getElementById(`env-${env}`).classList.add('active');
       const portInput = document.getElementById('port');
       document.getElementById('fileNameText').innerText = dictionary[currentLang].loadLocal;
       document.getElementById('fileInput').value = "";
       if (env === 'y2jb') { portInput.value = 50000; }
-      else if (env === 'luac0re') { portInput.value = 9026; }
+      else if (env === 'luac0re' || env === 'lua') { portInput.value = 9026; }
+      else if (env === 'yarp2jb') { portInput.value = 9025; }
       await saveConfig();
       await renderExploits();
     }
@@ -952,7 +998,7 @@
         if (!res.ok) throw new Error("Manifest fetch failed.");
         const manifest = await res.json();
         await StorageEngine.setItem('nexus_cloud_manifest', JSON.stringify(manifest));
-        const allFiles = [...(manifest.luac0re || []), ...(manifest.y2jb || []), ...(manifest.payloads || [])];
+        const allFiles = [...(manifest.luac0re || []), ...(manifest.yarp2jb || []), ...(manifest.lua || []), ...(manifest.y2jb || []), ...(manifest.payloads || [])];
         for (let item of allFiles) {
           try {
             const fRes = await fetch(CLOUD_URL + item.file);
@@ -992,11 +1038,18 @@
       if (!manifestStr) return;
       const manifest = JSON.parse(manifestStr);
       if (manifest[currentEnv] && manifest[currentEnv].length > 0) {
-        const shapePool = currentEnv === 'luac0re' ? ['square', 'cross'] : ['circle', 'triangle'];
+        const shapePool = currentEnv === 'luac0re' ? ['square', 'cross','triangle','circle'] : currentEnv === 'y2jb' ? ['circle', 'triangle','cross','square'] : currentEnv == 'lua' ? ['square','circle','triangle','cross'] : currentEnv == 'yarp2jb' ? ['cross','triangle','square','circle'] : ['cross', 'circle', 'square', 'triangle'];
+        
+        let lastShape = '';
+
         manifest[currentEnv].forEach((item, idx) => {
-          const shape = shapePool[idx % shapePool.length];
+          const availablePool = shapePool.filter(shape => shape !== lastShape);
+          let rnd = Math.floor(Math.random() * availablePool.length);
+          let shape = availablePool[rnd];
           const btn = document.createElement('button');
           btn.className = `ps4-cloud-btn ${shape}`;
+          lastShape = shape;
+          
           btn.innerHTML = getShapeSVG(shape) + `<span>${item.name}</span>`;
           btn.onclick = (e) => transmitCloudPayload(item.id, item.name, e);
           container.appendChild(btn);
@@ -1018,7 +1071,7 @@
 
       if (files.length === 0) return;
 
-      const validExtensions = ['.bin', '.elf'];
+      const validExtensions = ['.bin', '.elf','.py','.lua','.js','.jar'];
       let added = 0;
 
       for (let i = 0; i < files.length; i++) {

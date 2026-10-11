@@ -9,27 +9,28 @@ jobs:
   build:
     name: Assemble Debug APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
+      # Use the default GITHUB_TOKEN — do NOT use a custom PAT unless you need
+      # to push back to the repo from this job. A bad/empty ACTIONS_PAT causes:
+      #   fatal: could not read Username for 'https://github.com': terminal prompts disabled
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          # No submodules — app does not require itsPLK as a git submodule
           submodules: false
-          token: ${{ secrets.ACTIONS_PAT }}
 
       - name: Auto-Unzip Uploaded Archives
         run: |
           set -euo pipefail
-          echo "Scanning repository for .zip files..."
           find . -name "*.zip" -type f -not -path "./.git/*" -exec sh -c '
             dir="${1%.*}"
             echo "Extracting: $1 to $dir"
             mkdir -p "$dir"
             unzip -o -d "$dir" "$1"
             rm -f "$1"
-          ' _ {} \;
-          echo "Extraction complete."
+          ' _ {} \; || true
 
       - name: Ensure WebKit host pages in assets (no submodule)
         run: |
@@ -41,10 +42,31 @@ jobs:
             ls -la "$WEBKIT_DIR"
             exit 0
           fi
-          echo "WebKit HTML missing — extracting from official itsPLK host release (not a git submodule)..."
+          echo "WebKit HTML missing — extracting from official host release..."
           curl -sL -o /tmp/wkhost.py \
             "https://github.com/itsPLK/ps5-webkit-autoloader/releases/download/v0.6.1/webkit-autoloader-host_v0.6.1.py"
-          python3 tools/extract_webkit_host.py /tmp/wkhost.py "$WEBKIT_DIR"
+          if [ -f tools/extract_webkit_host.py ]; then
+            python3 tools/extract_webkit_host.py /tmp/wkhost.py "$WEBKIT_DIR"
+          else
+            python3 - <<'PY'
+import base64, re, zipfile, io
+from pathlib import Path
+text = Path("/tmp/wkhost.py").read_text(errors="replace")
+m = re.search(r"EMBEDDED_ZIP_B64\s*=\s*\(([\s\S]*?)\)\s*\n", text)
+parts = re.findall(r'"([A-Za-z0-9+/=]+)"', m.group(1))
+z = zipfile.ZipFile(io.BytesIO(base64.b64decode("".join(parts))))
+out = Path("app/src/main/assets/webkit")
+out.mkdir(parents=True, exist_ok=True)
+for name in z.namelist():
+    if name.endswith("/"): continue
+    p = out / Path(name).name
+    p.write_bytes(z.read(name))
+    print("wrote", p, p.stat().st_size)
+idx = out / "index.html"
+if idx.exists():
+    (out / "relapse.html").write_bytes(idx.read_bytes())
+PY
+          fi
           ls -la "$WEBKIT_DIR"
 
       - name: Set up JDK 17

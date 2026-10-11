@@ -1,51 +1,60 @@
-# Nexus Injector
+# Nexus (PS5 Payload Sender) — Android
 
-​Sigh... Finally, I can create a README now that the app is actually confirmed to work. 
+Android companion for sending PS5 payloads (Y2JB / LuaC0re / ELF) and optionally
+hosting WebKit Autoloader pages on the LAN.
 
-Nexus is a raw TCP payload injector for those of us who prefer a clean, and quick way to send payloads to your console at the comfort of your phone. We all know that thing is glued to your hands anyway!
+## Features (v1.0.13+)
 
-## ​How to use
+- **Sync / Map / Save** payload workflow
+- Sync order: **Nexus-Payloads first** (Y2JB + LuaC0re exploits), then official GitHub overlay
+- Non-blocking sync (background HTTP)
+- Left-edge **host** control (LAN file server for WebKit pages)
+- Bundled WebKit host pages under `app/src/main/assets/webkit/` (offline)
+- Android nav bar visible (not forced immersive fullscreen)
 
-​It’s self-explanatory, lol.
+## WebKit pages — why only HTML?
 
-​Be on the same network as your target console.
+Upstream itsPLK **release host** embeds a zip with exactly two standalone pages:
 
-​Turn off your mobile data (seriously, don't let your phone try to route local traffic through a cell tower; it won't work).
+| File | Chain |
+|------|--------|
+| `index.html` / `relapse.html` | **Relapse** (default) |
+| `poops.html` | **Poops** |
 
-​Input your IP and port.
+There are **no separate `.js` files** in that package on purpose. The build
+(`ps5-webkit-remote-loader` → `build_standalone` → `build_host`) **inlines**
+all scripts (offsets, ROP worker, `poops.js` / `relapse.js`, `autoload.js`,
+`elfldr-check.js`) into each HTML file (~6 MB each).
 
-​Select your file and hit send.
+The public git repo is small (~1.4 MB of source blobs). Exploit JS lives in the
+`ps5-webkit-remote-loader` submodule and is only present after a full release
+build — not as loose files in the host zip.
 
-## ​Supported Payloads
+**Relapse is present** — it is `index.html` (and the explicit alias `relapse.html`).
+Poops is `poops.html`. Relapse is unsupported on firmwares **9.05** and **11.40**
+(upstream routes those to Poops).
 
-All files including
+### Bundled assets note
 
-​.bin
+The large HTML pages are **not** committed here (GitHub blob size / clone weight).
+They are produced from the official host package:
 
-​.elf
+```text
+https://github.com/itsPLK/ps5-webkit-autoloader/releases
+→ webkit-autoloader-host_v*.py → EMBEDDED_ZIP_B64 → index.html + poops.html
+```
 
-​.lua
+Copy extracted files into `app/src/main/assets/webkit/` before building a release
+APK that includes offline WebKit hosting. See `third_party/README-webkit.md`.
 
-​.js
+## Build
 
-​.jar ~~(sh#!, I forgot about this at the time of writing)~~
+```bash
+# Android SDK 34 + JDK 17
+./gradlew assembleDebug
+```
 
-**Next up**
-~~​Make the app support all files in case anybody has use cases other than jailbreaking~~
-Done!
+## Related
 
-​**To-Do List**
-
-​[ ] Auto download & cache payloads from the cloud
-
-​[ ] Auto inject payloads with a sleep command between subsequent files
-
-​[ ] Load-outs for different target machines
-
-​[ ] List view for most recently used payloads with a send button next to them
-
-​[ ] 8-bit warez music like old times (KaosKrew style)
-
-​[ ] Community suggestions: Not sure what's next, so I will take suggestions from you lovely people
-
-**​Enjoy!**
+- Payloads: https://github.com/PixelPop25/Nexus-Payloads
+- WebKit Autoloader: https://github.com/itsPLK/ps5-webkit-autoloader

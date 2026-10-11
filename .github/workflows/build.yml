@@ -1,9 +1,8 @@
 name: Build Nexus Injector
 
-# Triggers the build when you push to main, or manually via the Actions tab
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "fix/**" ]
   workflow_dispatch:
 
 jobs:
@@ -12,43 +11,56 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Pull your code using the secret token you created
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
+          # No submodules — app does not require itsPLK as a git submodule
+          submodules: false
           token: ${{ secrets.ACTIONS_PAT }}
 
-      # 2. Auto-Unzip any .zip files in the repository
       - name: Auto-Unzip Uploaded Archives
         run: |
+          set -euo pipefail
           echo "Scanning repository for .zip files..."
-          find . -name "*.zip" -type f -exec sh -c '
+          find . -name "*.zip" -type f -not -path "./.git/*" -exec sh -c '
             dir="${1%.*}"
             echo "Extracting: $1 to $dir"
             mkdir -p "$dir"
             unzip -o -d "$dir" "$1"
-            rm "$1"
+            rm -f "$1"
           ' _ {} \;
           echo "Extraction complete."
 
-      # 3. Setup the Java environment required by Android
+      - name: Ensure WebKit host pages in assets (no submodule)
+        run: |
+          set -euo pipefail
+          WEBKIT_DIR="app/src/main/assets/webkit"
+          mkdir -p "$WEBKIT_DIR"
+          if [ -f "$WEBKIT_DIR/index.html" ] && [ -f "$WEBKIT_DIR/poops.html" ]; then
+            echo "Bundled WebKit pages already present."
+            ls -la "$WEBKIT_DIR"
+            exit 0
+          fi
+          echo "WebKit HTML missing — extracting from official itsPLK host release (not a git submodule)..."
+          curl -sL -o /tmp/wkhost.py \
+            "https://github.com/itsPLK/ps5-webkit-autoloader/releases/download/v0.6.1/webkit-autoloader-host_v0.6.1.py"
+          python3 tools/extract_webkit_host.py /tmp/wkhost.py "$WEBKIT_DIR"
+          ls -la "$WEBKIT_DIR"
+
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          java-version: "17"
+          distribution: "temurin"
 
-      # 4. Setup Gradle and enforce version 8.7 for AGP 8.2 compatibility
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
-          gradle-version: '8.7'
-          
-      # 5. Compile the app using the global Gradle installation
+          gradle-version: "8.7"
+
       - name: Build with Gradle
         run: gradle assembleDebug
 
-      # 6. Grab the finished APK and upload it so you can download it
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:

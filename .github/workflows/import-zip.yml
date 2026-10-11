@@ -1,0 +1,130 @@
+# Drop a .zip into the repo (recommended: import/update.zip), push it,
+# and this workflow extracts it over the tree, commits the result, then
+# deletes the zip so it does not stay in history on the next commit.
+#
+# Usage:
+#   1. Put your zip at:  import/update.zip   (or any path ending in .zip)
+#   2. git add import/update.zip && git commit -m "import: sources" && git push
+#   3. Actions runs, extracts, commits extracted files, removes the zip
+#
+# Manual run: Actions → "Import zip update" → Run workflow
+#   (optional input: path to an existing zip in the repo)
+
+name: Import zip update
+
+on:
+  push:
+    paths:
+      - "**/*.zip"
+      - "import/**/*.zip"
+  workflow_dispatch:
+    inputs:
+      zip_path:
+        description: "Path to zip inside the repo (leave empty to auto-detect newest .zip)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: import-zip-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  extract-and-update:
+    runs-on: ubuntu-latest
+    # Avoid infinite loop: the bot commit must not match the zip path filter
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip zip-import]'))
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Need full history only if you later want force-clean; shallow is fine
+          fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Locate zip
+        id: zip
+        env:
+          INPUT_ZIP: ${{ github.event.inputs.zip_path }}
+        run: |
+          set -euo pipefail
+          ZIP=""
+          if [ -n "${INPUT_ZIP:-}" ] && [ -f "$INPUT_ZIP" ]; then
+            ZIP="$INPUT_ZIP"
+          else
+            # Prefer import/ then newest .zip anywhere (ignore .git)
+            if [ -f import/update.zip ]; then
+              ZIP="import/update.zip"
+            elif [ -f import/sources.zip ]; then
+              ZIP="import/sources.zip"
+            else
+              ZIP="$(find . -type f -name '*.zip' -not -path './.git/*' -printf '%T@ %p\n' \
+                | sort -nr | head -1 | cut -d' ' -f2- || true)"
+            fi
+          fi
+
+          if [ -z "${ZIP:-}" ] || [ ! -f "$ZIP" ]; then
+            echo "No zip file found in the repository."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "found=true" >> "$GITHUB_OUTPUT"
+          echo "path=$ZIP" >> "$GITHUB_OUTPUT"
+          echo "Using zip: $ZIP"
+          ls -la "$ZIP"
+
+      - name: Extract zip into repo root
+        if: steps.zip.outputs.found == 'true'
+        env:
+          ZIP: ${{ steps.zip.outputs.path }}
+        run: |
+          set -euo pipefail
+          # Extract to a temp dir first so a zip that contains a single top-level
+          # folder can be flattened (common when you zip a project folder).
+          WORK="$(mktemp -d)"
+          unzip -o -q "$ZIP" -d "$WORK"
+
+          # If the zip has exactly one top-level directory and nothing else, strip it
+          mapfile -t TOP < <(find "$WORK" -mindepth 1 -maxdepth 1 | sort)
+          SRC="$WORK"
+          if [ "${#TOP[@]}" -eq 1 ] && [ -d "${TOP[0]}" ]; then
+            SRC="${TOP[0]}"
+            echo "Flattening single top-level folder: $(basename "$SRC")"
+          fi
+
+          # Copy over the working tree (do not clobber .git or this workflow by accident
+          # unless the zip intentionally updates it — we still allow .github updates).
+          rsync -a --exclude '.git/' "$SRC"/ ./
+
+          # Remove the uploaded zip so it does not remain as a tracked blob forever
+          rm -f "$ZIP"
+          # Clean empty import/ if we emptied it
+          rmdir import 2>/dev/null || true
+
+          echo "Extract complete. Working tree sample:"
+          find . -maxdepth 2 -not -path './.git/*' | head -40
+
+      - name: Commit extracted sources and delete zip
+        if: steps.zip.outputs.found == 'true'
+        env:
+          ZIP: ${{ steps.zip.outputs.path }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "Nothing to commit (tree already matched zip contents)."
+            exit 0
+          fi
+
+          git commit -m "import: extract $(basename "$ZIP") [skip zip-import]"
+          git push

@@ -13,9 +13,6 @@ jobs:
       contents: read
 
     steps:
-      # Use the default GITHUB_TOKEN — do NOT use a custom PAT unless you need
-      # to push back to the repo from this job. A bad/empty ACTIONS_PAT causes:
-      #   fatal: could not read Username for 'https://github.com': terminal prompts disabled
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
@@ -32,11 +29,11 @@ jobs:
             rm -f "$1"
           ' _ {} \; || true
 
-      - name: Ensure WebKit host pages in assets (no submodule)
+      - name: Ensure WebKit host pages in assets
         run: |
           set -euo pipefail
           WEBKIT_DIR="app/src/main/assets/webkit"
-          mkdir -p "$WEBKIT_DIR"
+          mkdir -p "$WEBKIT_DIR" tools
           if [ -f "$WEBKIT_DIR/index.html" ] && [ -f "$WEBKIT_DIR/poops.html" ]; then
             echo "Bundled WebKit pages already present."
             ls -la "$WEBKIT_DIR"
@@ -45,28 +42,32 @@ jobs:
           echo "WebKit HTML missing — extracting from official host release..."
           curl -sL -o /tmp/wkhost.py \
             "https://github.com/itsPLK/ps5-webkit-autoloader/releases/download/v0.6.1/webkit-autoloader-host_v0.6.1.py"
-          if [ -f tools/extract_webkit_host.py ]; then
-            python3 tools/extract_webkit_host.py /tmp/wkhost.py "$WEBKIT_DIR"
-          else
-            python3 - <<'PY'
-import base64, re, zipfile, io
-from pathlib import Path
-text = Path("/tmp/wkhost.py").read_text(errors="replace")
-m = re.search(r"EMBEDDED_ZIP_B64\s*=\s*\(([\s\S]*?)\)\s*\n", text)
-parts = re.findall(r'"([A-Za-z0-9+/=]+)"', m.group(1))
-z = zipfile.ZipFile(io.BytesIO(base64.b64decode("".join(parts))))
-out = Path("app/src/main/assets/webkit")
-out.mkdir(parents=True, exist_ok=True)
-for name in z.namelist():
-    if name.endswith("/"): continue
-    p = out / Path(name).name
-    p.write_bytes(z.read(name))
-    print("wrote", p, p.stat().st_size)
-idx = out / "index.html"
-if idx.exists():
-    (out / "relapse.html").write_bytes(idx.read_bytes())
-PY
+          if [ ! -f tools/extract_webkit_host.py ]; then
+            printf '%s\n' \
+              'import base64, re, zipfile, io, sys' \
+              'from pathlib import Path' \
+              'host_py = Path(sys.argv[1])' \
+              'out = Path(sys.argv[2])' \
+              'out.mkdir(parents=True, exist_ok=True)' \
+              'text = host_py.read_text(errors="replace")' \
+              'm = re.search(r"EMBEDDED_ZIP_B64\s*=\s*\(([\s\S]*?)\)\s*\n", text)' \
+              'if not m:' \
+              '    raise SystemExit("EMBEDDED_ZIP_B64 not found")' \
+              'parts = re.findall(r"\"([A-Za-z0-9+/=]+)\"", m.group(1))' \
+              'z = zipfile.ZipFile(io.BytesIO(base64.b64decode("".join(parts))))' \
+              'for name in z.namelist():' \
+              '    if name.endswith("/"):' \
+              '        continue' \
+              '    target = out / Path(name).name' \
+              '    target.write_bytes(z.read(name))' \
+              '    print("wrote", target, target.stat().st_size)' \
+              'idx = out / "index.html"' \
+              'if idx.exists():' \
+              '    (out / "relapse.html").write_bytes(idx.read_bytes())' \
+              '    print("wrote", out / "relapse.html", "(alias)")' \
+              > tools/extract_webkit_host.py
           fi
+          python3 tools/extract_webkit_host.py /tmp/wkhost.py "$WEBKIT_DIR"
           ls -la "$WEBKIT_DIR"
 
       - name: Set up JDK 17

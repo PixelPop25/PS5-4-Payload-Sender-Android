@@ -1,0 +1,19 @@
+Bundled PS5 WebKit Autoloader host pages (v0.6.1 build from itsPLK host package).
+
+These are SELF-CONTAINED standalone HTML pages produced by the upstream
+build (ps5-webkit-remote-loader tools/build_standalone + build_host).
+All exploit JS (offsets, ROP, poops.js / relapse.js, autoload.js, elfldr-check)
+is INLINED inside each HTML file — there are intentionally no separate .js
+files in the release host zip.
+
+Files:
+  index.html   — Relapse chain (default route on the PC host)
+  relapse.html — same bytes as index.html (explicit name for clarity)
+  poops.html   — Poops chain (used for 9.05 / 11.40 where Relapse is unsupported)
+
+Upstream repo (source only, ~1.4 MB of blobs, no baked exploits):
+  https://github.com/itsPLK/ps5-webkit-autoloader
+Exploit/JS submodule (baked at build time):
+  https://github.com/itsPLK/ps5-webkit-remote-loader
+
+Do not fetch at runtime — copy from these assets into the LAN host root.

@@ -22,8 +22,9 @@
     }
 
     
-    @media (orientation: landscape) and (max-height: 500px) {
-      /* Phone landscape: rotate the card so it reads portrait */
+    /* Phone landscape fallback: rotate the card so it reads portrait.
+       Limited to phone-sized widths so tablets / split-screen never trigger it. */
+    @media (orientation: landscape) and (max-height: 500px) and (max-width: 950px) {
       .app-card {
         transform: rotate(-90deg);
         transform-origin: center center;
@@ -32,16 +33,6 @@
         max-height: 90vw;
         height: 90vw;
       }
-    }
-    @media (min-width: 600px) and (orientation: portrait) {
-      /* Tablet portrait: wider card, bigger font */
-      .app-card { max-width: 520px; padding: 30px 28px; }
-      h2 { font-size: 28px; }
-    }
-    @media (min-width: 768px) and (orientation: landscape) {
-      /* Tablet landscape: normal, just size it nicely */
-      .app-card { max-width: 480px; max-height: 88vh; }
-      body, html { align-items: center; }
     }
 
     #wallpaper-layer {
@@ -299,7 +290,8 @@
     }
 
     .flex-row-buttons { display: flex; gap: 8px; margin-bottom: 12px; }
-    .btn-sync, .btn-folder, .btn-add-loadout { 
+    .btn-sync, .btn-folder, .btn-add-loadout, .btn-official {
+ 
       flex: 1; padding: 12px; background: rgba(255, 255, 255, 0.04); 
       border: 1px solid rgba(255,255,255,0.08); color: #fff; border-radius: 12px; 
       font-size: 11px; font-weight: 600; cursor: pointer; text-transform: uppercase; 
@@ -422,16 +414,120 @@
     .prompt-btn.confirm { background: rgba(26, 114, 255, 0.2); color: #fff; border: 1px solid var(--ps5-light-blue); }
     .prompt-btn.confirm:hover { background: rgba(26, 114, 255, 0.4); border-color: var(--ps5-accent); box-shadow: 0 0 15px rgba(0, 240, 255, 0.2); }
 
+
+    /* ---------- TABLET SUPPORT ---------- */
+    /* Tablet portrait: wider card, larger type and touch targets */
+    @media (min-width: 600px) and (min-height: 700px) and (orientation: portrait) {
+      .app-card { max-width: min(680px, 92vw); max-height: 92%; padding: 34px 32px; border-radius: 32px; }
+      h2 { font-size: 32px; }
+      .subtitle { font-size: 12px; }
+      .input-group label { font-size: 12px; }
+      input[type="text"], input[type="number"], select { padding: 15px; font-size: 16px; }
+      .tab-btn, .env-btn { font-size: 15px; padding: 15px 6px; }
+      .cb-label { font-size: 15px; }
+      .cb-box { width: 21px; height: 21px; }
+      .payload-cb-row { padding: 13px 16px; }
+      .ps4-cloud-btn { font-size: 13px; padding: 18px 10px; }
+      button.primary-btn { padding: 19px; font-size: 16px; }
+    }
+
+    /* Tablet landscape: SPLIT VIEW - Exploits on the left, Payloads on the right.
+       (Keep this query in sync with SPLIT_QUERY in the script.) */
+    .row.split-only { display: none; }
+    @media (min-width: 900px) and (min-height: 500px) and (orientation: landscape) {
+      .app-card {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        grid-template-rows: auto auto minmax(0, 1fr);
+        column-gap: 36px;
+        width: 94%; max-width: min(1400px, 96vw);
+        height: 92vh; max-height: 92vh;
+        padding: 26px 40px; border-radius: 32px;
+      }
+      .header-bar, .row { grid-column: 1 / -1; }
+      .header-bar + .row .input-group { max-width: 620px; }
+      .tabs { display: none; }
+      #tab-exploit, #tab-payloads {
+        display: flex; min-height: 0; padding-right: 8px;
+      }
+      #tab-exploit  { grid-column: 1; grid-row: 3; }
+      #tab-payloads { grid-column: 2; grid-row: 3;
+        border-left: 1px solid rgba(255,255,255,0.08); padding-left: 36px; margin-left: -18px; }
+      .row.split-only { display: flex; }
+      .pane-title {
+        font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+        color: var(--ps5-light-blue); padding-bottom: 12px; margin-bottom: 16px;
+        border-bottom: 2px solid var(--ps5-light-blue);
+      }
+      .settings-panel { left: auto; right: 40px; width: 460px; max-height: 80%; overflow-y: auto; }
+      h2 { font-size: 30px; }
+      .subtitle { font-size: 12px; }
+      .input-group label { font-size: 12px; }
+      input[type="text"], input[type="number"], select { padding: 14px; font-size: 16px; }
+      .env-btn { font-size: 15px; padding: 14px 6px; }
+      .cb-label { font-size: 15px; }
+      .cb-box { width: 21px; height: 21px; }
+      .payload-cb-row { padding: 12px 16px; }
+      .ps4-cloud-btn { font-size: 13px; padding: 16px 10px; }
+      button.primary-btn { padding: 18px; font-size: 16px; }
+    }
+    .pane-title { display: none; }
+    @media (min-width: 900px) and (min-height: 500px) and (orientation: landscape) { .pane-title { display: block; } }
+
+
+    #srcPanel { display: none; position: fixed; z-index: 60; left: 50%; top: 50%; transform: translate(-50%,-50%);
+      width: min(520px, 92vw); max-height: 85vh; overflow-y: auto; flex-direction: column; padding: 20px;
+      background: rgba(8,12,23,.97); border: 1px solid rgba(255,255,255,.12); border-radius: 20px; box-shadow: 0 20px 45px rgba(0,0,0,.9); }
+    #srcPanel.open { display: flex; }
+    /* Left-edge WebKit host control — always available */
+    #hostFab, #hostPanel { position: fixed; z-index: 50; }
+    #hostFab {
+      display: flex; align-items: center; justify-content: center;
+      left: 0; top: 50%; transform: translateY(-50%);
+      width: 42px; height: 64px;
+      border-radius: 0 18px 18px 0;
+      font-size: 22px; line-height: 1; cursor: pointer;
+      background: rgba(12, 18, 32, 0.88);
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      border-left: none;
+      color: #fff;
+      backdrop-filter: blur(10px);
+      box-shadow: 4px 0 18px rgba(0,0,0,.45);
+      transition: background .2s, box-shadow .2s, border-color .2s;
+    }
+    #hostFab:active { transform: translateY(-50%) scale(0.97); }
+    #hostFab.on {
+      border-color: var(--ps5-accent);
+      background: rgba(0, 240, 255, 0.14);
+      box-shadow: 0 0 20px rgba(0,240,255,.35);
+    }
+    #hostPanel {
+      display: none;
+      left: 52px; top: 50%; transform: translateY(-50%);
+      width: min(340px, calc(100vw - 70px));
+      max-height: 70vh;
+      flex-direction: column; padding: 18px;
+      background: rgba(8,12,23,.97);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 18px;
+      box-shadow: 0 20px 45px rgba(0,0,0,.9);
+    }
+    #hostPanel.open { display: flex; }
+    #hostFiles { overflow-y: auto; min-height: 50px; }
+    /* Leave room at bottom for Android nav bar */
+    body { padding-bottom: env(safe-area-inset-bottom, 0px); }
+    .app-card { margin-bottom: max(12px, env(safe-area-inset-bottom, 0px)); }
   </style>
 </head>
 <body>
 
   <div id="wallpaper-layer"></div>
+  <video id="wallpaper-video" muted loop playsinline style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55;z-index:0"></video>
   <div class="bg-canvas-container" id="gradient-layer">
     <canvas id="vfxCanvas"></canvas>
   </div>
   
-  <input type="file" id="bgUploader" accept="image/*" style="display: none;" onchange="handleBgUpload(event)">
+  <input type="file" id="bgUploader" accept="image/*,video/*" style="display: none;" onchange="handleBgUpload(event)">
   <input type="file" id="folderUploader" accept="*/*" multiple style="display: none;" onchange="handleFolderSelected(event)">
 
   <div class="app-card">
@@ -537,7 +633,7 @@
         <label data-i18n="ipLabel">Host Console IP</label>
         <input type="text" id="ip" value="192.168.1.100" oninput="saveConfigDebounced()" spellcheck="false">
       </div>
-      <div class="input-group" style="flex: 0.4;">
+      <div class="input-group" id="portGroup" style="flex: 0.4;">
         <label data-i18n="portLabel">Port</label>
         <input type="number" id="port" value="9026" oninput="saveConfigDebounced()">
       </div>
@@ -549,6 +645,7 @@
     </div>
 
     <div id="tab-exploit" class="tab-content active">
+      <div class="pane-title" data-i18n="tabExploit">Exploits</div>
       <div class="unified-control-deck">
         
         <div id="fileSelectorArea" class="local-upload-area">
@@ -576,12 +673,18 @@
     </div>
 
     <div id="tab-payloads" class="tab-content">
-      
+      <div class="pane-title" data-i18n="tabPayloads">Payloads</div>
+      <input type="hidden" id="payloadPort" value="9021">
       <div class="loadout-controls-container">
         <select id="loadoutSelector" onchange="handleLoadoutChange()">
           <option value="default" data-i18n="allPayloads">-- All Payloads --</option>
         </select>
         <button id="deleteLoadoutBtn" class="tiny-delete-btn" title="Delete Active Loadout" onclick="deleteCurrentLoadout()">✕</button>
+      </div>
+
+      <div class="vfx-row" id="macroRow" style="display:none; margin-bottom:12px;">
+        <span class="vfx-label-text" data-i18n="macroLabel">Auto-send after exploit</span>
+        <label class="custom-toggle"><input type="checkbox" id="macroToggle" onchange="setMacro(this.checked)"><span class="toggle-slider"></span></label>
       </div>
 
       <div class="flex-row-buttons">
@@ -620,6 +723,32 @@
         </button>
         <br/>
       </div>
+    </div>
+  </div>
+
+  <button id="hostFab" onclick="toggleHostPanel()" title="Host WebKit / files">📡</button>
+  <div id="hostPanel">
+    <div class="zone-title" data-i18n="hostTitle">Host Files</div>
+    <div id="hostUrl" class="file-name-display" style="margin:6px 0"></div>
+    <div id="hostFiles" class="payload-cb-list"></div>
+    <input type="file" id="hostInput" multiple style="display:none" onchange="addHostFiles(event)">
+    <div class="flex-row-buttons">
+      <button class="btn-folder" onclick="document.getElementById('hostInput').click()"><span>➕</span> <span data-i18n="hostAdd">Add Files</span></button>
+      <button class="btn-folder" onclick="seedWebkitHostFiles(true)" title="Install bundled WebKit Autoloader pages"><span>🕸</span> <span>WebKit</span></button>
+      <button class="btn-sync" id="hostToggle" onclick="toggleHosting()"><span data-i18n="hostStart">Start Hosting</span></button>
+    </div>
+  </div>
+
+  <div id="srcPanel">
+    <div class="zone-title" data-i18n="updatesBtn">Updates</div>
+    <div id="srcList" class="payload-cb-list"></div>
+    <input type="text" id="srcName" placeholder="Name (e.g. Shadow Mount)" spellcheck="false">
+    <input type="text" id="srcRepo" placeholder="GitHub repo (owner/repo)" spellcheck="false" style="margin-top:8px">
+    <input type="text" id="srcAsset" placeholder="File to fetch" value="*.elf" spellcheck="false" style="margin:8px 0">
+    <div class="flex-row-buttons">
+      <button class="btn-folder" onclick="addSource()"><span>➕</span> <span data-i18n="srcAdd">Add</span></button>
+      <button class="btn-sync" onclick="updateAllSources()"><span>🔄</span> <span data-i18n="srcUpdateAll">Update All</span></button>
+      <button class="btn-add-loadout" onclick="toggleSrcPanel()"><span>✕</span></button>
     </div>
   </div>
 
@@ -695,9 +824,9 @@
 
     const dictionary = {
       "en-US": {
-        appSubtitle: "PS5 / PS4 PAYLOAD INJECTOR", tabExploit: "Exploits", tabPayloads: "Payloads",
+        appSubtitle: "PS5 / PS4 PAYLOAD INJECTOR", tabExploit: "Exploits", tabPayloads: "Payloads", macroLabel: "Auto-send after exploit", updatesBtn: "Updates", srcAdd: "Add", srcUpdateAll: "Update All", hostTitle: "Host Files", hostAdd: "Add Files", hostStart: "Start Hosting", hostStop: "Stop Hosting", hostEmpty: "No files added yet",
         ipLabel: "Host IP", portLabel: "Port", loadLocal: "Select File...",
-        btnTransmit: "SEND", syncBtn: "Sync", folderBtn: "Map", armoryCloudTitle: "Hall of Fame",
+        btnTransmit: "SEND", syncBtn: "Sync", folderBtn: "Map", officialRepoBtn: "Update from official repo", armoryCloudTitle: "Hall of Fame",
         armoryLocalTitle: "Local Stash", armoryEmpty: "Awaiting sync or folder map.",
         delayLabel: "Delay (ms)", btnInjectSeq: "Send Sequence", settingsTitle: "System Settings",
         langLabel: "Interface Language", vfxTitle: "Lag Optimization Suite",
@@ -727,30 +856,30 @@
         toast_diagnostic: "Diagnostic mode: stream routed through native bridge."
       },
       "eta-wen": { appSubtitle: "ETA WEN? (The age old question)", tabExploit: "Kexps", tabPayloads: "Digital Candy", ipLabel: "Host IP", portLabel: "Port", loadLocal: "Go Dumpster diving", btnTransmit: "Gaslight the System", syncBtn: "Sync", folderBtn: "Map", armoryCloudTitle: "Hall of Fame", armoryLocalTitle: "PWN STAsh", armoryEmpty: "Feed me or feed me files", delayLabel: "Procrastination (ms)", btnInjectSeq: "Initiate Panic Mode", settingsTitle: "IDU Mode", langLabel: "For Casuals", vfxTitle: "Lag Optimization Suite", vfxBubbles: "Pop the bubbles", vfxLightning: "Remove 'I talk to Skynet' evidence", vfxFountain: "Remove 'I touched the screen' evidence", bgBtn: "TRAVELINSTYLE", resetBgBtn: "Hide your shame", dragFallback: "How could I possibly be expected to handle your commands on a day like this?", allPayloads: "All the Yum-Yums", saveLoadoutBtn: "Save" },
-      "sw-KE": { appSubtitle: "KIDUNGUAJI CHA PS4 / PS5", tabExploit: "Matumizi", tabPayloads: "Mizigo", ipLabel: "IP ya Kifaa", portLabel: "Lango", loadLocal: "Pakia Mzigo wa Ndani...", cloudDivider: "AU TUMIA WINGU", btnTransmit: "Tuma Mzigo", syncBtn: "Sawazisha", folderBtn: "Folda", armoryCloudTitle: "Silaha za Wingu", armoryLocalTitle: "Silaha za Ndani", armoryEmpty: "Sawazisha au chagua folda...", delayLabel: "Kuchelewa (ms)", btnInjectSeq: "Anza Mlolongo", settingsTitle: "Mipangilio", langLabel: "Lugha ya Mfumo", vfxTitle: "Athari za Kuona", vfxBubbles: "Zima Mapovu", vfxLightning: "Zima Umeme", vfxFountain: "Disable Touch Particles", bgBtn: "Badilisha Karatasi", resetBgBtn: "Weka Upya Karatasi", dragFallback: "Chagua mzigo kwanza.", allPayloads: "-- Mizigo Yote --", saveLoadoutBtn: "Hifadhi" },
-      "fr-FR": { appSubtitle: "INJECTEUR DE PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", ipLabel: "IP de la Console", portLabel: "Port", loadLocal: "Charger Payload Local...", cloudDivider: "OU DÉPLOIEMENT CLOUD", btnTransmit: "Envoyer Payload", syncBtn: "Sync", folderBtn: "Dossier", armoryCloudTitle: "Arsenal Cloud", armoryLocalTitle: "Arsenal Local", armoryEmpty: "Synchronisez ou choisissez un dossier...", delayLabel: "Délai (ms)", btnInjectSeq: "Injecter Séquence", settingsTitle: "Paramètres Système", langLabel: "Langue", vfxTitle: "Effets Visuels", vfxBubbles: "Désactiver les Bulles", vfxLightning: "Désactiver les Éclairs", vfxFountain: "Disable Touch Particles", bgBtn: "Changer Fond", resetBgBtn: "Réinitialiser Fond", dragFallback: "Sélectionnez des payloads d'abord.", allPayloads: "-- Tous les Payloads --", saveLoadoutBtn: "Enregistrer" },
-      "es-ES": { appSubtitle: "INYECTOR DE PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", ipLabel: "IP de Consola", portLabel: "Puerto", loadLocal: "Cargar Payload Local...", cloudDivider: "O DESPLIEGUE EN LA NUBE", btnTransmit: "Enviar Payload", syncBtn: "Sync", folderBtn: "Mapear", armoryCloudTitle: "Arsenal en la Nube", armoryLocalTitle: "Arsenal Local", armoryEmpty: "Sincroniza o elige una carpeta...", delayLabel: "Retraso (ms)", btnInjectSeq: "Inyectar Secuencia", settingsTitle: "Ajustes de Sistema", langLabel: "Idioma", vfxTitle: "Efectos Visuales", vfxBubbles: "Desactivar Burbujas", vfxLightning: "Desactivar Relámpagos", vfxFountain: "Disable Touch Particles", bgBtn: "Cambiar Fondo", resetBgBtn: "Restaurar Fondo", dragFallback: "Selecciona payloads primero.", allPayloads: "-- Todos los Payloads --", saveLoadoutBtn: "Guardar" },
-      "pt-BR": { appSubtitle: "INJETOR DE PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", ipLabel: "IP do Console", portLabel: "Porta", loadLocal: "Carregar Payload Local...", cloudDivider: "OU DEPLOY NA NUVEM", btnTransmit: "Enviar Payload", syncBtn: "Sync", folderBtn: "Pasta", armoryCloudTitle: "Arsenal na Nuvem", armoryLocalTitle: "Arsenal Local", armoryEmpty: "Sincronize ou escolha uma pasta...", delayLabel: "Atraso (ms)", btnInjectSeq: "Injetar Sequência", settingsTitle: "Configurações", langLabel: "Idioma", vfxTitle: "Efeitos Visuais", vfxBubbles: "Desativar Bolhas", vfxLightning: "Desativar Raios", vfxFountain: "Disable Touch Particles", bgBtn: "Alterar Fundo", resetBgBtn: "Resetar Fundo", dragFallback: "Selecione payloads primeiro.", allPayloads: "-- Todos os Payloads --", saveLoadoutBtn: "Salvar" },
-      "et-EE": { appSubtitle: "PS4/PS5 PAYLOAD SÜSTIJA", tabExploit: "Eksploitid", tabPayloads: "Payloadid", ipLabel: "Konsooli IP", portLabel: "Port", loadLocal: "Laadi Kohalik Payload...", cloudDivider: "VÕI PILVE JUURUTAMINE", btnTransmit: "Saada Payload", syncBtn: "Sünkrooni", folderBtn: "Kaust", armoryCloudTitle: "Pilve Arsenal", armoryLocalTitle: "Kohalik Arsenal", armoryEmpty: "Sünkrooni või vali kaust...", delayLabel: "Viivitus (ms)", btnInjectSeq: "Süsti Järjestus", settingsTitle: "Süsteemi Seaded", langLabel: "Keel", vfxTitle: "Visuaalsed Efektid", vfxBubbles: "Keela Mullid", vfxLightning: "Keela Välk", vfxFountain: "Disable Touch Particles", bgBtn: "Muuda Tausta", resetBgBtn: "Lähtesta Taust", dragFallback: "Vali esmalt payloadid.", allPayloads: "-- Kõik Payloadid --", saveLoadoutBtn: "Salvesta" },
-      "ru-RU": { appSubtitle: "ИНЖЕКТОР ПЕЙЛОАДОВ PS4/PS5", tabExploit: "Эксплойты", tabPayloads: "Пейлоады", ipLabel: "IP Консоли", portLabel: "Порт", loadLocal: "Локальный Пейлоад...", cloudDivider: "ИЛИ ОБЛАЧНЫЙ СКРИПТ", btnTransmit: "Отправить Пейлоад", syncBtn: "Синхр", folderBtn: "Папка", armoryCloudTitle: "Облачный Арсенал", armoryLocalTitle: "Локальный Арсенал", armoryEmpty: "Синхронизируйте или выберите папку...", delayLabel: "Задержка (мс)", btnInjectSeq: "Запуск Серии", settingsTitle: "Настройки Системы", langLabel: "Язык Интерфейса", vfxTitle: "Визуальные Эффекты", vfxBubbles: "Отключить Пузыри", vfxLightning: "Отключить Молнии", vfxFountain: "Disable Touch Particles", bgBtn: "Изменить Обои", resetBgBtn: "Сбросить Обои", dragFallback: "Сначала выберите пейлоады.", allPayloads: "-- Все Пейлоады --", saveLoadoutBtn: "Сохранить" },
-      "ja-JP": { appSubtitle: "PS4/PS5 ペイロードインジェクタ", tabExploit: "エクスプロイト", tabPayloads: "ペイロード", ipLabel: "コンソールIP", portLabel: "ポート", loadLocal: "ローカルペイロードを読込...", cloudDivider: "またはクラウド展開", btnTransmit: "ペイロード送信", syncBtn: "同期", folderBtn: "フォルダ", armoryCloudTitle: "クラウド武器庫", armoryLocalTitle: "ローカル武器庫", armoryEmpty: "同期またはフォルダを選択...", delayLabel: "遅延 (ms)", btnInjectSeq: "連続インジェクト", settingsTitle: "システム設定", langLabel: "言語", vfxTitle: "視覚効果", vfxBubbles: "泡エフェクトを無効化", vfxLightning: "稲妻エフェクトを無効化", vfxFountain: "Disable Touch Particles", bgBtn: "壁紙を変更", resetBgBtn: "壁紙をリセット", dragFallback: "最初にペイロードを選択してください。", allPayloads: "-- 全てのペイロード --", saveLoadoutBtn: "保存" },
-      "ko-KR": { appSubtitle: "PS4/PS5 페이로드 인젝터", tabExploit: "익스플로잇", tabPayloads: "페이로드", ipLabel: "콘솔 IP", portLabel: "포트", loadLocal: "로컬 페이로드 로드...", cloudDivider: "또는 클라우드 배포", btnTransmit: "페이로드 전송", syncBtn: "동기화", folderBtn: "폴더", armoryCloudTitle: "클라우드 무기고", armoryLocalTitle: "로컬 무기고", armoryEmpty: "동기화 또는 폴더를 선택하세요...", delayLabel: "주입 지연 (ms)", btnInjectSeq: "시퀀스 주입", settingsTitle: "시스템 설정", langLabel: "언어", vfxTitle: "시각 효과", vfxBubbles: "버블 비활성화", vfxLightning: "번개 비활성화", vfxFountain: "Disable Touch Particles", bgBtn: "배경화면 변경", resetBgBtn: "배경화면 초기화", dragFallback: "먼저 페이로드를 선택하세요.", allPayloads: "-- 모든 페이로드 --", saveLoadoutBtn: "저장" },
-      "zh-CN": { appSubtitle: "PS4/PS5 有效载荷注入器", tabExploit: "漏洞利用", tabPayloads: "有效载荷", ipLabel: "主机 IP", portLabel: "端口", loadLocal: "加载本地有效载荷...", cloudDivider: "或使用云端部署", btnTransmit: "发送有效载荷", syncBtn: "同步", folderBtn: "文件夹", armoryCloudTitle: "云端武器库", armoryLocalTitle: "本地武器库", armoryEmpty: "同步或选择一个文件夹...", delayLabel: "注入延迟 (毫秒)", btnInjectSeq: "序列注入", settingsTitle: "系统设置", langLabel: "界面语言", vfxTitle: "视觉效果", vfxBubbles: "禁用气泡", vfxLightning: "禁用闪电", vfxFountain: "Disable Touch Particles", bgBtn: "更改壁纸", resetBgBtn: "重置壁纸", dragFallback: "请先选择有效载荷。", allPayloads: "-- 所有有效载荷 --", saveLoadoutBtn: "保存" },
-      "fi-FI": { appSubtitle: "PS4/PS5 PAYLOAD SYÖTTÄJÄ", tabExploit: "Exploitit", tabPayloads: "Payloadit", ipLabel: "Konsolin IP", portLabel: "Portti", loadLocal: "Lataa Paikallinen Payload...", cloudDivider: "TAI PILVIKÄYTTÖ", btnTransmit: "Lähetä Payload", syncBtn: "Synkronoi", folderBtn: "Kansio", armoryCloudTitle: "Pilviarsenaali", armoryLocalTitle: "Paikallinen Arsenaali", armoryEmpty: "Synkronoi tai valitse kansio...", delayLabel: "Viive (ms)", btnInjectSeq: "Syötä Sarja", settingsTitle: "Järjestelmäasetukset", langLabel: "Kieli", vfxTitle: "Visuaaliset Efektit", vfxBubbles: "Poista Kuplat", vfxLightning: "Poista Salamat", vfxFountain: "Disable Touch Particles", bgBtn: "Vaihda Taustakuva", resetBgBtn: "Nollaa Taustakuva", dragFallback: "Valitse payloadit ensin.", allPayloads: "-- Kaikki Payloadit --", saveLoadoutBtn: "Tallenna" },
-      "gd-GB": { appSubtitle: "INJECTOR PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", ipLabel: "IP a' Chonsail", portLabel: "Port", loadLocal: "Luchdaich Payload Ionadail...", cloudDivider: "NÒ CLEACHDADH CLOUD", btnTransmit: "Cuir Payload", syncBtn: "Sioncronaich", folderBtn: "Pasgan", armoryCloudTitle: "Armlann Cloud", armoryLocalTitle: "Armlann Ionadail", armoryEmpty: "Sioncronaich no tagh pasgan...", delayLabel: "Dàil (ms)", btnInjectSeq: "Cuir Sreath", settingsTitle: "Roghainnean Siostaim", langLabel: "Cànan", vfxTitle: "Buaidhean Lèirsinneach", vfxBubbles: "Cuir dheth builgeanan", vfxLightning: "Cuir dheth dealanach", vfxFountain: "Disable Touch Particles", bgBtn: "Atharraich Pàipear-balla", resetBgBtn: "Ath-shuidhich Pàipear-balla", dragFallback: "Tagh payloads an toiseach.", allPayloads: "-- Na h-Uile Payloads --", saveLoadoutBtn: "Sàbhail" },
-      "ga-IE": { appSubtitle: "INJECTOR PAYLOAD PS4/PS5", tabExploit: "Saothrú", tabPayloads: "Ualaí", ipLabel: "IP Consóil", portLabel: "Port", loadLocal: "Lódáil Ualach Áitiúil...", cloudDivider: "NÓ ÚSÁID NÉAL", btnTransmit: "Seol Ualach", syncBtn: "Sionc", folderBtn: "Fillteán", armoryCloudTitle: "Armlann Néal", armoryLocalTitle: "Armlann Áitiúil", armoryEmpty: "Sioncronaigh nó roghnaigh fillteán...", delayLabel: "Moill (ms)", btnInjectSeq: "Instealladh Seicheamh", settingsTitle: "Socruithe Córais", langLabel: "Teanga", vfxTitle: "Éifeachtaí Físiúla", vfxBubbles: "Díchumasaigh Boilgeoga", vfxLightning: "Díchumasaigh Tintreach", vfxFountain: "Disable Touch Particles", bgBtn: "Athraigh Cúlbhrat", resetBgBtn: "Athshocraigh Cúlbhrat", dragFallback: "Roghnaigh ualaí ar dtús.", allPayloads: "-- Gach Ualach --", saveLoadoutBtn: "Sábháil" },
-      "zu-ZA": { appSubtitle: "UMFAKI WE-PAYLOAD WE-PS4/PS5", tabExploit: "Ukusetshenziswa", tabPayloads: "Imithwalo", ipLabel: "I-IP Yekhonsoli", portLabel: "Imbobo", loadLocal: "Layisha Umthwalo Wasendaweni...", cloudDivider: "NOMA UKUSEBENZISA IFU", btnTransmit: "Thumela Umthwalo", syncBtn: "Vumelanisa", folderBtn: "Ifolda", armoryCloudTitle: "Izikhali Zefu", armoryLocalTitle: "Izikhali Zasendaweni", armoryEmpty: "Vumelanisa noma khetha ifolda...", delayLabel: "Ukulibaziseka (ms)", btnInjectSeq: "Faka Ukulandelana", settingsTitle: "Izilungiselelo", langLabel: "Ulimi", vfxTitle: "Imiphumela Ebonakalayo", vfxBubbles: "Khubaza Amabhamuza", vfxLightning: "Khubaza Umbani", vfxFountain: "Disable Touch Particles", bgBtn: "Shintsha Isizinda", resetBgBtn: "Setha Kabusha Isizinda", dragFallback: "Khetha imithwalo kuqala.", allPayloads: "-- Yonke Imithwalo --", saveLoadoutBtn: "Londoloza" },
-      "hi-IN": { appSubtitle: "PS4/PS5 पेलोड इंजेक्टर", tabExploit: "एक्सप्लॉइट्स", tabPayloads: "पेलोड्स", ipLabel: "कंसोल IP", portLabel: "पोर्ट", loadLocal: "स्थानीय पेलोड लोड करें...", cloudDivider: "या क्लाउड डिप्लॉयमेंट", btnTransmit: "पेलोड भेजें", syncBtn: "सिंक", folderBtn: "फ़ोल्डर", armoryCloudTitle: "क्लाउड शस्त्रागार", armoryLocalTitle: "स्थानीय शस्त्रागार", armoryEmpty: "फ़ोल्डर सिंक करें या चुनें...", delayLabel: "इंजेक्शन देरी (ms)", btnInjectSeq: "अनुक्रम इंजेक्ट करें", settingsTitle: "सिस्टम सेटिंग्स", langLabel: "भाषा", vfxTitle: "दृश्य प्रभाव", vfxBubbles: "बुलबुले अक्षम करें", vfxLightning: "बिजली अक्षम करें", vfxFountain: "Disable Touch Particles", bgBtn: "वॉलपेपर बदलें", resetBgBtn: "वॉलपेपर रीसेट करें", dragFallback: "पहले पेलोड चुनें।", allPayloads: "-- सभी पेलोड्स --", saveLoadoutBtn: "सहेजें" },
-      "ar-SA": { appSubtitle: "حاقن الحمولات PS4/PS5", tabExploit: "الثغرات", tabPayloads: "الحمولات", ipLabel: "عنوان IP لجهاز التحكم", portLabel: "المنفذ", loadLocal: "تحميل حمولة محلية...", cloudDivider: "أو النشر السحابي", btnTransmit: "إرسال الحمولة", syncBtn: "مزامنة", folderBtn: "مجلد", armoryCloudTitle: "ترسانة السحابة", armoryLocalTitle: "ترسانة محلية", armoryEmpty: "قم بالمزامنة أو اختر مجلداً...", delayLabel: "تأخير الحقن (ملي ثانية)", btnInjectSeq: "حقن تسلسلي", settingsTitle: "إعدادات النظام", langLabel: "اللغة", vfxTitle: "مؤثرات بصرية", vfxBubbles: "تعطيل الفقاعات", vfxLightning: "تعطيل البرق", vfxFountain: "Disable Touch Particles", bgBtn: "تغيير الخلفية", resetBgBtn: "إعادة ضبط الخلفية", dragFallback: "اختر الحمولات أولاً.", allPayloads: "-- كل الحمولات --", saveLoadoutBtn: "حفظ" },
-      "ur-PK": { appSubtitle: "PS4/PS5 پے لوڈ انجیکٹر", tabExploit: "ایکسپلائٹس", tabPayloads: "پے لوڈز", ipLabel: "کنسول آئی پی", portLabel: "پورٹ", loadLocal: "مقامی پے لوڈ لوڈ کریں...", cloudDivider: "یا کلاؤڈ ڈپلائمنٹ", btnTransmit: "پے لوڈ بھیجیں", syncBtn: "سنک", folderBtn: "فولڈر", armoryCloudTitle: "کلاؤڈ اسلحہ خانہ", armoryLocalTitle: "مقامی اسلحہ خانہ", armoryEmpty: "سنک کریں یا فولڈر منتخب کریں...", delayLabel: "انجیکشن تاخیر (ms)", btnInjectSeq: "سلسلہ انجیکٹ کریں", settingsTitle: "سسٹم سیٹنگز", langLabel: "زبان", vfxTitle: "بصری اثرات", vfxBubbles: "بلبلے غیر فعال کریں", vfxLightning: "بجلی غیر فعال کریں", vfxFountain: "Disable Touch Particles", bgBtn: "وال پیپر تبدیل کریں", resetBgBtn: "وال پیپر ری سیٹ کریں", dragFallback: "پہلے پے لوڈز منتخب کریں۔", allPayloads: "-- تمام پے لوڈز --", saveLoadoutBtn: "محفوظ کریں" },
-      "fa-IR": { appSubtitle: "تزریق‌کننده پی‌لود PS4/PS5", tabExploit: "اکسپلویت‌ها", tabPayloads: "پی‌لودها", ipLabel: "IP کنسول", portLabel: "پورت", loadLocal: "بارگذاری پی‌لود محلی...", cloudDivider: "یا استقرار ابری", btnTransmit: "ارسال پی‌لود", syncBtn: "همگام‌سازی", folderBtn: "پوشه", armoryCloudTitle: "زرادخانه ابری", armoryLocalTitle: "زرادخانه محلی", armoryEmpty: "همگام‌سازی یا انتخاب پوشه...", delayLabel: "تاخیر تزریق (ms)", btnInjectSeq: "تزریق متوالی", settingsTitle: "تنظیمات سیستم", langLabel: "زبان", vfxTitle: "جلوه‌های بصری", vfxBubbles: "غیرفعال کردن حباب‌ها", vfxLightning: "غیرفعال کردن رعد و برق", vfxFountain: "Disable Touch Particles", bgBtn: "تغییر تصویر پس‌زمینه", resetBgBtn: "بازنشانی تصویر پس‌زمینه", dragFallback: "ابتدا پی‌لودها را انتخاب کنید.", allPayloads: "-- تمام پی‌لودها --", saveLoadoutBtn: "ذخیره" },
-      "tl-PH": { appSubtitle: "PS4/PS5 PAYLOAD INJECTOR", tabExploit: "Exploits", tabPayloads: "Payloads", ipLabel: "Console IP", portLabel: "Port", loadLocal: "Mag-load ng Lokal na Payload...", cloudDivider: "O CLOUD DEPLOYMENT", btnTransmit: "Ipadala ang Payload", syncBtn: "I-sync", folderBtn: "Folder", armoryCloudTitle: "Cloud Armory", armoryLocalTitle: "Lokal na Armory", armoryEmpty: "I-sync o pumili ng folder...", delayLabel: "Injection Delay (ms)", btnInjectSeq: "I-inject ang Sequence", settingsTitle: "Mga Setting", langLabel: "Wika", vfxTitle: "Visual Effects", vfxBubbles: "I-disable ang Bubbles", vfxLightning: "I-disable ang Lightning", vfxFountain: "Disable Touch Particles", bgBtn: "Baguhin ang Wallpaper", resetBgBtn: "I-reset ang Wallpaper", dragFallback: "Pumili muna ng payloads.", allPayloads: "-- Lahat ng Payloads --", saveLoadoutBtn: "I-save" },
-      "ta-IN": { appSubtitle: "PS4/PS5 பேலோடு இன்ஜெக்டர்", tabExploit: "எக்ஸ்ப்ளாயிட்ஸ்", tabPayloads: "பேலோடுகள்", ipLabel: "கன்சோல் IP", portLabel: "போர்ட்", loadLocal: "உள்ளூர் பேலோடை ஏற்றவும்...", cloudDivider: "அல்லது கிளவுட் வரிசைப்படுத்தல்", btnTransmit: "பேலோடை அனுப்பு", syncBtn: "ஒத்திசை", folderBtn: "கோப்புறை", armoryCloudTitle: "கிளவுட் ஆயுதக்கிடங்கு", armoryLocalTitle: "உள்ளூர் ஆயுதக்கிடங்கு", armoryEmpty: "ஒத்திசைக்கவும் அல்லது கோப்புறையைத் தேர்ந்தெடுக்கவும்...", delayLabel: "ஊசி தாமதம் (ms)", btnInjectSeq: "வரிசையை ஊசி போடு", settingsTitle: "கணினி அமைப்புகள்", langLabel: "மொழி", vfxTitle: "காட்சி விளைவுகள்", vfxBubbles: "குமிழ்களை முடக்கு", vfxLightning: "மின்னலை முடக்கு", vfxFountain: "Disable Touch Particles", bgBtn: "வால்பேப்பரை மாற்று", resetBgBtn: "வால்பேப்பரை மீட்டமை", dragFallback: "முதலில் பேலோடுகளைத் தேர்ந்தெடுக்கவும்.", allPayloads: "-- அனைத்து பேலோடுகள் --", saveLoadoutBtn: "சேமி" },
-      "tr-TR": { appSubtitle: "PS4/PS5 PAYLOAD ENJEKTÖRÜ", tabExploit: "Açıklar", tabPayloads: "Payloadlar", ipLabel: "Konsol IP'si", portLabel: "Port", loadLocal: "Yerel Payload Yükle...", cloudDivider: "VEYA BULUT DAĞITIMI", btnTransmit: "Payload Gönder", syncBtn: "Senkronize", folderBtn: "Klasör", armoryCloudTitle: "Bulut Cephaneliği", armoryLocalTitle: "Yerel Cephanelik", armoryEmpty: "Senkronize edin veya klasör seçin...", delayLabel: "Enjeksiyon Gecikmesi (ms)", btnInjectSeq: "Sıralı Enjekte Et", settingsTitle: "Sistem Ayarları", langLabel: "Arayüz Dili", vfxTitle: "Görsel Efektler", vfxBubbles: "Baloncukları Kapat", vfxLightning: "Şimşeği Kapat", vfxFountain: "Disable Touch Particles", bgBtn: "Duvar Kağıdını Değiştir", resetBgBtn: "Duvar Kağıdını Sıfırla", dragFallback: "Önce payload seçmelisiniz.", allPayloads: "-- Tüm Payloadlar --", saveLoadoutBtn: "Kaydet" },
-      "ms-MY": { appSubtitle: "PENYUNTIK PAYLOAD PS4/PS5", tabExploit: "Eksploit", tabPayloads: "Payload", ipLabel: "IP Konsol", portLabel: "Port", loadLocal: "Muat Payload Tempatan...", cloudDivider: "ATAU AWAN DEPLOYMENT", btnTransmit: "Hantar Payload", syncBtn: "Segerak", folderBtn: "Folder", armoryCloudTitle: "Gudang Senjata Awan", armoryLocalTitle: "Gudang Senjata Tempatan", armoryEmpty: "Segerak atau pilih folder...", delayLabel: "Lengah Suntikan (ms)", btnInjectSeq: "Suntik Jujukan", settingsTitle: "Tetapan Sistem", langLabel: "Bahasa", vfxTitle: "Kesan Visual", vfxBubbles: "Nyahaktif Gelembung", vfxLightning: "Nyahaktif Kilat", vfxFountain: "Disable Touch Particles", bgBtn: "Tukar Kertas Dinding", resetBgBtn: "Tetap Semula Kertas Dinding", dragFallback: "Pilih payload dahulu.", allPayloads: "-- Semua Payload --", saveLoadoutBtn: "Simpan" },
-      "hu-HU": { appSubtitle: "PS4/PS5 PAYLOAD INJEKTOR", tabExploit: "Exploitok", tabPayloads: "Payloadok", ipLabel: "Konzol IP", portLabel: "Port", loadLocal: "Helyi Payload Betöltése...", cloudDivider: "VAGY FELHŐ TELEPÍTÉS", btnTransmit: "Payload Küldése", syncBtn: "Szinkr", folderBtn: "Mappa", armoryCloudTitle: "Felhő Fegyvertár", armoryLocalTitle: "Helyi Fegyvertár", armoryEmpty: "Szinkronizálj vagy válassz mappát...", delayLabel: "Injektálási Késleltetés (ms)", btnInjectSeq: "Szekvencia Injektálása", settingsTitle: "Rendszerbeállítások", langLabel: "Nyelv", vfxTitle: "Vizuális Efektek", vfxBubbles: "Buborékok Kikapcs.", vfxLightning: "Villámok Kikapcs.", vfxFountain: "Disable Touch Particles", bgBtn: "Háttérkép Módosítása", resetBgBtn: "Háttérkép Visszaállítása", dragFallback: "Válassz payloadokat előbb.", allPayloads: "-- Összes Payload --", saveLoadoutBtn: "Mentés" },
-      "de-DE": { appSubtitle: "PS4/PS5 PAYLOAD INJEKTOR", tabExploit: "Exploits", tabPayloads: "Payloads", ipLabel: "Konsolen-IP", portLabel: "Port", loadLocal: "Lokalen Payload laden...", cloudDivider: "ODER CLOUD-BEREITSTELLUNG", btnTransmit: "Payload Senden", syncBtn: "Sync", folderBtn: "Ordner", armoryCloudTitle: "Cloud Waffenkammer", armoryLocalTitle: "Lokale Waffenkammer", armoryEmpty: "Synchronisieren oder Ordner wählen...", delayLabel: "Injektionsverzögerung (ms)", btnInjectSeq: "Sequenz Injezieren", settingsTitle: "Systemeinstellungen", langLabel: "Sprache", vfxTitle: "Visuelle Effekte", vfxBubbles: "Blasen Deaktivieren", vfxLightning: "Blitze Deaktivieren", vfxFountain: "Disable Touch Particles", bgBtn: "Hintergrund Ändern", resetBgBtn: "Hintergrund Zurücksetzen", dragFallback: "Zuerst Payloads auswählen.", allPayloads: "-- Alle Payloads --", saveLoadoutBtn: "Speichern" },
-      "pl-PL": { appSubtitle: "INIEKTOR PAYLOADÓW PS4/PS5", tabExploit: "Exploity", tabPayloads: "Payloady", ipLabel: "IP Konsoli", portLabel: "Port", loadLocal: "Załaduj Lokalny Payload...", cloudDivider: "LUB WDROŻENIE W CHMURZE", btnTransmit: "Wyślij Payload", syncBtn: "Sync", folderBtn: "Folder", armoryCloudTitle: "Arsenał w Chmurze", armoryLocalTitle: "Arsenał Lokalny", armoryEmpty: "Zsynchronizuj lub wybierz folder...", delayLabel: "Opóźnienie Iniekcji (ms)", btnInjectSeq: "Iniekcja Sekwencji", settingsTitle: "Ustawienia Systemu", langLabel: "Język", vfxTitle: "Efekty Wizualne", vfxBubbles: "Wyłącz Bąbelki", vfxLightning: "Wyłącz Błyskawice", vfxFountain: "Disable Touch Particles", bgBtn: "Zmień Tapetę", resetBgBtn: "Zresetuj Tapetę", dragFallback: "Najpierw wybierz payloady.", allPayloads: "-- Wszystkie Payloady --", saveLoadoutBtn: "Zapisz" }
+      "sw-KE": { appSubtitle: "KIDUNGUAJI CHA PS4 / PS5", tabExploit: "Matumizi", tabPayloads: "Mizigo", hostTitle: "Pangisha Faili", hostAdd: "Ongeza Faili", hostStart: "Anza Kupangisha", hostStop: "Acha Kupangisha", hostEmpty: "Hakuna faili zilizoongezwa", ipLabel: "IP ya Kifaa", portLabel: "Lango", loadLocal: "Pakia Mzigo wa Ndani...", cloudDivider: "AU TUMIA WINGU", btnTransmit: "Tuma Mzigo", syncBtn: "Sawazisha", folderBtn: "Folda", armoryCloudTitle: "Silaha za Wingu", armoryLocalTitle: "Silaha za Ndani", armoryEmpty: "Sawazisha au chagua folda...", delayLabel: "Kuchelewa (ms)", btnInjectSeq: "Anza Mlolongo", settingsTitle: "Mipangilio", langLabel: "Lugha ya Mfumo", vfxTitle: "Athari za Kuona", vfxBubbles: "Zima Mapovu", vfxLightning: "Zima Umeme", vfxFountain: "Disable Touch Particles", bgBtn: "Badilisha Karatasi", resetBgBtn: "Weka Upya Karatasi", dragFallback: "Chagua mzigo kwanza.", allPayloads: "-- Mizigo Yote --", saveLoadoutBtn: "Hifadhi" },
+      "fr-FR": { appSubtitle: "INJECTEUR DE PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", hostTitle: "Héberger des fichiers", hostAdd: "Ajouter des fichiers", hostStart: "Démarrer l'hébergement", hostStop: "Arrêter l'hébergement", hostEmpty: "Aucun fichier ajouté", ipLabel: "IP de la Console", portLabel: "Port", loadLocal: "Charger Payload Local...", cloudDivider: "OU DÉPLOIEMENT CLOUD", btnTransmit: "Envoyer Payload", syncBtn: "Sync", folderBtn: "Dossier", armoryCloudTitle: "Arsenal Cloud", armoryLocalTitle: "Arsenal Local", armoryEmpty: "Synchronisez ou choisissez un dossier...", delayLabel: "Délai (ms)", btnInjectSeq: "Injecter Séquence", settingsTitle: "Paramètres Système", langLabel: "Langue", vfxTitle: "Effets Visuels", vfxBubbles: "Désactiver les Bulles", vfxLightning: "Désactiver les Éclairs", vfxFountain: "Disable Touch Particles", bgBtn: "Changer Fond", resetBgBtn: "Réinitialiser Fond", dragFallback: "Sélectionnez des payloads d'abord.", allPayloads: "-- Tous les Payloads --", saveLoadoutBtn: "Enregistrer" },
+      "es-ES": { appSubtitle: "INYECTOR DE PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", hostTitle: "Alojar archivos", hostAdd: "Añadir archivos", hostStart: "Iniciar alojamiento", hostStop: "Detener alojamiento", hostEmpty: "Aún no hay archivos", ipLabel: "IP de Consola", portLabel: "Puerto", loadLocal: "Cargar Payload Local...", cloudDivider: "O DESPLIEGUE EN LA NUBE", btnTransmit: "Enviar Payload", syncBtn: "Sync", folderBtn: "Mapear", armoryCloudTitle: "Arsenal en la Nube", armoryLocalTitle: "Arsenal Local", armoryEmpty: "Sincroniza o elige una carpeta...", delayLabel: "Retraso (ms)", btnInjectSeq: "Inyectar Secuencia", settingsTitle: "Ajustes de Sistema", langLabel: "Idioma", vfxTitle: "Efectos Visuales", vfxBubbles: "Desactivar Burbujas", vfxLightning: "Desactivar Relámpagos", vfxFountain: "Disable Touch Particles", bgBtn: "Cambiar Fondo", resetBgBtn: "Restaurar Fondo", dragFallback: "Selecciona payloads primero.", allPayloads: "-- Todos los Payloads --", saveLoadoutBtn: "Guardar" },
+      "pt-BR": { appSubtitle: "INJETOR DE PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", hostTitle: "Hospedar arquivos", hostAdd: "Adicionar arquivos", hostStart: "Iniciar hospedagem", hostStop: "Parar hospedagem", hostEmpty: "Nenhum arquivo adicionado", ipLabel: "IP do Console", portLabel: "Porta", loadLocal: "Carregar Payload Local...", cloudDivider: "OU DEPLOY NA NUVEM", btnTransmit: "Enviar Payload", syncBtn: "Sync", folderBtn: "Pasta", armoryCloudTitle: "Arsenal na Nuvem", armoryLocalTitle: "Arsenal Local", armoryEmpty: "Sincronize ou escolha uma pasta...", delayLabel: "Atraso (ms)", btnInjectSeq: "Injetar Sequência", settingsTitle: "Configurações", langLabel: "Idioma", vfxTitle: "Efeitos Visuais", vfxBubbles: "Desativar Bolhas", vfxLightning: "Desativar Raios", vfxFountain: "Disable Touch Particles", bgBtn: "Alterar Fundo", resetBgBtn: "Resetar Fundo", dragFallback: "Selecione payloads primeiro.", allPayloads: "-- Todos os Payloads --", saveLoadoutBtn: "Salvar" },
+      "et-EE": { appSubtitle: "PS4/PS5 PAYLOAD SÜSTIJA", tabExploit: "Eksploitid", tabPayloads: "Payloadid", hostTitle: "Failide majutus", hostAdd: "Lisa faile", hostStart: "Käivita majutus", hostStop: "Peata majutus", hostEmpty: "Faile pole lisatud", ipLabel: "Konsooli IP", portLabel: "Port", loadLocal: "Laadi Kohalik Payload...", cloudDivider: "VÕI PILVE JUURUTAMINE", btnTransmit: "Saada Payload", syncBtn: "Sünkrooni", folderBtn: "Kaust", armoryCloudTitle: "Pilve Arsenal", armoryLocalTitle: "Kohalik Arsenal", armoryEmpty: "Sünkrooni või vali kaust...", delayLabel: "Viivitus (ms)", btnInjectSeq: "Süsti Järjestus", settingsTitle: "Süsteemi Seaded", langLabel: "Keel", vfxTitle: "Visuaalsed Efektid", vfxBubbles: "Keela Mullid", vfxLightning: "Keela Välk", vfxFountain: "Disable Touch Particles", bgBtn: "Muuda Tausta", resetBgBtn: "Lähtesta Taust", dragFallback: "Vali esmalt payloadid.", allPayloads: "-- Kõik Payloadid --", saveLoadoutBtn: "Salvesta" },
+      "ru-RU": { appSubtitle: "ИНЖЕКТОР ПЕЙЛОАДОВ PS4/PS5", tabExploit: "Эксплойты", tabPayloads: "Пейлоады", hostTitle: "Хостинг файлов", hostAdd: "Добавить файлы", hostStart: "Запустить хостинг", hostStop: "Остановить хостинг", hostEmpty: "Файлы не добавлены", ipLabel: "IP Консоли", portLabel: "Порт", loadLocal: "Локальный Пейлоад...", cloudDivider: "ИЛИ ОБЛАЧНЫЙ СКРИПТ", btnTransmit: "Отправить Пейлоад", syncBtn: "Синхр", folderBtn: "Папка", armoryCloudTitle: "Облачный Арсенал", armoryLocalTitle: "Локальный Арсенал", armoryEmpty: "Синхронизируйте или выберите папку...", delayLabel: "Задержка (мс)", btnInjectSeq: "Запуск Серии", settingsTitle: "Настройки Системы", langLabel: "Язык Интерфейса", vfxTitle: "Визуальные Эффекты", vfxBubbles: "Отключить Пузыри", vfxLightning: "Отключить Молнии", vfxFountain: "Disable Touch Particles", bgBtn: "Изменить Обои", resetBgBtn: "Сбросить Обои", dragFallback: "Сначала выберите пейлоады.", allPayloads: "-- Все Пейлоады --", saveLoadoutBtn: "Сохранить" },
+      "ja-JP": { appSubtitle: "PS4/PS5 ペイロードインジェクタ", tabExploit: "エクスプロイト", tabPayloads: "ペイロード", hostTitle: "ファイルのホスト", hostAdd: "ファイルを追加", hostStart: "ホスティング開始", hostStop: "ホスティング停止", hostEmpty: "ファイルがありません", ipLabel: "コンソールIP", portLabel: "ポート", loadLocal: "ローカルペイロードを読込...", cloudDivider: "またはクラウド展開", btnTransmit: "ペイロード送信", syncBtn: "同期", folderBtn: "フォルダ", armoryCloudTitle: "クラウド武器庫", armoryLocalTitle: "ローカル武器庫", armoryEmpty: "同期またはフォルダを選択...", delayLabel: "遅延 (ms)", btnInjectSeq: "連続インジェクト", settingsTitle: "システム設定", langLabel: "言語", vfxTitle: "視覚効果", vfxBubbles: "泡エフェクトを無効化", vfxLightning: "稲妻エフェクトを無効化", vfxFountain: "Disable Touch Particles", bgBtn: "壁紙を変更", resetBgBtn: "壁紙をリセット", dragFallback: "最初にペイロードを選択してください。", allPayloads: "-- 全てのペイロード --", saveLoadoutBtn: "保存" },
+      "ko-KR": { appSubtitle: "PS4/PS5 페이로드 인젝터", tabExploit: "익스플로잇", tabPayloads: "페이로드", hostTitle: "파일 호스팅", hostAdd: "파일 추가", hostStart: "호스팅 시작", hostStop: "호스팅 중지", hostEmpty: "추가된 파일 없음", ipLabel: "콘솔 IP", portLabel: "포트", loadLocal: "로컬 페이로드 로드...", cloudDivider: "또는 클라우드 배포", btnTransmit: "페이로드 전송", syncBtn: "동기화", folderBtn: "폴더", armoryCloudTitle: "클라우드 무기고", armoryLocalTitle: "로컬 무기고", armoryEmpty: "동기화 또는 폴더를 선택하세요...", delayLabel: "주입 지연 (ms)", btnInjectSeq: "시퀀스 주입", settingsTitle: "시스템 설정", langLabel: "언어", vfxTitle: "시각 효과", vfxBubbles: "버블 비활성화", vfxLightning: "번개 비활성화", vfxFountain: "Disable Touch Particles", bgBtn: "배경화면 변경", resetBgBtn: "배경화면 초기화", dragFallback: "먼저 페이로드를 선택하세요.", allPayloads: "-- 모든 페이로드 --", saveLoadoutBtn: "저장" },
+      "zh-CN": { appSubtitle: "PS4/PS5 有效载荷注入器", tabExploit: "漏洞利用", tabPayloads: "有效载荷", hostTitle: "托管文件", hostAdd: "添加文件", hostStart: "开始托管", hostStop: "停止托管", hostEmpty: "尚未添加文件", ipLabel: "主机 IP", portLabel: "端口", loadLocal: "加载本地有效载荷...", cloudDivider: "或使用云端部署", btnTransmit: "发送有效载荷", syncBtn: "同步", folderBtn: "文件夹", armoryCloudTitle: "云端武器库", armoryLocalTitle: "本地武器库", armoryEmpty: "同步或选择一个文件夹...", delayLabel: "注入延迟 (毫秒)", btnInjectSeq: "序列注入", settingsTitle: "系统设置", langLabel: "界面语言", vfxTitle: "视觉效果", vfxBubbles: "禁用气泡", vfxLightning: "禁用闪电", vfxFountain: "Disable Touch Particles", bgBtn: "更改壁纸", resetBgBtn: "重置壁纸", dragFallback: "请先选择有效载荷。", allPayloads: "-- 所有有效载荷 --", saveLoadoutBtn: "保存" },
+      "fi-FI": { appSubtitle: "PS4/PS5 PAYLOAD SYÖTTÄJÄ", tabExploit: "Exploitit", tabPayloads: "Payloadit", hostTitle: "Isännöi tiedostoja", hostAdd: "Lisää tiedostoja", hostStart: "Aloita isännöinti", hostStop: "Lopeta isännöinti", hostEmpty: "Ei lisättyjä tiedostoja", ipLabel: "Konsolin IP", portLabel: "Portti", loadLocal: "Lataa Paikallinen Payload...", cloudDivider: "TAI PILVIKÄYTTÖ", btnTransmit: "Lähetä Payload", syncBtn: "Synkronoi", folderBtn: "Kansio", armoryCloudTitle: "Pilviarsenaali", armoryLocalTitle: "Paikallinen Arsenaali", armoryEmpty: "Synkronoi tai valitse kansio...", delayLabel: "Viive (ms)", btnInjectSeq: "Syötä Sarja", settingsTitle: "Järjestelmäasetukset", langLabel: "Kieli", vfxTitle: "Visuaaliset Efektit", vfxBubbles: "Poista Kuplat", vfxLightning: "Poista Salamat", vfxFountain: "Disable Touch Particles", bgBtn: "Vaihda Taustakuva", resetBgBtn: "Nollaa Taustakuva", dragFallback: "Valitse payloadit ensin.", allPayloads: "-- Kaikki Payloadit --", saveLoadoutBtn: "Tallenna" },
+      "gd-GB": { appSubtitle: "INJECTOR PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", hostTitle: "Òstadh fhaidhlichean", hostAdd: "Cuir faidhlichean ris", hostStart: "Tòisich air òstadh", hostStop: "Sguir de dh'òstadh", hostEmpty: "Chan eil faidhle ann fhathast", ipLabel: "IP a' Chonsail", portLabel: "Port", loadLocal: "Luchdaich Payload Ionadail...", cloudDivider: "NÒ CLEACHDADH CLOUD", btnTransmit: "Cuir Payload", syncBtn: "Sioncronaich", folderBtn: "Pasgan", armoryCloudTitle: "Armlann Cloud", armoryLocalTitle: "Armlann Ionadail", armoryEmpty: "Sioncronaich no tagh pasgan...", delayLabel: "Dàil (ms)", btnInjectSeq: "Cuir Sreath", settingsTitle: "Roghainnean Siostaim", langLabel: "Cànan", vfxTitle: "Buaidhean Lèirsinneach", vfxBubbles: "Cuir dheth builgeanan", vfxLightning: "Cuir dheth dealanach", vfxFountain: "Disable Touch Particles", bgBtn: "Atharraich Pàipear-balla", resetBgBtn: "Ath-shuidhich Pàipear-balla", dragFallback: "Tagh payloads an toiseach.", allPayloads: "-- Na h-Uile Payloads --", saveLoadoutBtn: "Sàbhail" },
+      "ga-IE": { appSubtitle: "INJECTOR PAYLOAD PS4/PS5", tabExploit: "Saothrú", tabPayloads: "Ualaí", hostTitle: "Óstáil Comhaid", hostAdd: "Cuir Comhaid Leis", hostStart: "Tosaigh Óstáil", hostStop: "Stop Óstáil", hostEmpty: "Níor cuireadh aon chomhad leis", ipLabel: "IP Consóil", portLabel: "Port", loadLocal: "Lódáil Ualach Áitiúil...", cloudDivider: "NÓ ÚSÁID NÉAL", btnTransmit: "Seol Ualach", syncBtn: "Sionc", folderBtn: "Fillteán", armoryCloudTitle: "Armlann Néal", armoryLocalTitle: "Armlann Áitiúil", armoryEmpty: "Sioncronaigh nó roghnaigh fillteán...", delayLabel: "Moill (ms)", btnInjectSeq: "Instealladh Seicheamh", settingsTitle: "Socruithe Córais", langLabel: "Teanga", vfxTitle: "Éifeachtaí Físiúla", vfxBubbles: "Díchumasaigh Boilgeoga", vfxLightning: "Díchumasaigh Tintreach", vfxFountain: "Disable Touch Particles", bgBtn: "Athraigh Cúlbhrat", resetBgBtn: "Athshocraigh Cúlbhrat", dragFallback: "Roghnaigh ualaí ar dtús.", allPayloads: "-- Gach Ualach --", saveLoadoutBtn: "Sábháil" },
+      "zu-ZA": { appSubtitle: "UMFAKI WE-PAYLOAD WE-PS4/PS5", tabExploit: "Ukusetshenziswa", tabPayloads: "Imithwalo", hostTitle: "Yengamela Amafayela", hostAdd: "Engeza Amafayela", hostStart: "Qala Ukwengamela", hostStop: "Misa Ukwengamela", hostEmpty: "Awekho amafayela anezelwe", ipLabel: "I-IP Yekhonsoli", portLabel: "Imbobo", loadLocal: "Layisha Umthwalo Wasendaweni...", cloudDivider: "NOMA UKUSEBENZISA IFU", btnTransmit: "Thumela Umthwalo", syncBtn: "Vumelanisa", folderBtn: "Ifolda", armoryCloudTitle: "Izikhali Zefu", armoryLocalTitle: "Izikhali Zasendaweni", armoryEmpty: "Vumelanisa noma khetha ifolda...", delayLabel: "Ukulibaziseka (ms)", btnInjectSeq: "Faka Ukulandelana", settingsTitle: "Izilungiselelo", langLabel: "Ulimi", vfxTitle: "Imiphumela Ebonakalayo", vfxBubbles: "Khubaza Amabhamuza", vfxLightning: "Khubaza Umbani", vfxFountain: "Disable Touch Particles", bgBtn: "Shintsha Isizinda", resetBgBtn: "Setha Kabusha Isizinda", dragFallback: "Khetha imithwalo kuqala.", allPayloads: "-- Yonke Imithwalo --", saveLoadoutBtn: "Londoloza" },
+      "hi-IN": { appSubtitle: "PS4/PS5 पेलोड इंजेक्टर", tabExploit: "एक्सप्लॉइट्स", tabPayloads: "पेलोड्स", hostTitle: "फ़ाइलें होस्ट करें", hostAdd: "फ़ाइलें जोड़ें", hostStart: "होस्टिंग शुरू करें", hostStop: "होस्टिंग रोकें", hostEmpty: "अभी कोई फ़ाइल नहीं जोड़ी गई", ipLabel: "कंसोल IP", portLabel: "पोर्ट", loadLocal: "स्थानीय पेलोड लोड करें...", cloudDivider: "या क्लाउड डिप्लॉयमेंट", btnTransmit: "पेलोड भेजें", syncBtn: "सिंक", folderBtn: "फ़ोल्डर", armoryCloudTitle: "क्लाउड शस्त्रागार", armoryLocalTitle: "स्थानीय शस्त्रागार", armoryEmpty: "फ़ोल्डर सिंक करें या चुनें...", delayLabel: "इंजेक्शन देरी (ms)", btnInjectSeq: "अनुक्रम इंजेक्ट करें", settingsTitle: "सिस्टम सेटिंग्स", langLabel: "भाषा", vfxTitle: "दृश्य प्रभाव", vfxBubbles: "बुलबुले अक्षम करें", vfxLightning: "बिजली अक्षम करें", vfxFountain: "Disable Touch Particles", bgBtn: "वॉलपेपर बदलें", resetBgBtn: "वॉलपेपर रीसेट करें", dragFallback: "पहले पेलोड चुनें।", allPayloads: "-- सभी पेलोड्स --", saveLoadoutBtn: "सहेजें" },
+      "ar-SA": { appSubtitle: "حاقن الحمولات PS4/PS5", tabExploit: "الثغرات", tabPayloads: "الحمولات", hostTitle: "استضافة الملفات", hostAdd: "إضافة ملفات", hostStart: "بدء الاستضافة", hostStop: "إيقاف الاستضافة", hostEmpty: "لم تتم إضافة ملفات بعد", ipLabel: "عنوان IP لجهاز التحكم", portLabel: "المنفذ", loadLocal: "تحميل حمولة محلية...", cloudDivider: "أو النشر السحابي", btnTransmit: "إرسال الحمولة", syncBtn: "مزامنة", folderBtn: "مجلد", armoryCloudTitle: "ترسانة السحابة", armoryLocalTitle: "ترسانة محلية", armoryEmpty: "قم بالمزامنة أو اختر مجلداً...", delayLabel: "تأخير الحقن (ملي ثانية)", btnInjectSeq: "حقن تسلسلي", settingsTitle: "إعدادات النظام", langLabel: "اللغة", vfxTitle: "مؤثرات بصرية", vfxBubbles: "تعطيل الفقاعات", vfxLightning: "تعطيل البرق", vfxFountain: "Disable Touch Particles", bgBtn: "تغيير الخلفية", resetBgBtn: "إعادة ضبط الخلفية", dragFallback: "اختر الحمولات أولاً.", allPayloads: "-- كل الحمولات --", saveLoadoutBtn: "حفظ" },
+      "ur-PK": { appSubtitle: "PS4/PS5 پے لوڈ انجیکٹر", tabExploit: "ایکسپلائٹس", tabPayloads: "پے لوڈز", hostTitle: "فائلیں ہوسٹ کریں", hostAdd: "فائلیں شامل کریں", hostStart: "ہوسٹنگ شروع کریں", hostStop: "ہوسٹنگ روکیں", hostEmpty: "ابھی کوئی فائل شامل نہیں کی گئی", ipLabel: "کنسول آئی پی", portLabel: "پورٹ", loadLocal: "مقامی پے لوڈ لوڈ کریں...", cloudDivider: "یا کلاؤڈ ڈپلائمنٹ", btnTransmit: "پے لوڈ بھیجیں", syncBtn: "سنک", folderBtn: "فولڈر", armoryCloudTitle: "کلاؤڈ اسلحہ خانہ", armoryLocalTitle: "مقامی اسلحہ خانہ", armoryEmpty: "سنک کریں یا فولڈر منتخب کریں...", delayLabel: "انجیکشن تاخیر (ms)", btnInjectSeq: "سلسلہ انجیکٹ کریں", settingsTitle: "سسٹم سیٹنگز", langLabel: "زبان", vfxTitle: "بصری اثرات", vfxBubbles: "بلبلے غیر فعال کریں", vfxLightning: "بجلی غیر فعال کریں", vfxFountain: "Disable Touch Particles", bgBtn: "وال پیپر تبدیل کریں", resetBgBtn: "وال پیپر ری سیٹ کریں", dragFallback: "پہلے پے لوڈز منتخب کریں۔", allPayloads: "-- تمام پے لوڈز --", saveLoadoutBtn: "محفوظ کریں" },
+      "fa-IR": { appSubtitle: "تزریق‌کننده پی‌لود PS4/PS5", tabExploit: "اکسپلویت‌ها", tabPayloads: "پی‌لودها", hostTitle: "میزبانی فایل‌ها", hostAdd: "افزودن فایل", hostStart: "شروع میزبانی", hostStop: "توقف میزبانی", hostEmpty: "هنوز فایلی اضافه نشده", ipLabel: "IP کنسول", portLabel: "پورت", loadLocal: "بارگذاری پی‌لود محلی...", cloudDivider: "یا استقرار ابری", btnTransmit: "ارسال پی‌لود", syncBtn: "همگام‌سازی", folderBtn: "پوشه", armoryCloudTitle: "زرادخانه ابری", armoryLocalTitle: "زرادخانه محلی", armoryEmpty: "همگام‌سازی یا انتخاب پوشه...", delayLabel: "تاخیر تزریق (ms)", btnInjectSeq: "تزریق متوالی", settingsTitle: "تنظیمات سیستم", langLabel: "زبان", vfxTitle: "جلوه‌های بصری", vfxBubbles: "غیرفعال کردن حباب‌ها", vfxLightning: "غیرفعال کردن رعد و برق", vfxFountain: "Disable Touch Particles", bgBtn: "تغییر تصویر پس‌زمینه", resetBgBtn: "بازنشانی تصویر پس‌زمینه", dragFallback: "ابتدا پی‌لودها را انتخاب کنید.", allPayloads: "-- تمام پی‌لودها --", saveLoadoutBtn: "ذخیره" },
+      "tl-PH": { appSubtitle: "PS4/PS5 PAYLOAD INJECTOR", tabExploit: "Exploits", tabPayloads: "Payloads", hostTitle: "I-host ang mga File", hostAdd: "Magdagdag ng File", hostStart: "Simulan ang Hosting", hostStop: "Ihinto ang Hosting", hostEmpty: "Wala pang idinagdag na file", ipLabel: "Console IP", portLabel: "Port", loadLocal: "Mag-load ng Lokal na Payload...", cloudDivider: "O CLOUD DEPLOYMENT", btnTransmit: "Ipadala ang Payload", syncBtn: "I-sync", folderBtn: "Folder", armoryCloudTitle: "Cloud Armory", armoryLocalTitle: "Lokal na Armory", armoryEmpty: "I-sync o pumili ng folder...", delayLabel: "Injection Delay (ms)", btnInjectSeq: "I-inject ang Sequence", settingsTitle: "Mga Setting", langLabel: "Wika", vfxTitle: "Visual Effects", vfxBubbles: "I-disable ang Bubbles", vfxLightning: "I-disable ang Lightning", vfxFountain: "Disable Touch Particles", bgBtn: "Baguhin ang Wallpaper", resetBgBtn: "I-reset ang Wallpaper", dragFallback: "Pumili muna ng payloads.", allPayloads: "-- Lahat ng Payloads --", saveLoadoutBtn: "I-save" },
+      "ta-IN": { appSubtitle: "PS4/PS5 பேலோடு இன்ஜெக்டர்", tabExploit: "எக்ஸ்ப்ளாயிட்ஸ்", tabPayloads: "பேலோடுகள்", hostTitle: "கோப்புகளை ஹோஸ்ட் செய்", hostAdd: "கோப்புகளைச் சேர்", hostStart: "ஹோஸ்டிங்கைத் தொடங்கு", hostStop: "ஹோஸ்டிங்கை நிறுத்து", hostEmpty: "கோப்புகள் எதுவும் சேர்க்கப்படவில்லை", ipLabel: "கன்சோல் IP", portLabel: "போர்ட்", loadLocal: "உள்ளூர் பேலோடை ஏற்றவும்...", cloudDivider: "அல்லது கிளவுட் வரிசைப்படுத்தல்", btnTransmit: "பேலோடை அனுப்பு", syncBtn: "ஒத்திசை", folderBtn: "கோப்புறை", armoryCloudTitle: "கிளவுட் ஆயுதக்கிடங்கு", armoryLocalTitle: "உள்ளூர் ஆயுதக்கிடங்கு", armoryEmpty: "ஒத்திசைக்கவும் அல்லது கோப்புறையைத் தேர்ந்தெடுக்கவும்...", delayLabel: "ஊசி தாமதம் (ms)", btnInjectSeq: "வரிசையை ஊசி போடு", settingsTitle: "கணினி அமைப்புகள்", langLabel: "மொழி", vfxTitle: "காட்சி விளைவுகள்", vfxBubbles: "குமிழ்களை முடக்கு", vfxLightning: "மின்னலை முடக்கு", vfxFountain: "Disable Touch Particles", bgBtn: "வால்பேப்பரை மாற்று", resetBgBtn: "வால்பேப்பரை மீட்டமை", dragFallback: "முதலில் பேலோடுகளைத் தேர்ந்தெடுக்கவும்.", allPayloads: "-- அனைத்து பேலோடுகள் --", saveLoadoutBtn: "சேமி" },
+      "tr-TR": { appSubtitle: "PS4/PS5 PAYLOAD ENJEKTÖRÜ", tabExploit: "Açıklar", tabPayloads: "Payloadlar", hostTitle: "Dosyaları Barındır", hostAdd: "Dosya Ekle", hostStart: "Barındırmayı Başlat", hostStop: "Barındırmayı Durdur", hostEmpty: "Henüz dosya eklenmedi", ipLabel: "Konsol IP'si", portLabel: "Port", loadLocal: "Yerel Payload Yükle...", cloudDivider: "VEYA BULUT DAĞITIMI", btnTransmit: "Payload Gönder", syncBtn: "Senkronize", folderBtn: "Klasör", armoryCloudTitle: "Bulut Cephaneliği", armoryLocalTitle: "Yerel Cephanelik", armoryEmpty: "Senkronize edin veya klasör seçin...", delayLabel: "Enjeksiyon Gecikmesi (ms)", btnInjectSeq: "Sıralı Enjekte Et", settingsTitle: "Sistem Ayarları", langLabel: "Arayüz Dili", vfxTitle: "Görsel Efektler", vfxBubbles: "Baloncukları Kapat", vfxLightning: "Şimşeği Kapat", vfxFountain: "Disable Touch Particles", bgBtn: "Duvar Kağıdını Değiştir", resetBgBtn: "Duvar Kağıdını Sıfırla", dragFallback: "Önce payload seçmelisiniz.", allPayloads: "-- Tüm Payloadlar --", saveLoadoutBtn: "Kaydet" },
+      "ms-MY": { appSubtitle: "PENYUNTIK PAYLOAD PS4/PS5", tabExploit: "Eksploit", tabPayloads: "Payload", hostTitle: "Hos Fail", hostAdd: "Tambah Fail", hostStart: "Mula Hosting", hostStop: "Henti Hosting", hostEmpty: "Belum ada fail ditambah", ipLabel: "IP Konsol", portLabel: "Port", loadLocal: "Muat Payload Tempatan...", cloudDivider: "ATAU AWAN DEPLOYMENT", btnTransmit: "Hantar Payload", syncBtn: "Segerak", folderBtn: "Folder", armoryCloudTitle: "Gudang Senjata Awan", armoryLocalTitle: "Gudang Senjata Tempatan", armoryEmpty: "Segerak atau pilih folder...", delayLabel: "Lengah Suntikan (ms)", btnInjectSeq: "Suntik Jujukan", settingsTitle: "Tetapan Sistem", langLabel: "Bahasa", vfxTitle: "Kesan Visual", vfxBubbles: "Nyahaktif Gelembung", vfxLightning: "Nyahaktif Kilat", vfxFountain: "Disable Touch Particles", bgBtn: "Tukar Kertas Dinding", resetBgBtn: "Tetap Semula Kertas Dinding", dragFallback: "Pilih payload dahulu.", allPayloads: "-- Semua Payload --", saveLoadoutBtn: "Simpan" },
+      "hu-HU": { appSubtitle: "PS4/PS5 PAYLOAD INJEKTOR", tabExploit: "Exploitok", tabPayloads: "Payloadok", hostTitle: "Fájlok tárolása", hostAdd: "Fájlok hozzáadása", hostStart: "Tárolás indítása", hostStop: "Tárolás leállítása", hostEmpty: "Még nincs hozzáadott fájl", ipLabel: "Konzol IP", portLabel: "Port", loadLocal: "Helyi Payload Betöltése...", cloudDivider: "VAGY FELHŐ TELEPÍTÉS", btnTransmit: "Payload Küldése", syncBtn: "Szinkr", folderBtn: "Mappa", armoryCloudTitle: "Felhő Fegyvertár", armoryLocalTitle: "Helyi Fegyvertár", armoryEmpty: "Szinkronizálj vagy válassz mappát...", delayLabel: "Injektálási Késleltetés (ms)", btnInjectSeq: "Szekvencia Injektálása", settingsTitle: "Rendszerbeállítások", langLabel: "Nyelv", vfxTitle: "Vizuális Efektek", vfxBubbles: "Buborékok Kikapcs.", vfxLightning: "Villámok Kikapcs.", vfxFountain: "Disable Touch Particles", bgBtn: "Háttérkép Módosítása", resetBgBtn: "Háttérkép Visszaállítása", dragFallback: "Válassz payloadokat előbb.", allPayloads: "-- Összes Payload --", saveLoadoutBtn: "Mentés" },
+      "de-DE": { appSubtitle: "PS4/PS5 PAYLOAD INJEKTOR", tabExploit: "Exploits", tabPayloads: "Payloads", hostTitle: "Dateien hosten", hostAdd: "Dateien hinzufügen", hostStart: "Hosting starten", hostStop: "Hosting stoppen", hostEmpty: "Noch keine Dateien hinzugefügt", ipLabel: "Konsolen-IP", portLabel: "Port", loadLocal: "Lokalen Payload laden...", cloudDivider: "ODER CLOUD-BEREITSTELLUNG", btnTransmit: "Payload Senden", syncBtn: "Sync", folderBtn: "Ordner", armoryCloudTitle: "Cloud Waffenkammer", armoryLocalTitle: "Lokale Waffenkammer", armoryEmpty: "Synchronisieren oder Ordner wählen...", delayLabel: "Injektionsverzögerung (ms)", btnInjectSeq: "Sequenz Injezieren", settingsTitle: "Systemeinstellungen", langLabel: "Sprache", vfxTitle: "Visuelle Effekte", vfxBubbles: "Blasen Deaktivieren", vfxLightning: "Blitze Deaktivieren", vfxFountain: "Disable Touch Particles", bgBtn: "Hintergrund Ändern", resetBgBtn: "Hintergrund Zurücksetzen", dragFallback: "Zuerst Payloads auswählen.", allPayloads: "-- Alle Payloads --", saveLoadoutBtn: "Speichern" },
+      "pl-PL": { appSubtitle: "INIEKTOR PAYLOADÓW PS4/PS5", tabExploit: "Exploity", tabPayloads: "Payloady", hostTitle: "Hostowanie plików", hostAdd: "Dodaj pliki", hostStart: "Rozpocznij hosting", hostStop: "Zatrzymaj hosting", hostEmpty: "Nie dodano jeszcze plików", ipLabel: "IP Konsoli", portLabel: "Port", loadLocal: "Załaduj Lokalny Payload...", cloudDivider: "LUB WDROŻENIE W CHMURZE", btnTransmit: "Wyślij Payload", syncBtn: "Sync", folderBtn: "Folder", armoryCloudTitle: "Arsenał w Chmurze", armoryLocalTitle: "Arsenał Lokalny", armoryEmpty: "Zsynchronizuj lub wybierz folder...", delayLabel: "Opóźnienie Iniekcji (ms)", btnInjectSeq: "Iniekcja Sekwencji", settingsTitle: "Ustawienia Systemu", langLabel: "Język", vfxTitle: "Efekty Wizualne", vfxBubbles: "Wyłącz Bąbelki", vfxLightning: "Wyłącz Błyskawice", vfxFountain: "Disable Touch Particles", bgBtn: "Zmień Tapetę", resetBgBtn: "Zresetuj Tapetę", dragFallback: "Najpierw wybierz payloady.", allPayloads: "-- Wszystkie Payloady --", saveLoadoutBtn: "Zapisz" }
     };
 
     function T(key, fallback) {
@@ -841,6 +970,7 @@
     let _syncLock = false;
 
     window.onload = async () => {
+      placePortField();
       const ip = await StorageEngine.getItem('nexus_ip');
       if (ip) document.getElementById('ip').value = ip;
       const port = await StorageEngine.getItem('nexus_port');
@@ -865,6 +995,8 @@
       const savedLang = await StorageEngine.getItem('nexus_lang') || "en-US";
       await changeLanguage(savedLang);
 
+      const savedVid = await StorageEngine.getItem('nexus_bg_video');
+      if (savedVid) showWallpaperVideo(savedVid);
       const savedBg = await StorageEngine.getItem('nexus_bg');
       if (savedBg) {
         document.getElementById('wallpaper-layer').style.backgroundImage = `url(${savedBg})`;
@@ -913,10 +1045,270 @@
     }
 
     function togglePanel() { document.getElementById('configPanel').classList.toggle('active'); }
+    // ── Release updater: cache the newest release file from GitHub repos (names stay clean: "<Name> <version>") ──
+    const relId = n => 'rel_' + n.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    const niceTag = t => String(t).replace(/^[vV]\s*/, '').replace(/[-_]+/g, ' ').trim();
+    const globRe = g => new RegExp('^' + g.trim().replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$', 'i');
+    // Async HTTP: prefer native background thread; else fetch(). Never blocks UI.
+    const __httpWaiters = {};
+    let __httpSeq = 0;
+    window.__nativeHttpCb = function(id, result) {
+      const w = __httpWaiters[id];
+      if (!w) return;
+      delete __httpWaiters[id];
+      if (typeof result === 'string' && result.startsWith('ERR:')) w.reject(new Error(result.slice(4)));
+      else w.resolve(result);
+    };
+
+    function arrayBufferToB64(buf) {
+      const u8 = new Uint8Array(buf);
+      const chunk = 0x8000;
+      let s = '';
+      for (let i = 0; i < u8.length; i += chunk) {
+        s += String.fromCharCode.apply(null, u8.subarray(i, Math.min(i + chunk, u8.length)));
+      }
+      return btoa(s);
+    }
+
+    async function fetchB64(url, timeoutMs) {
+      const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs || 15000) : null;
+      try {
+        const res = await fetch(url, ctrl ? { signal: ctrl.signal } : undefined);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return arrayBufferToB64(await res.arrayBuffer());
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    }
+
+    async function nativeGet(url) {
+      // 1) Native async bridge (off UI thread)
+      if (window.AndroidNativeHttp && typeof AndroidNativeHttp.getB64Async === 'function') {
+        return new Promise((resolve, reject) => {
+          const id = 'h' + (++__httpSeq);
+          __httpWaiters[id] = { resolve, reject };
+          try {
+            AndroidNativeHttp.getB64Async(url, id);
+          } catch (e) {
+            delete __httpWaiters[id];
+            reject(e);
+          }
+          // Safety timeout so a dead callback never hangs Sync forever
+          setTimeout(() => {
+            if (__httpWaiters[id]) {
+              delete __httpWaiters[id];
+              reject(new Error('timeout'));
+            }
+          }, 30000);
+        });
+      }
+      // 2) JS fetch (also non-blocking)
+      try {
+        return await fetchB64(url, 15000);
+      } catch (e) {
+        // 3) Legacy sync bridge last resort (can hitch UI — avoid if possible)
+        if (window.AndroidNativeHttp && typeof AndroidNativeHttp.getB64 === 'function') {
+          await new Promise(r => setTimeout(r, 0));
+          const r = AndroidNativeHttp.getB64(url);
+          if (typeof r === 'string' && r.startsWith('ERR:')) throw new Error(r.slice(4));
+          return r;
+        }
+        throw e;
+      }
+    }
+
+    function yieldUI() { return new Promise(r => setTimeout(r, 0)); }
+    const getSources = async () => JSON.parse(await StorageEngine.getItem('nexus_sources') || '[]');
+    function toggleSrcPanel() { if (document.getElementById('srcPanel').classList.toggle('open')) renderSources(); }
+    async function renderSources() {
+      const box = document.getElementById('srcList'), src = await getSources();
+      const rel = JSON.parse(await StorageEngine.getItem('nexus_releases') || '[]'); box.innerHTML = '';
+      if (!src.length) box.innerHTML = '<div class="payload-cb-empty">—</div>';
+      src.forEach((s, i) => { const r = rel.find(x => x.id === relId(s.name)); const row = document.createElement('div');
+        row.className = 'payload-cb-row'; row.innerHTML = '<span class="cb-label"></span><span class="cb-badge"></span><button class="cb-remove-btn">✕</button>';
+        row.querySelector('.cb-label').textContent = r ? r.name : s.name;
+        row.querySelector('.cb-badge').textContent = r ? 'OK' : '—';
+        row.title = s.repo + '  ' + (s.asset || '*.elf');
+        row.querySelector('button').onclick = () => removeSource(i); box.appendChild(row); });
+    }
+    async function addSource() {
+      const name = document.getElementById('srcName').value.trim(), asset = document.getElementById('srcAsset').value.trim() || '*.elf';
+      const m = document.getElementById('srcRepo').value.trim().match(/([\w.-]+)\/([\w.-]+?)(?:\.git)?(?:[\/#?].*)?$/);
+      if (!name || !m) return showToast('Enter a name and an owner/repo', 'error');
+      const src = (await getSources()).filter(s => s.name !== name);
+      src.push({ name, repo: m[1] + '/' + m[2], asset });
+      await StorageEngine.setItem('nexus_sources', JSON.stringify(src));
+      ['srcName', 'srcRepo'].forEach(i => document.getElementById(i).value = ''); renderSources();
+    }
+    async function removeSource(i) {
+      const src = await getSources(), s = src.splice(i, 1)[0];
+      await StorageEngine.setItem('nexus_sources', JSON.stringify(src));
+      const rel = JSON.parse(await StorageEngine.getItem('nexus_releases') || '[]').filter(r => r.id !== relId(s.name));
+      await StorageEngine.setItem('nexus_releases', JSON.stringify(rel)); await StorageEngine.removeItem('cloud_cache_' + relId(s.name));
+      renderSources(); renderPayloads();
+    }
+    // Curated official list (order fixed). Display names have no version tags.
+    // asset: glob against GitHub release assets. url: optional direct URL (skips API).
+    const OFFICIAL_SOURCES = [
+      { name: "Kstuff Lite (Echo)",    repo: "EchoStretch/kstuff-lite",         asset: "kstuff.elf" },
+      { name: "Kstuff Lite (Drakmor)", repo: "drakmor/kstuff-lite",             asset: "kstuff.elf" },
+      { name: "ShadowMountPlus",       repo: "drakmor/ShadowMountPlus",         asset: "*ShadowMount*.elf" },
+      { name: "FTP Server",            repo: "ps5-payload-dev/ftpsrv",          asset: "*.elf" },
+      { name: "PS5 Upload",            repo: "phantomptr/ps5upload",            asset: "*.elf" },
+      { name: "NanoDNS",               repo: "drakmor/nanoDNS",                 asset: "nanodns.elf" },
+      { name: "CheatRunner",           repo: "notmaj0r/CheatRunner",            asset: "*.elf" },
+      { name: "OnionHEN",              repo: "aydencharles/onionHEN",           asset: "OnionHEN.elf" },
+      { name: "EtaHEN",                repo: "etaHEN/etaHEN",                   asset: "*.bin" },
+      { name: "BFPilot",               repo: "ItsBlurf/BFpilot",                asset: "*.elf" },
+      { name: "PS Patch System",       repo: "illusionyy/ps-patch-system",      asset: "*.elf" },
+      { name: "WebFile Manager",       repo: "owendswang/ps5-web-file-manager", asset: "*.elf" },
+      { name: "Fan Target",            repo: "PixelPop25/fan_target",           asset: "fan_target.elf" },
+      { name: "ShadowMountPlus Fan",   repo: "PixelPop25/fan_target",           asset: "fan_target.elf" }
+    ];
+
+    async function seedOfficialSources() {
+      // Merge: official names overwrite matching entries; user-added custom sources kept
+      const officialNames = new Set(OFFICIAL_SOURCES.map(s => s.name));
+      const custom = (await getSources()).filter(s => !officialNames.has(s.name));
+      const merged = OFFICIAL_SOURCES.map(s => ({ name: s.name, repo: s.repo, asset: s.asset || '*.elf' })).concat(custom);
+      await StorageEngine.setItem('nexus_sources', JSON.stringify(merged));
+      return merged;
+    }
+
+    async function updateFromOfficialRepo() {
+      showToast(T('toast_official_updating', 'Updating from official repo...'));
+      await seedOfficialSources();
+      // Also pull Nexus cloud manifest payloads (concatenate / overwrite by id)
+      try { await syncCloud(0); } catch (e) {}
+      await updateAllSources();
+    }
+
+    async function updateAllSources() {
+      const src = await getSources(); if (!src.length) return showToast('Add a source first', 'error');
+      let rel = JSON.parse(await StorageEngine.getItem('nexus_releases') || '[]'), updated = 0;
+      for (const s of src) {
+        try {
+          showToast(`Checking ${s.name}...`);
+          let downloadUrl = s.url || null, tag = s.tag || '';
+          if (!downloadUrl) {
+            const info = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(await nativeGet(`https://api.github.com/repos/${s.repo}/releases?per_page=5`)), c => c.charCodeAt(0))));
+            const re = globRe(s.asset || '*.elf');
+            let a = null, chosen = null;
+            for (const relInfo of (Array.isArray(info) ? info : [])) {
+              a = (relInfo.assets || []).find(x => re.test(x.name));
+              if (a) { chosen = relInfo; break; }
+            }
+            if (!a || !chosen) throw new Error('no file matches ' + (s.asset || '*.elf'));
+            downloadUrl = a.browser_download_url;
+            tag = chosen.tag_name || chosen.name || '';
+          }
+          const id = relId(s.name), cur = rel.find(x => x.id === id);
+          if (cur && cur.tag === tag && await StorageEngine.getItem('cloud_cache_' + id)) continue;  // already latest
+          showToast(`Downloading ${s.name}...`);
+          await StorageEngine.setItem('cloud_cache_' + id, await nativeGet(downloadUrl));
+          // Keep display name clean (no version tag) per product request
+          rel = rel.filter(x => x.id !== id); rel.push({ id, name: s.name, tag: tag }); updated++;
+        } catch (e) { showToast(`${s.name}: ${e.message}`, 'error'); await new Promise(r => setTimeout(r, 1200)); }
+      }
+      await StorageEngine.setItem('nexus_releases', JSON.stringify(rel));
+      showToast(updated ? `${updated} updated ✓` : 'Everything is up to date');
+      renderSources();
+      await renderPayloads();
+    }
+
+    // ── Macro: after an exploit is sent, auto-send the one saved loadout switched on (always to port 9021) ──
+    let _macroBusy = false;
+    async function syncMacroToggle() {
+      const id = document.getElementById('loadoutSelector').value, row = document.getElementById('macroRow');
+      row.style.display = id === 'default' ? 'none' : 'flex';
+      if (id === 'default') return;
+      const l = JSON.parse(await StorageEngine.getItem('nexus_loadouts') || '[]').find(x => x.id == id);
+      document.getElementById('macroToggle').checked = !!(l && l.macro);
+    }
+    async function setMacro(on) {
+      const id = document.getElementById('loadoutSelector').value;
+      const ls = JSON.parse(await StorageEngine.getItem('nexus_loadouts') || '[]');
+      ls.forEach(l => { l.macro = on && l.id == id; });  // only one loadout can be the macro
+      await StorageEngine.setItem('nexus_loadouts', JSON.stringify(ls));
+    }
+    async function runMacro() {
+      if (_macroBusy) return;
+      const l = JSON.parse(await StorageEngine.getItem('nexus_loadouts') || '[]').find(x => x.macro);
+      if (!l || !l.payloads.length) return;
+      _macroBusy = true;
+      try {
+        const delayMs = Math.max(parseInt(document.getElementById('delay').value) || 4000, 500);
+        const wait = ms => new Promise(r => setTimeout(r, ms));
+        await wait(delayMs);  // give the exploit time to land
+        for (let i = 0; i < l.payloads.length; i++) {
+          const p = l.payloads[i];
+          const b64 = await StorageEngine.getItem(p.source === 'cloud' ? `cloud_cache_${p.id}` : `local_cache_${p.id || 'local_' + p.name}`);
+          if (!b64) { showToast(T('toast_seq_skip', "Skipped — asset unmapped."), "error"); continue; }
+          showToast(`${l.name}: ${i + 1}/${l.payloads.length} ${p.name}`);
+          executeRawStream(b64, 9021);
+          if (i < l.payloads.length - 1) await wait(delayMs);
+        }
+      } finally { _macroBusy = false; }
+    }
+
+    // ── Host user-supplied files (e.g. your own WebKit page) over the LAN ──
+    let hosting = false;
+    const HOST_PORT = 8080;
+    async function toggleHostPanel() {
+      const o = document.getElementById('hostPanel').classList.toggle('open');
+      if (o) {
+        refreshHostFiles();
+        // Auto-pull itsPLK WebKit pages if host root is empty
+        try {
+          if (window.AndroidWebHost) {
+            const names = JSON.parse(AndroidWebHost.list() || '[]');
+            if (!names.length || names.indexOf('index.html') < 0) {
+              await seedWebkitHostFiles(false);
+              refreshHostFiles();
+            }
+          }
+        } catch (e) {}
+      }
+    }
+    function refreshHostFiles() {
+      if (!window.AndroidWebHost) return;
+      const names = JSON.parse(AndroidWebHost.list()); const box = document.getElementById('hostFiles'); box.innerHTML = '';
+      if (!names.length) box.innerHTML = `<div class="payload-cb-empty" data-i18n="hostEmpty">${T('hostEmpty','No files added yet')}</div>`;
+      names.forEach(n => { const r = document.createElement('div'); r.className = 'payload-cb-row';
+        r.innerHTML = '<span class="cb-label"></span><button class="cb-remove-btn">✕</button>';
+        r.querySelector('.cb-label').textContent = n;
+        r.querySelector('button').onclick = () => { AndroidWebHost.deleteFile(n); refreshHostFiles(); };
+        box.appendChild(r); });
+      const u = document.getElementById('hostUrl');
+      u.textContent = hosting ? `http://${AndroidWebHost.ip() || '<device-ip>'}:${HOST_PORT}/` : '';
+    }
+    async function addHostFiles(e) {
+      for (const f of e.target.files) AndroidWebHost.saveFile(f.name, arrayBufferToBase64(await f.arrayBuffer()));
+      e.target.value = ''; refreshHostFiles();
+    }
+    function toggleHosting() {
+      if (!window.AndroidWebHost) return showToast("Hosting needs the Android app.", "error");
+      if (hosting) { AndroidWebHost.stop(); hosting = false; }
+      else { const r = AndroidWebHost.start(HOST_PORT); if (r !== 'ok') return showToast(r, "error"); hosting = true; }
+      const t = document.querySelector('#hostToggle span'); t.setAttribute('data-i18n', hosting ? 'hostStop' : 'hostStart');
+      t.textContent = T(hosting ? 'hostStop' : 'hostStart', hosting ? 'Stop Hosting' : 'Start Hosting');
+      document.getElementById('hostFab').classList.toggle('on', hosting); refreshHostFiles();
+    }
+
     function triggerBgUpload() { document.getElementById('bgUploader').click(); }
 
+    function showWallpaperVideo(blob) {
+      const v = document.getElementById('wallpaper-video');
+      if (v.src) URL.revokeObjectURL(v.src);
+      v.src = URL.createObjectURL(blob); v.style.display = 'block'; v.play().catch(()=>{});
+      document.getElementById('wallpaper-layer').style.backgroundImage = 'none';
+      document.getElementById('gradient-layer').style.background = 'transparent';
+    }
+    document.addEventListener('visibilitychange', () => { const v = document.getElementById('wallpaper-video'); if (v.src) document.hidden ? v.pause() : v.play().catch(()=>{}); });
     async function resetWallpaper() {
-      await StorageEngine.removeItem('nexus_bg');
+      await StorageEngine.removeItem('nexus_bg'); await StorageEngine.removeItem('nexus_bg_video');
+      const wv = document.getElementById('wallpaper-video'); wv.pause(); wv.removeAttribute('src'); wv.style.display = 'none';
       document.getElementById('wallpaper-layer').style.backgroundImage = 'none';
       document.getElementById('gradient-layer').style.background = 'var(--bg-gradient)';
       showToast(T('toast_wallpaper_cleared', "Wallpaper cleared!"));
@@ -925,6 +1317,13 @@
     function handleBgUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
+      if (file.type.startsWith('video/')) {
+        (async () => { try { await StorageEngine.setItem('nexus_bg_video', file); await StorageEngine.removeItem('nexus_bg');
+          showWallpaperVideo(file); showToast(T('toast_wallpaper_updated', "Wallpaper updated!"));
+        } catch(err) { showToast(T('toast_wallpaper_too_big', "Image too large for storage, try a smaller one."), "error"); } })();
+        return;
+      }
+      StorageEngine.removeItem('nexus_bg_video'); (()=>{const wv=document.getElementById('wallpaper-video'); wv.pause(); wv.removeAttribute('src'); wv.style.display='none';})();
       const reader = new FileReader();
       reader.onload = async function(e) {
         const b64 = e.target.result;
@@ -940,11 +1339,60 @@
       reader.readAsDataURL(file);
     }
 
+    // ── Tablet split view (Exploits left / Payloads right) ──
+    // Keep in sync with the tablet-landscape @media rule in the CSS.
+    const SPLIT_QUERY = '(min-width: 900px) and (min-height: 500px) and (orientation: landscape)';
+    const splitMQ = window.matchMedia(SPLIT_QUERY);
+    const isSplit = () => splitMQ.matches;
+
+    // In split view the header Port belongs to the Exploits pane and the Payloads pane has its own port.
+    function getPayloadPort() {
+      if (isSplit()) return 9021;
+      return parseInt(document.getElementById('port').value);
+    }
+
+    // In split view the exploit Port field lives inside the Exploits pane (so it isn't mistaken for the
+    // Payloads port); otherwise it sits next to the IP field in the header. Moving the node keeps its value/listeners.
+    function placePortField() {
+      const portGroup = document.getElementById('portGroup');
+      if (isSplit()) {
+        const pane = document.getElementById('tab-exploit');
+        pane.insertBefore(portGroup, pane.querySelector('.pane-title').nextSibling);
+        portGroup.style.flex = 'none';
+        portGroup.style.marginBottom = '18px';
+      } else {
+        document.querySelector('.header-bar + .row').appendChild(portGroup);
+        portGroup.style.flex = '0.4';
+        portGroup.style.marginBottom = '';
+      }
+    }
+
+    async function onLayoutModeChange() {
+      placePortField();
+      const portInput = document.getElementById('port');
+      const payloadPortInput = document.getElementById('payloadPort');
+      const payloadsActive = document.getElementById('tab-payloads').classList.contains('active');
+      if (!payloadsActive) return;  // exploit tab active: header port already is the exploit port
+      if (isSplit()) {
+        // single-tab (port holds payload port) -> split
+        payloadPortInput.value = portInput.value;
+        portInput.value = await StorageEngine.getItem('last_exploit_port') || 9026;
+      } else {
+        // split -> single-tab with Payloads tab showing
+        await StorageEngine.setItem('last_exploit_port', portInput.value);
+        portInput.value = payloadPortInput.value || 9021;
+      }
+      saveConfigDebounced();
+    }
+    if (splitMQ.addEventListener) splitMQ.addEventListener('change', onLayoutModeChange);
+    else splitMQ.addListener(onLayoutModeChange);
+
     async function switchTab(tabId, btnElement) {
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
       btnElement.classList.add('active');
       document.getElementById(`tab-${tabId}`).classList.add('active');
+      if (isSplit()) return;  // both panes are visible; each has its own port
       const portInput = document.getElementById('port');
       let lastExploitPort = await StorageEngine.getItem('last_exploit_port') || 9026;
       if (tabId === 'payloads') {
@@ -982,52 +1430,146 @@
     }
 
     async function syncCloud(showerr = 1) {
-      if(localFolderMode){
+      if (localFolderMode) {
         localFolderMode = false;
         updateArmoryTitle();
         await renderPayloads();
         return;
       }
-      if (_syncLock) return;
+      if (_syncLock) {
+        showToast(T('toast_sync_busy', 'Sync already running in background…'));
+        return;
+      }
       _syncLock = true;
-      const syncBtn = document.querySelector('.btn-sync');
-      if (syncBtn) { syncBtn.disabled = true; syncBtn.style.opacity = '0.45'; }
-      showToast(T('toast_syncing', "Initiating cloud sync..."));
-      try {
-        const res = await fetch(CLOUD_URL + "manifest.json");
-        if (!res.ok) throw new Error("Manifest fetch failed.");
-        const manifest = await res.json();
-        await StorageEngine.setItem('nexus_cloud_manifest', JSON.stringify(manifest));
-        const allFiles = [...(manifest.luac0re || []), ...(manifest.yarp2jb || []), ...(manifest.lua || []), ...(manifest.y2jb || []), ...(manifest.payloads || [])];
-        for (let item of allFiles) {
-          try {
-            const fRes = await fetch(CLOUD_URL + item.file);
-            if (!fRes.ok) continue;
-            const buf = await fRes.arrayBuffer();
-            let bin = '';
-            const b = new Uint8Array(buf);
-            for (let i = 0; i < b.byteLength; i++) bin += String.fromCharCode(b[i]);
-            await StorageEngine.setItem(`cloud_cache_${item.id}`, window.btoa(bin));
-          } catch(err) { console.error("Asset fetch failed: " + item.name); }
+
+      // Keep button label as "Sync" — background work must not rename the control
+      (async () => {
+        let nexusOk = false;
+        let officialOk = 0;
+        let officialFail = 0;
+
+        // ── 1) Nexus first: exploits (y2jb / luac0re / lua / yarp2jb) + payloads ──
+        try {
+          showToast(T('toast_syncing', 'Syncing Nexus payloads…'));
+          await yieldUI();
+          const res = await fetch(CLOUD_URL + 'manifest.json');
+          if (!res.ok) throw new Error('Manifest fetch failed.');
+          const manifest = await res.json();
+          await StorageEngine.setItem('nexus_cloud_manifest', JSON.stringify(manifest));
+          const allFiles = [
+            ...(manifest.luac0re || []),
+            ...(manifest.yarp2jb || []),
+            ...(manifest.lua || []),
+            ...(manifest.y2jb || []),
+            ...(manifest.payloads || [])
+          ];
+          for (let item of allFiles) {
+            try {
+              await yieldUI();
+              const fRes = await fetch(CLOUD_URL + item.file);
+              if (!fRes.ok) continue;
+              const b64 = arrayBufferToB64(await fRes.arrayBuffer());
+              const cacheKey = item.id ? ('cloud_cache_' + item.id) : ('cloud_cache_' + (item.file || item.name));
+              await StorageEngine.setItem(cacheKey, b64);
+            } catch (e2) {}
+          }
+          nexusOk = true;
+          // Refresh exploit buttons ASAP so y2jb / LuaC0re show up
+          await renderExploits();
+          await renderPayloads();
+        } catch (e) {
+          console.warn('nexus sync failed', e);
+          if (showerr) showToast(T('toast_sync_fail', 'Nexus sync failed — trying official…'), 'error');
         }
+
+        // ── 2) Official repo overlay (overwrite / extend payload list) ──
+        try {
+          await seedOfficialSources();
+          await yieldUI();
+          let rel = JSON.parse(await StorageEngine.getItem('nexus_releases') || '[]');
+          for (const s of OFFICIAL_SOURCES) {
+            try {
+              await yieldUI();
+              const infoRaw = await nativeGet('https://api.github.com/repos/' + s.repo + '/releases?per_page=5');
+              const info = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(infoRaw), c => c.charCodeAt(0))));
+              const re = globRe(s.asset || '*.elf');
+              let a = null, chosen = null;
+              for (const relInfo of (Array.isArray(info) ? info : [])) {
+                a = (relInfo.assets || []).find(x => re.test(x.name));
+                if (a) { chosen = relInfo; break; }
+              }
+              if (!a || !chosen) throw new Error('no matching asset');
+              const tag = chosen.tag_name || chosen.name || '';
+              const id = relId(s.name);
+              const cur = rel.find(x => x.id === id);
+              if (!(cur && cur.tag === tag && await StorageEngine.getItem('cloud_cache_' + id))) {
+                await yieldUI();
+                await StorageEngine.setItem('cloud_cache_' + id, await nativeGet(a.browser_download_url));
+                rel = rel.filter(x => x.id !== id);
+                rel.push({ id, name: s.name, tag: tag });
+              }
+              officialOk++;
+            } catch (e) {
+              officialFail++;
+              console.warn('official', s.name, e);
+            }
+          }
+          await StorageEngine.setItem('nexus_releases', JSON.stringify(rel));
+        } catch (e) {
+          console.warn('official block failed', e);
+        }
+
+        // ── 3) Optional: seed WebKit autoloader host files into LAN host ──
+        try { await seedWebkitHostFiles(false); } catch (e) {}
+
         localFolderMode = false;
         updateArmoryTitle();
-        // Clear lists before re-rendering to prevent duplication
-        document.getElementById('cloudBtnContainer').innerHTML = '';
-        document.getElementById('payload-cb-list').innerHTML = '';
         await renderExploits();
         await renderPayloads();
-        showToast(T('toast_synced', "Sync complete. Assets cached."));
-      } catch(e) {
-        if (showerr) showToast(T('toast_sync_fail', "Connection failed. Repository unreachable."), "error");
 
-        localFolderMode = false;
+        if (nexusOk && officialOk > 0) {
+          showToast('Nexus ready · ' + officialOk + ' official updated');
+        } else if (nexusOk) {
+          showToast(T('toast_sync_done', 'Nexus repo synced.'));
+        } else if (officialOk > 0) {
+          showToast(officialOk + ' official payload(s) ready');
+        } else if (showerr) {
+          showToast(T('toast_sync_fail', 'Sync failed — offline?'), 'error');
+        }
 
-        updateArmoryTitle();
-        await renderPayloads();
-      } finally {
         _syncLock = false;
-        if (syncBtn) { syncBtn.disabled = false; syncBtn.style.opacity = ''; }
+      })();
+    }
+
+    async function seedWebkitHostFiles(force) {
+      if (!window.AndroidWebHost || typeof AndroidWebHost.seedWebkitAutoloader !== 'function') {
+        if (force) showToast('WebKit seed needs the Android app', 'error');
+        return false;
+      }
+      try {
+        const names = JSON.parse(AndroidWebHost.list() || '[]');
+        if (!force && names.indexOf('index.html') >= 0) return true;
+        showToast('Loading bundled WebKit pages…');
+        await yieldUI();
+        const result = await new Promise((resolve) => {
+          setTimeout(() => {
+            try {
+              // Argument ignored — pages are copied from app assets/webkit/
+              resolve(AndroidWebHost.seedWebkitAutoloader(''));
+            } catch (e) { resolve(JSON.stringify({ ok: false, error: String(e) })); }
+          }, 0);
+        });
+        const j = typeof result === 'string' ? JSON.parse(result) : result;
+        if (j && j.ok) {
+          showToast('WebKit ready (bundled): ' + (j.files || []).join(', '));
+          if (typeof refreshHostFiles === 'function') refreshHostFiles();
+          return true;
+        }
+        if (force) showToast('WebKit seed failed: ' + (j && j.error ? j.error : 'unknown'), 'error');
+        return false;
+      } catch (e) {
+        if (force) showToast('WebKit seed failed', 'error');
+        return false;
       }
     }
 
@@ -1067,12 +1609,13 @@
 
    
     async function handleFolderSelected(event) {
-      const files = event.target.files;
+      const files = Array.from(event.target.files);
+      event.target.value = '';  // lets the same file be picked again after removing it
 
       if (files.length === 0) return;
 
       const validExtensions = ['.bin', '.elf','.py','.lua','.js','.jar'];
-      let added = 0;
+      let added = 0, dupes = 0;
 
       for (let i = 0; i < files.length; i++) {
         const f = files[i];
@@ -1082,7 +1625,7 @@
           continue; }
         // Skip duplicates by name
         if (localPayloadFiles.some(ex => ex.name === f.name)) {
-          continue;}
+          dupes++; continue;}
         localPayloadFiles.push(f);
         added++;
 
@@ -1098,14 +1641,17 @@
         updateArmoryTitle();
         await renderPayloads();
         showToast(`${added} ${T('toast_files_loaded', 'payload(s) registered.')}`);
+      } else if (dupes > 0) {
+        localFolderMode = true; updateArmoryTitle(); await renderPayloads();  // already mapped: keep the one we have
       } else {
         showToast(T('toast_no_valid_files', "No valid files found."), "error");
       }
     }
 
     async function clearPayloadList() {
-      
+      const old = localPayloadFiles.map(f => f.name);
       localPayloadFiles = [];
+      for (const n of old) await dropOrphanLocalCache(n);
       updateArmoryTitle();
       await renderPayloads();
     }
@@ -1140,7 +1686,8 @@
 
       const loadoutsStr = await StorageEngine.getItem('nexus_loadouts');
       let loadouts = JSON.parse(loadoutsStr || '[]');
-      const newLoadout = { id: loadoutName, name: loadoutName, payloads: payloads };
+      const prev = loadouts.find(l => l.id === loadoutName);
+      const newLoadout = { id: loadoutName, name: loadoutName, payloads: payloads, macro: !!(prev && prev.macro) };
       loadouts = loadouts.filter(l => l.id !== loadoutName);
       loadouts.push(newLoadout);
       await StorageEngine.setItem('nexus_loadouts', JSON.stringify(loadouts));
@@ -1195,6 +1742,13 @@
     }
 
     
+    async function dropOrphanLocalCache(name) {
+      if (localPayloadFiles.some(f => f.name === name)) return;  // still mapped
+      const id = `local_${name}`;
+      const ls = JSON.parse(await StorageEngine.getItem('nexus_loadouts') || '[]');
+      if (ls.some(l => l.payloads.some(p => p.source === 'local' && (p.id || `local_${p.name}`) === id))) return;  // a saved loadout needs it
+      await StorageEngine.removeItem(`local_cache_${id}`);
+    }
     async function removePayloadItem(rowEl, source, id, index) {
       const loadoutVal = document.getElementById('loadoutSelector').value;
 
@@ -1208,13 +1762,17 @@
           const name = rowEl.querySelector('.cb-label').textContent;
           tgt.payloads = tgt.payloads.filter(p => !(p.name === name && p.id === id));
           await StorageEngine.setItem('nexus_loadouts', JSON.stringify(loadouts));
+          await dropOrphanLocalCache(name);
         }
       } else if (localFolderMode && index !== null) {
         // Remove from local mapped list
-        localPayloadFiles.splice(parseInt(index), 1);
+        const nm = rowEl.querySelector('.cb-label').textContent;
+        localPayloadFiles = localPayloadFiles.filter(f => f.name !== nm);
+        await dropOrphanLocalCache(nm);
       }
 
       rowEl.remove();
+      if (loadoutVal === 'default' && localFolderMode) await renderPayloads();  // refresh rows so indexes can't go stale
       showToast(T('toast_item_removed', "Removed ✓"));
 
       // If list now empty, show empty state
@@ -1225,6 +1783,7 @@
     }
 
     async function renderPayloads() {
+      syncMacroToggle();
       const list = document.getElementById('payload-cb-list');
       list.innerHTML = '';
       const fragment = document.createDocumentFragment();
@@ -1237,9 +1796,11 @@
         const loadoutsStr = await StorageEngine.getItem('nexus_loadouts');
         const loadouts = JSON.parse(loadoutsStr || '[]');
         const target = loadouts.find(l => l.id == activeLoadoutId);
+        const relAll = JSON.parse(await StorageEngine.getItem('nexus_releases') || '[]');
         if (target && target.payloads.length > 0) {
           for (let i = 0; i < target.payloads.length; i++) {
             const p = target.payloads[i];
+            const rn = (relAll.find(r => r.id === p.id) || {}).name; if (rn) p.name = rn;
             let badge = 'MISSING'; let uid = `loadout_${i}`;
             if (p.source === 'cloud') {
               const cached = await StorageEngine.getItem(`cloud_cache_${p.id}`);
@@ -1287,14 +1848,12 @@
         list.appendChild(fragment);
       } else {
         const manifestStr = await StorageEngine.getItem('nexus_cloud_manifest');
-        if (!manifestStr) {
+        const rel = JSON.parse(await StorageEngine.getItem('nexus_releases') || '[]');
+        const items = ((manifestStr ? JSON.parse(manifestStr).payloads : null) || []).concat(rel);
+        if (items.length === 0) {
           list.innerHTML = `<div class="payload-cb-empty">${dictionary[currentLang].armoryEmpty}</div>`; return;
         }
-        const manifest = JSON.parse(manifestStr);
-        if (!manifest.payloads || manifest.payloads.length === 0) {
-          list.innerHTML = `<div class="payload-cb-empty">${dictionary[currentLang].armoryEmpty}</div>`; return;
-        }
-        for (let item of manifest.payloads) {
+        for (let item of items) {
           const cached = await StorageEngine.getItem(`cloud_cache_${item.id}`);
           const badge = cached !== null ? '' : 'SYNC REQ';
           // Cloud armory rows: NO remove button (read-only)
@@ -1355,9 +1914,9 @@
     
     let _streamBusy = false;
 
-    function executeRawStream(base64Data) {
+    function executeRawStream(base64Data, portOverride) {
       const ip = document.getElementById('ip').value;
-      const port = parseInt(document.getElementById('port').value);
+      const port = portOverride || parseInt(document.getElementById('port').value);
       if (window.AndroidNativeTCP) {
         window.AndroidNativeTCP.performRawStream(ip, port, base64Data);
       } else {
@@ -1374,6 +1933,7 @@
         const arrayBuffer = await file.arrayBuffer();
         showToast(T('toast_sending', `Sending ${file.name}...`).replace('${file.name}', file.name));
         executeRawStream(arrayBufferToBase64(arrayBuffer));
+        runMacro();
       } else {
         showToast(dictionary[currentLang].loadLocal || "Select a local payload first.", "error");
       }
@@ -1386,6 +1946,7 @@
         playTurbo(); 
         showToast(T(`Sending ${name}`));
         executeRawStream(b64);
+        runMacro();
       } else {
         showToast(T('toast_no_cache', "Script not in cache — run a sync first."), "error");
       }
@@ -1437,7 +1998,7 @@
 
         if (!b64Data) { showToast(T('toast_seq_skip', "Skipped — asset unmapped."), "error"); continue; }
 
-        executeRawStream(b64Data);
+        executeRawStream(b64Data, getPayloadPort());
 
         if (i < checkedRows.length - 1) await new Promise(r => setTimeout(r, delayMs));
       }

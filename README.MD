@@ -37,7 +37,7 @@ Done!
 
 ~~[ ] Auto download & cache payloads from the cloud~~
 
-~~[ ] Auto inject payloads with a sleep command between subsequent files~~~
+~~[ ] Auto inject payloads with a sleep command between subsequent files~~
 
 ~~[ ] Load-outs for different target machines~~
 

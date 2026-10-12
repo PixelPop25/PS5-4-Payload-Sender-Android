@@ -480,40 +480,6 @@
       background: rgba(8,12,23,.97); border: 1px solid rgba(255,255,255,.12); border-radius: 20px; box-shadow: 0 20px 45px rgba(0,0,0,.9); }
     #srcPanel.open { display: flex; }
     /* Left-edge WebKit host control — always available */
-    #hostFab, #hostPanel { position: fixed; z-index: 50; }
-    #hostFab {
-      display: flex; align-items: center; justify-content: center;
-      left: 0; top: 50%; transform: translateY(-50%);
-      width: 42px; height: 64px;
-      border-radius: 0 18px 18px 0;
-      font-size: 22px; line-height: 1; cursor: pointer;
-      background: rgba(12, 18, 32, 0.88);
-      border: 1px solid rgba(0, 240, 255, 0.35);
-      border-left: none;
-      color: #fff;
-      backdrop-filter: blur(10px);
-      box-shadow: 4px 0 18px rgba(0,0,0,.45);
-      transition: background .2s, box-shadow .2s, border-color .2s;
-    }
-    #hostFab:active { transform: translateY(-50%) scale(0.97); }
-    #hostFab.on {
-      border-color: var(--ps5-accent);
-      background: rgba(0, 240, 255, 0.14);
-      box-shadow: 0 0 20px rgba(0,240,255,.35);
-    }
-    #hostPanel {
-      display: none;
-      left: 52px; top: 50%; transform: translateY(-50%);
-      width: min(340px, calc(100vw - 70px));
-      max-height: 70vh;
-      flex-direction: column; padding: 18px;
-      background: rgba(8,12,23,.97);
-      border: 1px solid rgba(255,255,255,.12);
-      border-radius: 18px;
-      box-shadow: 0 20px 45px rgba(0,0,0,.9);
-    }
-    #hostPanel.open { display: flex; }
-    #hostFiles { overflow-y: auto; min-height: 50px; }
     /* Leave room at bottom for Android nav bar */
     body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     .app-card { margin-bottom: max(12px, env(safe-area-inset-bottom, 0px)); }
@@ -528,7 +494,7 @@
   </div>
   
   <input type="file" id="bgUploader" accept="image/*,video/*" style="display: none;" onchange="handleBgUpload(event)">
-  <input type="file" id="folderUploader" accept="*/*" multiple style="display: none;" onchange="handleFolderSelected(event)">
+  <input type="file" id="folderUploader" accept=".bin,.elf" multiple style="display: none;" onchange="handleFolderSelected(event)">
 
   <div class="app-card">
     <div class="settings-panel" id="configPanel">
@@ -726,19 +692,6 @@
     </div>
   </div>
 
-  <button id="hostFab" onclick="toggleHostPanel()" title="Host WebKit / files">📡</button>
-  <div id="hostPanel">
-    <div class="zone-title" data-i18n="hostTitle">Host Files</div>
-    <div id="hostUrl" class="file-name-display" style="margin:6px 0"></div>
-    <div id="hostFiles" class="payload-cb-list"></div>
-    <input type="file" id="hostInput" multiple style="display:none" onchange="addHostFiles(event)">
-    <div class="flex-row-buttons">
-      <button class="btn-folder" onclick="document.getElementById('hostInput').click()"><span>➕</span> <span data-i18n="hostAdd">Add Files</span></button>
-      <button class="btn-folder" onclick="seedWebkitHostFiles(true)" title="Install bundled WebKit Autoloader pages"><span>🕸</span> <span>WebKit</span></button>
-      <button class="btn-sync" id="hostToggle" onclick="toggleHosting()"><span data-i18n="hostStart">Start Hosting</span></button>
-    </div>
-  </div>
-
   <div id="srcPanel">
     <div class="zone-title" data-i18n="updatesBtn">Updates</div>
     <div id="srcList" class="payload-cb-list"></div>
@@ -813,6 +766,19 @@
             tx.onerror = e => reject(e);
           });
         } catch (e) { console.error("Storage delete failure:", e); }
+      }
+    ,
+      getItems: async function(keys) {
+        try {
+          if (window.AndroidNativeStorage) {
+            if (typeof window.AndroidNativeStorage.getItems === 'function') {
+              return JSON.parse(window.AndroidNativeStorage.getItems(JSON.stringify(keys)));
+            }
+            const out = {}; keys.forEach(k => out[k] = window.AndroidNativeStorage.getItem(k)); return out;
+          }
+          const results = await Promise.all(keys.map(k => this.getItem(k)));
+          const out = {}; keys.forEach((k, i) => out[k] = results[i]); return out;
+        } catch (e) { console.error("Storage batch read failure:", e); return {}; }
       }
     };
 
@@ -966,6 +932,8 @@
     const CLOUD_URL = "https://raw.githubusercontent.com/PixelPop25/Nexus-Payloads/main/";
     let currentEnv = 'luac0re';
     let localFolderMode = false;
+    let payloadsLoaded = false;
+    let _pendingCache = null; // {key,b64} commit previous only when next download starts
     let localPayloadFiles = [];
     let _syncLock = false;
 
@@ -1005,10 +973,13 @@
 
       await refreshLoadoutSelector();
 
-      // Always render exploits from cache on startup so buttons show immediately
+      // Exploits only at startup — never block UI on payload network work
       const manifestStr = await StorageEngine.getItem('nexus_cloud_manifest');
       if (manifestStr) {
         await renderExploits();
+      } else {
+        // Quiet exploit-only sync in background (does not touch payloads tab)
+        try { syncExploitsOnly(0); } catch (e) {}
       }
 
       const lastLoadout = await StorageEngine.getItem('nexus_last_loadout');
@@ -1017,14 +988,8 @@
         if (loadouts.some(l => l.id === lastLoadout)) {
           document.getElementById('loadoutSelector').value = lastLoadout;
         }
-        await renderPayloads();
-      } else {
-        if (manifestStr) {
-          await renderPayloads();
-        } else {
-          await syncCloud(0);
-        }
       }
+      // Payloads list is filled only when user opens the Payloads tab
     };
 
     async function saveConfig() {
@@ -1252,50 +1217,6 @@
       } finally { _macroBusy = false; }
     }
 
-    // ── Host user-supplied files (e.g. your own WebKit page) over the LAN ──
-    let hosting = false;
-    const HOST_PORT = 8080;
-    async function toggleHostPanel() {
-      const o = document.getElementById('hostPanel').classList.toggle('open');
-      if (o) {
-        refreshHostFiles();
-        // Auto-pull itsPLK WebKit pages if host root is empty
-        try {
-          if (window.AndroidWebHost) {
-            const names = JSON.parse(AndroidWebHost.list() || '[]');
-            if (!names.length || names.indexOf('index.html') < 0) {
-              await seedWebkitHostFiles(false);
-              refreshHostFiles();
-            }
-          }
-        } catch (e) {}
-      }
-    }
-    function refreshHostFiles() {
-      if (!window.AndroidWebHost) return;
-      const names = JSON.parse(AndroidWebHost.list()); const box = document.getElementById('hostFiles'); box.innerHTML = '';
-      if (!names.length) box.innerHTML = `<div class="payload-cb-empty" data-i18n="hostEmpty">${T('hostEmpty','No files added yet')}</div>`;
-      names.forEach(n => { const r = document.createElement('div'); r.className = 'payload-cb-row';
-        r.innerHTML = '<span class="cb-label"></span><button class="cb-remove-btn">✕</button>';
-        r.querySelector('.cb-label').textContent = n;
-        r.querySelector('button').onclick = () => { AndroidWebHost.deleteFile(n); refreshHostFiles(); };
-        box.appendChild(r); });
-      const u = document.getElementById('hostUrl');
-      u.textContent = hosting ? `http://${AndroidWebHost.ip() || '<device-ip>'}:${HOST_PORT}/` : '';
-    }
-    async function addHostFiles(e) {
-      for (const f of e.target.files) AndroidWebHost.saveFile(f.name, arrayBufferToBase64(await f.arrayBuffer()));
-      e.target.value = ''; refreshHostFiles();
-    }
-    function toggleHosting() {
-      if (!window.AndroidWebHost) return showToast("Hosting needs the Android app.", "error");
-      if (hosting) { AndroidWebHost.stop(); hosting = false; }
-      else { const r = AndroidWebHost.start(HOST_PORT); if (r !== 'ok') return showToast(r, "error"); hosting = true; }
-      const t = document.querySelector('#hostToggle span'); t.setAttribute('data-i18n', hosting ? 'hostStop' : 'hostStart');
-      t.textContent = T(hosting ? 'hostStop' : 'hostStart', hosting ? 'Stop Hosting' : 'Start Hosting');
-      document.getElementById('hostFab').classList.toggle('on', hosting); refreshHostFiles();
-    }
-
     function triggerBgUpload() { document.getElementById('bgUploader').click(); }
 
     function showWallpaperVideo(blob) {
@@ -1392,6 +1313,10 @@
       document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
       btnElement.classList.add('active');
       document.getElementById(`tab-${tabId}`).classList.add('active');
+      if (tabId === 'payloads') {
+        // First open: render cached list, then fetch missing (Nexus → official)
+        try { await ensurePayloadsLoaded(); } catch (e) { console.warn(e); }
+      }
       if (isSplit()) return;  // both panes are visible; each has its own port
       const portInput = document.getElementById('port');
       let lastExploitPort = await StorageEngine.getItem('last_exploit_port') || 9026;
@@ -1429,6 +1354,195 @@
       }
     }
 
+
+
+    /** Queue a completed download; previous completed file is committed to cache only now. */
+
+
+    /** Startup / Sync: exploits only (no payload binaries). */
+    async function commitPendingCache() {
+      if (_pendingCache && _pendingCache.key && _pendingCache.b64) {
+        try { await StorageEngine.setItem(_pendingCache.key, _pendingCache.b64); } catch (e) {}
+      }
+      _pendingCache = null;
+    }
+
+    /** Hold completed download in memory. Previous held file is written when the NEXT download is about to start. */
+    async function beginNextDownload() {
+      // Called immediately before starting a new network fetch
+      await commitPendingCache();
+    }
+
+    async function holdCompletedDownload(key, b64) {
+      // Do not write yet — wait until beginNextDownload() or final flush
+      _pendingCache = { key: key, b64: b64 };
+    }
+
+    async function cacheHas(key) {
+      const v = await StorageEngine.getItem(key);
+      return !!(v && v.length > 8);
+    }
+
+    async function syncExploitsOnly(showerr) {
+      if (_syncLock) return;
+      _syncLock = true;
+      try {
+        if (showerr) showToast(T('toast_syncing', 'Syncing exploits…'));
+        await yieldUI();
+        const res = await fetch(CLOUD_URL + 'manifest.json');
+        if (!res.ok) throw new Error('Manifest fetch failed.');
+        const manifest = await res.json();
+        await StorageEngine.setItem('nexus_cloud_manifest', JSON.stringify(manifest));
+        const exploitItems = [
+          ...(manifest.luac0re || []),
+          ...(manifest.yarp2jb || []),
+          ...(manifest.lua || []),
+          ...(manifest.y2jb || [])
+        ];
+        for (let i = 0; i < exploitItems.length; i++) {
+          const item = exploitItems[i];
+          const cacheKey = item.id ? ('cloud_cache_' + item.id) : ('cloud_cache_' + (item.file || item.name));
+          if (await cacheHas(cacheKey)) continue; // already cached — skip
+          try {
+            await beginNextDownload(); // cache previous only when this download starts
+            await yieldUI();
+            const fRes = await fetch(CLOUD_URL + item.file);
+            if (!fRes.ok) continue;
+            const b64 = arrayBufferToB64(await fRes.arrayBuffer());
+            await holdCompletedDownload(cacheKey, b64);
+          } catch (e2) {}
+        }
+        await commitPendingCache(); // flush last held file
+        await renderExploits();
+        if (showerr) showToast(T('toast_sync_done', 'Exploits ready.'));
+      } catch (e) {
+        console.warn('exploit sync failed', e);
+        if (showerr) showToast(T('toast_sync_fail', 'Exploit sync failed — offline?'), 'error');
+      } finally {
+        _syncLock = false;
+      }
+    }
+
+    /** Payloads tab: Nexus payloads first, then official; skip cached; deferred commit. */
+    async function ensurePayloadsLoaded() {
+      // Always show whatever is already cached
+      await renderPayloads();
+      if (payloadsLoaded && !_syncLock) {
+        // still allow manual Sync to refresh; on first open we always try missing
+      }
+      if (_syncLock) return;
+      _syncLock = true;
+      let nexusOk = false;
+      let officialOk = 0;
+      try {
+        showToast(T('toast_syncing', 'Loading payloads (Nexus)…'));
+        await yieldUI();
+        // Nexus payload list
+        try {
+          const res = await fetch(CLOUD_URL + 'manifest.json');
+          if (res.ok) {
+            const manifest = await res.json();
+            await StorageEngine.setItem('nexus_cloud_manifest', JSON.stringify(manifest));
+            const payloadItems = manifest.payloads || [];
+            for (let i = 0; i < payloadItems.length; i++) {
+              const item = payloadItems[i];
+              const cacheKey = item.id ? ('cloud_cache_' + item.id) : ('cloud_cache_' + (item.file || item.name));
+              if (await cacheHas(cacheKey)) continue;
+              try {
+                await beginNextDownload(); // cache previous when this download starts
+                await yieldUI();
+                const fRes = await fetch(CLOUD_URL + item.file);
+                if (!fRes.ok) continue;
+                const b64 = arrayBufferToB64(await fRes.arrayBuffer());
+                await holdCompletedDownload(cacheKey, b64);
+              } catch (e2) {}
+            }
+            await commitPendingCache();
+            nexusOk = true;
+            await renderPayloads();
+          }
+        } catch (e) {
+          console.warn('nexus payloads', e);
+        }
+
+        // Official overlay — only missing
+        try {
+          showToast(T('toast_syncing', 'Loading official payloads…'));
+          await seedOfficialSources();
+          await yieldUI();
+          let rel = JSON.parse(await StorageEngine.getItem('nexus_releases') || '[]');
+          for (const s of OFFICIAL_SOURCES) {
+            try {
+              await yieldUI();
+              const infoRaw = await nativeGet('https://api.github.com/repos/' + s.repo + '/releases?per_page=5');
+              // nativeGet returns b64 of body for binary; for github API JSON we need text — prefer fetch
+              let releases;
+              try {
+                const r = await fetch('https://api.github.com/repos/' + s.repo + '/releases?per_page=5');
+                if (!r.ok) throw new Error('gh ' + r.status);
+                releases = await r.json();
+              } catch (fe) {
+                continue;
+              }
+              if (!releases || !releases.length) continue;
+              const latest = releases[0];
+              const tag = latest.tag_name || '';
+              const assets = latest.assets || [];
+              let asset = null;
+              const mask = (s.asset || '*.elf').replace('*', '');
+              for (const a of assets) {
+                const n = (a.name || '').toLowerCase();
+                if (s.asset && s.asset.indexOf('*') >= 0) {
+                  if (n.endsWith(mask.replace('.', '')) || n.indexOf(mask.replace('*','').toLowerCase()) >= 0 || n.endsWith('.elf') || n.endsWith('.bin')) {
+                    asset = a; break;
+                  }
+                } else if (s.asset && n === s.asset.toLowerCase()) {
+                  asset = a; break;
+                }
+              }
+              if (!asset) {
+                asset = assets.find(a => /\.(elf|bin)$/i.test(a.name || '')) || assets[0];
+              }
+              if (!asset || !asset.browser_download_url) continue;
+              const id = relId(s.name);
+              if (await cacheHas('cloud_cache_' + id)) {
+                // already have body — still refresh release meta
+                rel = rel.filter(x => x.id !== id);
+                rel.push({ id, name: s.name, tag: tag });
+                officialOk++;
+                continue;
+              }
+              await beginNextDownload();
+              const b64 = await nativeGet(asset.browser_download_url);
+              if (!b64 || b64.length < 8) continue;
+              await holdCompletedDownload('cloud_cache_' + id, b64);
+              rel = rel.filter(x => x.id !== id);
+              rel.push({ id, name: s.name, tag: tag });
+              officialOk++;
+            } catch (e) {
+              console.warn('official', s.name, e);
+            }
+          }
+          await commitPendingCache();
+          await StorageEngine.setItem('nexus_releases', JSON.stringify(rel));
+        } catch (e) {
+          console.warn('official payloads', e);
+        }
+
+        localFolderMode = false;
+        updateArmoryTitle();
+        await renderPayloads();
+        payloadsLoaded = true;
+        if (nexusOk && officialOk > 0) showToast('Payloads ready · ' + officialOk + ' official');
+        else if (nexusOk) showToast(T('toast_sync_done', 'Nexus payloads ready.'));
+        else if (officialOk > 0) showToast(officialOk + ' official payload(s) ready');
+        else showToast(T('toast_sync_fail', 'No new payloads (offline or cached).'), 'error');
+      } finally {
+        _syncLock = false;
+      }
+    }
+
+
     async function syncCloud(showerr = 1) {
       if (localFolderMode) {
         localFolderMode = false;
@@ -1440,137 +1554,16 @@
         showToast(T('toast_sync_busy', 'Sync already running in background…'));
         return;
       }
-      _syncLock = true;
-
-      // Keep button label as "Sync" — background work must not rename the control
+      // Exploits first (always). Payloads only if Payloads tab is active / already visited.
+      const payloadsTab = document.getElementById('tab-payloads');
+      const wantPayloads = payloadsLoaded || (payloadsTab && payloadsTab.classList.contains('active'));
       (async () => {
-        let nexusOk = false;
-        let officialOk = 0;
-        let officialFail = 0;
-
-        // ── 1) Nexus first: exploits (y2jb / luac0re / lua / yarp2jb) + payloads ──
-        try {
-          showToast(T('toast_syncing', 'Syncing Nexus payloads…'));
-          await yieldUI();
-          const res = await fetch(CLOUD_URL + 'manifest.json');
-          if (!res.ok) throw new Error('Manifest fetch failed.');
-          const manifest = await res.json();
-          await StorageEngine.setItem('nexus_cloud_manifest', JSON.stringify(manifest));
-          const allFiles = [
-            ...(manifest.luac0re || []),
-            ...(manifest.yarp2jb || []),
-            ...(manifest.lua || []),
-            ...(manifest.y2jb || []),
-            ...(manifest.payloads || [])
-          ];
-          for (let item of allFiles) {
-            try {
-              await yieldUI();
-              const fRes = await fetch(CLOUD_URL + item.file);
-              if (!fRes.ok) continue;
-              const b64 = arrayBufferToB64(await fRes.arrayBuffer());
-              const cacheKey = item.id ? ('cloud_cache_' + item.id) : ('cloud_cache_' + (item.file || item.name));
-              await StorageEngine.setItem(cacheKey, b64);
-            } catch (e2) {}
-          }
-          nexusOk = true;
-          // Refresh exploit buttons ASAP so y2jb / LuaC0re show up
-          await renderExploits();
-          await renderPayloads();
-        } catch (e) {
-          console.warn('nexus sync failed', e);
-          if (showerr) showToast(T('toast_sync_fail', 'Nexus sync failed — trying official…'), 'error');
+        await syncExploitsOnly(showerr);
+        if (wantPayloads) {
+          payloadsLoaded = false; // allow refresh of missing only
+          await ensurePayloadsLoaded();
         }
-
-        // ── 2) Official repo overlay (overwrite / extend payload list) ──
-        try {
-          await seedOfficialSources();
-          await yieldUI();
-          let rel = JSON.parse(await StorageEngine.getItem('nexus_releases') || '[]');
-          for (const s of OFFICIAL_SOURCES) {
-            try {
-              await yieldUI();
-              const infoRaw = await nativeGet('https://api.github.com/repos/' + s.repo + '/releases?per_page=5');
-              const info = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(infoRaw), c => c.charCodeAt(0))));
-              const re = globRe(s.asset || '*.elf');
-              let a = null, chosen = null;
-              for (const relInfo of (Array.isArray(info) ? info : [])) {
-                a = (relInfo.assets || []).find(x => re.test(x.name));
-                if (a) { chosen = relInfo; break; }
-              }
-              if (!a || !chosen) throw new Error('no matching asset');
-              const tag = chosen.tag_name || chosen.name || '';
-              const id = relId(s.name);
-              const cur = rel.find(x => x.id === id);
-              if (!(cur && cur.tag === tag && await StorageEngine.getItem('cloud_cache_' + id))) {
-                await yieldUI();
-                await StorageEngine.setItem('cloud_cache_' + id, await nativeGet(a.browser_download_url));
-                rel = rel.filter(x => x.id !== id);
-                rel.push({ id, name: s.name, tag: tag });
-              }
-              officialOk++;
-            } catch (e) {
-              officialFail++;
-              console.warn('official', s.name, e);
-            }
-          }
-          await StorageEngine.setItem('nexus_releases', JSON.stringify(rel));
-        } catch (e) {
-          console.warn('official block failed', e);
-        }
-
-        // ── 3) Optional: seed WebKit autoloader host files into LAN host ──
-        try { await seedWebkitHostFiles(false); } catch (e) {}
-
-        localFolderMode = false;
-        updateArmoryTitle();
-        await renderExploits();
-        await renderPayloads();
-
-        if (nexusOk && officialOk > 0) {
-          showToast('Nexus ready · ' + officialOk + ' official updated');
-        } else if (nexusOk) {
-          showToast(T('toast_sync_done', 'Nexus repo synced.'));
-        } else if (officialOk > 0) {
-          showToast(officialOk + ' official payload(s) ready');
-        } else if (showerr) {
-          showToast(T('toast_sync_fail', 'Sync failed — offline?'), 'error');
-        }
-
-        _syncLock = false;
       })();
-    }
-
-    async function seedWebkitHostFiles(force) {
-      if (!window.AndroidWebHost || typeof AndroidWebHost.seedWebkitAutoloader !== 'function') {
-        if (force) showToast('WebKit seed needs the Android app', 'error');
-        return false;
-      }
-      try {
-        const names = JSON.parse(AndroidWebHost.list() || '[]');
-        if (!force && names.indexOf('index.html') >= 0) return true;
-        showToast('Loading bundled WebKit pages…');
-        await yieldUI();
-        const result = await new Promise((resolve) => {
-          setTimeout(() => {
-            try {
-              // Argument ignored — pages are copied from app assets/webkit/
-              resolve(AndroidWebHost.seedWebkitAutoloader(''));
-            } catch (e) { resolve(JSON.stringify({ ok: false, error: String(e) })); }
-          }, 0);
-        });
-        const j = typeof result === 'string' ? JSON.parse(result) : result;
-        if (j && j.ok) {
-          showToast('WebKit ready (bundled): ' + (j.files || []).join(', '));
-          if (typeof refreshHostFiles === 'function') refreshHostFiles();
-          return true;
-        }
-        if (force) showToast('WebKit seed failed: ' + (j && j.error ? j.error : 'unknown'), 'error');
-        return false;
-      } catch (e) {
-        if (force) showToast('WebKit seed failed', 'error');
-        return false;
-      }
     }
 
     async function renderExploits() {

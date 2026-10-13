@@ -14,7 +14,7 @@
       --ps5-error: #ff4d6d;
       --oled-black: #000000;
       --bg-gradient: radial-gradient(circle at 80% 0%, #0a1428 0%, #000000 55%, #000000 100%);
-      --glass-bg: rgba(255, 255, 255, 0.045);
+      --glass-bg: rgba(255, 255, 255, 0.03);
       --glass-border: rgba(255, 255, 255, 0.10);
     }
 
@@ -28,17 +28,6 @@
     
     /* Phone landscape fallback: rotate the card so it reads portrait.
        Limited to phone-sized widths so tablets / split-screen never trigger it. */
-    @media (orientation: landscape) and (max-height: 500px) and (max-width: 950px) {
-      .app-card {
-        transform: rotate(-90deg);
-        transform-origin: center center;
-        width: 90vh !important;
-        max-width: 90vh !important;
-        max-height: 90vw;
-        height: 90vw;
-      }
-    }
-
     #wallpaper-layer {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
       background-size: cover; background-position: center; z-index: 0; opacity: 0.55;
@@ -55,8 +44,8 @@
       position: relative; z-index: 10;
       /* Literal glass — near-clear so wallpaper text stays readable */
       background: var(--glass-bg);
-      backdrop-filter: blur(10px) saturate(1.05);
-      -webkit-backdrop-filter: blur(10px) saturate(1.05);
+      backdrop-filter: blur(4px) saturate(1.02);
+      -webkit-backdrop-filter: blur(4px) saturate(1.02);
       border: 1px solid var(--glass-border);
       border-radius: 28px;
       padding: 25px 22px; width: 94%; max-width: 430px;
@@ -502,7 +491,7 @@
     .payload-cb-row.is-checked .cb-label { color: #fff; }
     .cb-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; flex-shrink: 0; transition: color 0.18s, background 0.18s; }
     .payload-cb-row.is-checked .cb-badge { color: var(--ps5-accent); background: rgba(0,240,255,0.1); }
-    .cb-badge.sync-req { color: #ffb020; background: rgba(255,176,32,0.12); }
+    .cb-badge.sync-req { color: #9a5c5c; background: rgba(90,35,40,0.22); }
     .payload-cb-row.local-missing .cb-label { color: var(--ps5-error); text-decoration: line-through; }
 
     
@@ -693,7 +682,7 @@
     /* Tablet landscape: SPLIT VIEW - Exploits on the left, Payloads on the right.
        (Keep this query in sync with SPLIT_QUERY in the script.) */
     .row.split-only { display: none; }
-    @media (min-width: 900px) and (min-height: 500px) and (orientation: landscape) {
+    @media (min-width: 800px) and (min-height: 500px), (orientation: landscape) and (min-width: 560px) and (min-height: 280px) {
       .app-card {
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -720,6 +709,14 @@
         color: var(--ps5-light-blue); padding-bottom: 12px; margin-bottom: 16px;
         border-bottom: 2px solid var(--ps5-light-blue);
       }
+      /* Phone landscape: tighter so both panes fit */
+      @media (max-height: 420px) {
+        .app-card { padding: 14px 18px; column-gap: 16px; border-radius: 20px; }
+        .pane-title { font-size: 10px; padding-bottom: 6px; margin-bottom: 8px; }
+        #tab-payloads { padding-left: 16px; margin-left: -8px; }
+        h2 { font-size: 18px; }
+        .subtitle { font-size: 9px; }
+      }
       .settings-panel { left: auto; right: 40px; width: 460px; max-height: 80%; overflow-y: auto; }
       h2 { font-size: 30px; }
       .subtitle { font-size: 12px; }
@@ -733,7 +730,7 @@
       button.primary-btn { padding: 18px; font-size: 16px; }
     }
     .pane-title { display: none; }
-    @media (min-width: 900px) and (min-height: 500px) and (orientation: landscape) { .pane-title { display: block; } }
+    @media (min-width: 800px) and (min-height: 500px), (orientation: landscape) and (min-width: 560px) and (min-height: 280px) { .pane-title { display: block; } }
 
 
     #srcPanel { display: none; position: fixed; z-index: 60; left: 50%; top: 50%; transform: translate(-50%,-50%);
@@ -745,87 +742,68 @@
     body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     .app-card { margin-bottom: max(12px, env(safe-area-inset-bottom, 0px)); }
   
-    /* ---- Boot: NEXUS letter draw (blue neon gradient) + presented by isu ---- */
+    /* ---- Boot: graffiti video intro ---- */
     #bootSplash {
       position: fixed; inset: 0; z-index: 99999;
       background: #000;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      transition: opacity 0.8s ease;
+      transition: opacity 0.5s ease;
       overflow: hidden;
     }
     #bootSplash.done { opacity: 0; pointer-events: none; }
 
-    #bootLogo {
-      position: relative;
-      z-index: 2;
-      font-family: 'Inter', system-ui, sans-serif;
-      font-weight: 800;
-      font-style: normal;
-      font-size: clamp(52px, 15vw, 88px);
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.04em;
-      line-height: 1;
-    }
-    #bootLogo .boot-letter {
-      display: inline-block;
-      font-style: normal;
-      font-weight: 800;
-      /* Blue neon gradient (photo-style, no green) */
-      background: linear-gradient(180deg, #9ec9ff 0%, #3d8bff 40%, #1a5cff 72%, #0a2f8a 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      filter:
-        drop-shadow(0 0 6px rgba(61, 139, 255, 0.75))
-        drop-shadow(0 0 18px rgba(26, 92, 255, 0.45));
+    #bootArtWrap {
+      position: absolute; inset: 0;
       opacity: 0;
-      clip-path: inset(0 100% 0 0);
+      transform: scale(1.04);
+      transition: opacity 0.55s ease, transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    #bootSplash.play #bootLogo .boot-letter {
-      animation: letterDraw 0.55s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    #bootSplash.ready #bootArtWrap {
+      opacity: 1;
+      transform: scale(1);
     }
-    #bootSplash.play #bootLogo .boot-letter[data-i="0"] { animation-delay: 0.15s; }
-    #bootSplash.play #bootLogo .boot-letter[data-i="1"] { animation-delay: 0.40s; }
-    #bootSplash.play #bootLogo .boot-letter[data-i="2"] { animation-delay: 0.65s; }
-    #bootSplash.play #bootLogo .boot-letter[data-i="3"] { animation-delay: 0.90s; }
-    #bootSplash.play #bootLogo .boot-letter[data-i="4"] { animation-delay: 1.15s; }
-    @keyframes letterDraw {
-      0%   { opacity: 0; clip-path: inset(0 100% 0 0); }
-      15%  { opacity: 1; }
-      100% { opacity: 1; clip-path: inset(0 0 0 0); }
+    #bootArtWrap video {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      object-position: center center;
     }
 
-    .boot-credit {
+    #bootVignette {
+      position: absolute; inset: 0; z-index: 2; pointer-events: none;
+      background:
+        radial-gradient(ellipse at 50% 42%, transparent 40%, rgba(0,0,0,0.4) 100%),
+        linear-gradient(to bottom, rgba(0,0,0,0.12) 0%, transparent 30%, transparent 55%, rgba(0,0,0,0.5) 100%);
+    }
+
+    #bootCredit {
       position: absolute;
       left: 0; right: 0;
-      bottom: 16%;
+      bottom: max(10%, 40px);
+      z-index: 10;
       display: flex;
       justify-content: center;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 0;
+      pointer-events: none;
+    }
+    #bootCredit .sticker-tag {
       font-family: 'Inter', system-ui, sans-serif;
-      font-weight: 400;
-      font-size: 12px;
-      letter-spacing: 0.22em;
-      text-transform: lowercase;
-      color: rgba(200, 220, 255, 0.6);
-    }
-    .boot-credit .credit-letter {
-      display: inline-block;
+      font-size: clamp(10px, 2.4vw, 13px);
+      font-weight: 800;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: #fff;
+      background: #000;
+      padding: 7px 14px;
+      border: 2px dashed #3d6bff;
+      box-shadow: 0 0 18px rgba(0, 80, 255, 0.4);
+      transform: rotate(-3deg) translateY(20px);
       opacity: 0;
-      clip-path: inset(0 100% 0 0);
-      white-space: pre;
+      animation: stickerIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.65s forwards;
     }
-    #bootSplash.play .boot-credit .credit-letter {
-      animation: letterDraw 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    @keyframes stickerIn {
+      to { opacity: 1; transform: rotate(-3deg) translateY(0); }
     }
 
     /* Download spinner badge */
@@ -859,14 +837,11 @@
 <body data-tab-anim="spring">
 
   <div id="bootSplash" aria-hidden="true">
-    <div id="bootLogo">
-      <span class="boot-letter" data-i="0">N</span>
-      <span class="boot-letter" data-i="1">E</span>
-      <span class="boot-letter" data-i="2">X</span>
-      <span class="boot-letter" data-i="3">U</span>
-      <span class="boot-letter" data-i="4">S</span>
+    <div id="bootArtWrap">
+      <video id="bootArt" src="boot_nexus.mp4" muted playsinline preload="auto"></video>
     </div>
-    <div class="boot-credit" id="bootCredit"></div>
+    <div id="bootVignette"></div>
+    <div id="bootCredit"><span class="sticker-tag">Presented by isu</span></div>
   </div>
 
   <div id="wallpaper-layer"></div>
@@ -1507,21 +1482,25 @@
     function shortErr(msg) {
       msg = String(msg == null ? 'error' : msg);
       if (msg.indexOf('ERR:') === 0) msg = msg.slice(4);
-      msg = msg.replace(/^java\.[\w.$]+(?::\s*)?/i, '').replace(/\s+at\s+[\s\S]*/m, '').trim();
+      // Strip Java exception class names + stack traces
+      msg = msg.replace(/^java\.[\w.$]+(?::\s*)?/i, '');
+      msg = msg.replace(/^[\w.$]+(Exception|Error)(?::\s*)?/i, '');
+      msg = msg.replace(/\s+at\s+[\s\S]*/m, '').trim();
+      if (msg.length > 120) msg = msg.slice(0, 117) + '…';
       var portEl = document.getElementById('port');
       var port = (portEl && portEl.value) ? portEl.value : '9021';
       var low = msg.toLowerCase();
-      if (/conn_refused|connection refused|failed to connect|econnrefused|connectException/i.test(low))
+      if (/no internet|offline|network request failed|failed to fetch|net::err|err_internet|err_name_not_resolved|unknownhost|unable to resolve|dns/i.test(low))
+        return 'No internet — using cached files only';
+      if (/conn_refused|connection refused|failed to connect|econnrefused|connectexception/i.test(low))
         return 'Host unreachable — make sure port ' + port + ' is listening';
-      if (/timeout|etimedout|timed out/i.test(low))
+      if (/timeout|etimedout|timed out|abort/i.test(low))
         return 'Timed out — is the console on and port ' + port + ' open?';
       if (/unreachable|network is unreachable|enotreach|no route|enetunreach|ehostunreach/i.test(low))
         return 'No route to host — check IP and Wi‑Fi';
-      if (/port closed|send_fail|send failed/i.test(low))
-        return 'Could not send — make sure port ' + port + ' is listening';
-      if (!msg || msg === 'error')
-        return 'Send failed — make sure port ' + port + ' is listening';
-      if (msg.length > 90) msg = msg.slice(0, 87) + '...';
+      if (/ssl|certificate|handshake/i.test(low))
+        return 'Secure connection failed — try again later';
+      if (!msg || msg === 'error') return 'Something went wrong';
       return msg;
     }
 
@@ -1531,8 +1510,9 @@
       toast.className = 'custom-toast';
       void toast.offsetWidth; // force reflow so transition restarts
       msg = String(msg == null ? '' : msg);
-      if (type === 'error') msg = shortErr(msg);
-      else if (msg.length > 120) msg = msg.slice(0, 117) + '...';
+      if (type === 'error' || /java\.|Exception|Error:|at com\.|at android\./i.test(msg))
+        msg = shortErr(msg);
+      if (msg.length > 90) msg = msg.slice(0, 87) + '…';
       toast.textContent = msg;
       toast.className = `custom-toast ${type} show`;
       _toastTimer = setTimeout(() => { toast.classList.remove('show'); }, 2200);
@@ -1645,21 +1625,27 @@
     // Curated official list (order fixed). Display names have no version tags.
     // asset: glob against GitHub release assets. url: optional direct URL (skips API).
     const OFFICIAL_SOURCES = [
-      { name: "Kstuff Lite (Echo)",    repo: "EchoStretch/kstuff-lite",         asset: "kstuff.elf" },
-      { name: "Kstuff Lite (Drakmor)", repo: "drakmor/kstuff-lite",             asset: "kstuff.elf" },
-      { name: "ShadowMountPlus",       repo: "drakmor/ShadowMountPlus",         asset: "*ShadowMount*.elf" },
-      { name: "FTP Server",            repo: "ps5-payload-dev/ftpsrv",          asset: "*.elf" },
-      { name: "PS5 Upload",            repo: "phantomptr/ps5upload",            asset: "*.elf" },
-      { name: "NanoDNS",               repo: "drakmor/nanoDNS",                 asset: "nanodns.elf" },
-      { name: "Payload Manager",       repo: "LightningMods/PS5-Payload-Manager", asset: "*.elf" },
-      { name: "CheatRunner",           repo: "notmaj0r/CheatRunner",            asset: "*.elf" },
-      { name: "OnionHEN",              repo: "aydencharles/onionHEN",           asset: "OnionHEN.elf" },
-      { name: "EtaHEN",                repo: "etaHEN/etaHEN",                   asset: "*.bin" },
-      { name: "BFPilot",               repo: "ItsBlurf/BFpilot",                asset: "*.elf" },
-      { name: "PS Patch System",       repo: "illusionyy/ps-patch-system",      asset: "*.elf" },
-      { name: "WebFile Manager",       repo: "owendswang/ps5-web-file-manager", asset: "*.elf" },
-      { name: "Fan Target",            repo: "PixelPop25/fan_target",           asset: "fan_target.elf" },
-      { name: "ShadowMountPlus Fan",   repo: "PixelPop25/fan_target",           asset: "fan_target.elf" }
+      { name: "Kstuff Lite (Echo)",    repo: "EchoStretch/kstuff-lite",              asset: "kstuff.elf" },
+      { name: "Kstuff Lite (Drakmor)", repo: "drakmor/kstuff-lite",                  asset: "kstuff.elf" },
+      { name: "ShadowMountPlus",       repo: "drakmor/ShadowMountPlus",              asset: "*ShadowMount*.elf" },
+      { name: "FTP Server",            repo: "ps5-payload-dev/ftpsrv",               asset: "*.elf" },
+      { name: "PS5 Upload",            repo: "phantomptr/ps5upload",                 asset: "*.elf" },
+      { name: "NanoDNS",               repo: "drakmor/nanoDNS",                      asset: "nanodns.elf" },
+      { name: "Payload Manager",       repo: "itsPLK/ps5-payload-manager",           asset: "pldmgr*.elf" },
+      { name: "CheatRunner",           repo: "notmaj0r/CheatRunner",                 asset: "*.elf" },
+      { name: "OnionHEN",              repo: "aydencharles/onionHEN",                asset: "OnionHEN.elf" },
+      { name: "EtaHEN",                repo: "etaHEN/etaHEN",                        asset: "*.bin" },
+      { name: "BFPilot",               repo: "ItsBlurf/BFpilot",                     asset: "*.elf" },
+      { name: "PS Patch System",       repo: "illusionyy/ps-patch-system",           asset: "*.elf" },
+      { name: "WebFile Manager",       repo: "owendswang/ps5-web-file-manager",      asset: "*.elf" },
+      { name: "Fan Control",           repo: "owendswang/ps5-fan-control",           asset: "ps5-fan-control.elf" },
+      { name: "Fan Target",            repo: "drakmor/fan_target",                   asset: "fan_target*.elf" },
+      { name: "Linux Loader",          repo: "ps5-linux/ps5-linux-loader",           asset: "*linux*.elf" },
+      { name: "Game Compressor",       repo: "juma-sayeh/PS5-Game-Compressor",       asset: "game-compressor.elf" },
+      { name: "LZ4 Compression",       repo: "theghostonline/PS5-LZ4-Compression",   asset: "lz4-compression.elf" },
+      { name: "UnRAR",                 repo: "bizkut/unrar-ps5",                     asset: "unrar*.elf" },
+      { name: "PKG Manager",           repo: "itsPLK/ps5-pkg-manager",               asset: "*.elf" },
+      { name: "ELF Loader",            repo: "ps5-payload-dev/elfldr",               asset: "*.elf" }
     ];
     let officialReposEnabled = false; // payloads tab only; default OFF
 
@@ -1668,14 +1654,14 @@
       var el = document.getElementById('officialReposToggle');
       if (el) el.checked = officialReposEnabled;
       await StorageEngine.setItem('nexus_official_repos', officialReposEnabled ? 'true' : 'false');
+      // Only update source *list* metadata — never download here. User taps Sync.
       if (officialReposEnabled) {
-        await seedOfficialSources();
-        // Refresh release assets in background; list merges into IDB caches
-        payloadsLoaded = false;
-        try { await ensurePayloadsLoadedBackground(); } catch (e) {}
-        try { if (typeof updateAllSources === 'function') await updateAllSources(); } catch (e) {}
+        try { await seedOfficialSources(); } catch (e) {}
       }
       try { await renderPayloads(); } catch (e) {}
+      showToast(officialReposEnabled
+        ? T('toast_official_on', 'Official repos on — tap Sync to download')
+        : T('toast_official_off_ok', 'Official repos off'));
     }
 
     async function seedOfficialSources() {
@@ -1701,6 +1687,10 @@
     }
 
     async function updateAllSources() {
+      if (!(await hasInternet())) {
+        showToast(T('toast_no_internet', 'No internet — showing cached files'), 'error');
+        return;
+      }
       const src = await getSources(); if (!src.length) return showToast('Add a source first', 'error');
       let rel = JSON.parse(await StorageEngine.getItem('nexus_releases') || '[]'), updated = 0;
       for (const s of src) {
@@ -1858,7 +1848,7 @@
 
     // ── Tablet split view (Exploits left / Payloads right) ──
     // Keep in sync with the tablet-landscape @media rule in the CSS.
-    const SPLIT_QUERY = '(min-width: 900px) and (min-height: 500px) and (orientation: landscape)';
+    const SPLIT_QUERY = '(min-width: 800px) and (min-height: 500px), (orientation: landscape) and (min-width: 560px) and (min-height: 280px)';
     const splitMQ = window.matchMedia(SPLIT_QUERY);
     const isSplit = () => splitMQ.matches;
 
@@ -1909,27 +1899,47 @@
       return new Promise(function(resolve) {
         var splash = document.getElementById('bootSplash');
         if (!splash) { resolve(); return; }
-        var credit = document.getElementById('bootCredit');
-        if (credit && !credit.dataset.built) {
-          var text = 'presented by isu';
-          var base = 1.75;
-          for (var i = 0; i < text.length; i++) {
-            var sp = document.createElement('span');
-            sp.className = 'credit-letter';
-            sp.textContent = text[i];
-            sp.style.animationDelay = (base + i * 0.045) + 's';
-            credit.appendChild(sp);
-          }
-          credit.dataset.built = '1';
-        }
-        splash.classList.add('play');
-        setTimeout(function() {
+        var vid = document.getElementById('bootArt');
+        var faded = false;
+        function finish() {
+          if (faded) return;
+          faded = true;
           splash.classList.add('done');
           setTimeout(function() {
             if (splash.parentNode) splash.parentNode.removeChild(splash);
             resolve();
-          }, 850);
-        }, 3200);
+          }, 500);
+        }
+        function go() {
+          splash.classList.add('ready');
+          if (vid) {
+            vid.play().catch(function(){});
+            // Start HTML fade slightly before video ends so it syncs cleanly
+            // (video was trimmed to ~4.33s at the point screen begins to darken)
+            var startFade = function() {
+              var remaining = (vid.duration || 4.3) - vid.currentTime;
+              if (remaining <= 0.55) finish();
+              else setTimeout(finish, Math.max(0, (remaining - 0.55) * 1000));
+            };
+            if (vid.readyState >= 1) startFade();
+            else vid.addEventListener('loadedmetadata', startFade, { once: true });
+            vid.addEventListener('ended', finish, { once: true });
+            // safety net
+            setTimeout(finish, 5500);
+          } else {
+            setTimeout(finish, 2400);
+          }
+        }
+        if (vid) {
+          if (vid.readyState >= 2) go();
+          else {
+            vid.addEventListener('canplay', go, { once: true });
+            vid.addEventListener('error', function() { setTimeout(finish, 800); }, { once: true });
+            setTimeout(go, 1500); // safety
+          }
+        } else {
+          go();
+        }
       });
     }
 
@@ -2142,6 +2152,32 @@
       _pendingCache = { key: key, b64: b64 };
     }
 
+        async function hasInternet() {
+      // Quick reachability check — fail closed so we never hang the UI on dead network
+      try {
+        var ctrl = new AbortController();
+        var timer = setTimeout(function() { try { ctrl.abort(); } catch (e) {} }, 2500);
+        // generate_204 is tiny; no-cors still fails offline
+        await fetch('https://www.google.com/generate_204', {
+          method: 'GET', cache: 'no-store', signal: ctrl.signal, mode: 'no-cors'
+        });
+        clearTimeout(timer);
+        return true;
+      } catch (e1) {
+        try {
+          var ctrl2 = new AbortController();
+          var timer2 = setTimeout(function() { try { ctrl2.abort(); } catch (e) {} }, 2000);
+          await fetch('https://clients3.google.com/generate_204', {
+            method: 'GET', cache: 'no-store', signal: ctrl2.signal, mode: 'no-cors'
+          });
+          clearTimeout(timer2);
+          return true;
+        } catch (e2) {
+          return false;
+        }
+      }
+    }
+
     async function cacheHas(key) {
       if (!key) return false;
       const v = await StorageEngine.getItem(key);
@@ -2163,6 +2199,10 @@
       if (_syncLock) return;
       _syncLock = true;
       try {
+        if (!(await hasInternet())) {
+          if (showerr) showToast(T('toast_no_internet', 'No internet — showing cached files'), 'error');
+          return;
+        }
         if (showerr) showToast(T('toast_syncing', 'Syncing exploits…'));
         await yieldUI();
         const res = await fetch(CLOUD_URL + 'manifest.json');
@@ -2281,6 +2321,12 @@
      */
     async function ensurePayloadsLoadedBackground() {
       if (_syncLock || payloadsLoaded) return;
+
+      // Offline: never start network; keep UI on cache
+      if (!(await hasInternet())) {
+        payloadsLoaded = true;
+        return;
+      }
 
       try {
         const manStr = await StorageEngine.getItem('nexus_cloud_manifest');
@@ -2428,7 +2474,16 @@
       // Exploits first (always). Payloads only if Payloads tab is active / already visited.
       const payloadsTab = document.getElementById('tab-payloads');
       const wantPayloads = payloadsLoaded || (payloadsTab && payloadsTab.classList.contains('active'));
+      // Non-blocking: never freeze UI on toggle or sync
+      setTimeout(function() {
       (async () => {
+        const online = await hasInternet();
+        if (!online) {
+          if (showerr) showToast(T('toast_no_internet', 'No internet — showing cached files'), 'error');
+          try { await renderExploits(); } catch (e) {}
+          try { await renderPayloads(); } catch (e) {}
+          return;
+        }
         await syncExploitsOnly(showerr);
         if (wantPayloads) {
           // Only reopen the downloader if something is not fully cached
@@ -2453,7 +2508,7 @@
             if (showerr) showToast(T('toast_all_cached', 'Everything already downloaded'));
           }
         }
-      })();
+      })(); }, 0);
     }
 
     async function renderExploits() {

@@ -117,7 +117,28 @@ public class MainActivity extends Activity {
                 try { sock.shutdownOutput(); } catch (Exception ignored) {}
                 return "ok";
             } catch (Exception e) {
-                return "ERR:" + (e.getMessage() != null ? e.getMessage() : "send failed");
+                String m = e.getMessage() != null ? e.getMessage() : "";
+                String low = m.toLowerCase();
+                if (low.contains("econnrefused") || low.contains("connection refused") || low.contains("failed to connect"))
+                    return "ERR:CONN_REFUSED";
+                if (low.contains("etimedout") || low.contains("timed out"))
+                    return "ERR:TIMEOUT";
+                if (low.contains("enetunreach") || low.contains("ehostunreach") || low.contains("network is unreachable") || low.contains("no route"))
+                    return "ERR:UNREACHABLE";
+                return "ERR:SEND_FAIL";
+            } finally {
+                try { if (sock != null) sock.close(); } catch (Exception ignored) {}
+            }
+        }
+
+        @JavascriptInterface public String probe(String host, int port) {
+            Socket sock = null;
+            try {
+                sock = new Socket();
+                sock.connect(new InetSocketAddress(host, port), 1500);
+                return "ok";
+            } catch (Exception e) {
+                return "ERR:port closed";
             } finally {
                 try { if (sock != null) sock.close(); } catch (Exception ignored) {}
             }

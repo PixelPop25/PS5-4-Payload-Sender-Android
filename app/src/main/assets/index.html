@@ -4,21 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Nexus: Dashboard</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --ps5-blue: #003cc2;
-      --ps5-light-blue: #1a72ff;
-      --ps5-accent: #00f0ff;
-      --ps5-error: #ff2a5f;
-      --bg-gradient: radial-gradient(circle at top right, #091326, #020307 85%);
+      --ps5-blue: #0b3d91;
+      --ps5-light-blue: #1a6bff;
+      --ps5-accent: #4d9dff; /* neon dark-blue, no green */
+      --neon-purple: #6b8cff;
+      --ps5-error: #ff4d6d;
+      --oled-black: #000000;
+      --bg-gradient: radial-gradient(circle at 80% 0%, #0a1428 0%, #000000 55%, #000000 100%);
+      --glass-bg: rgba(255, 255, 255, 0.045);
+      --glass-border: rgba(255, 255, 255, 0.10);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
 
     body, html {
       width: 100%; height: 100%; overflow: hidden; font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
-      background: #020307; color: #fff; display: flex; justify-content: center; align-items: center;
+      background: #000000; color: #fff; display: flex; justify-content: center; align-items: center;
     }
 
     
@@ -49,9 +53,14 @@
 
     .app-card {
       position: relative; z-index: 10;
-      background: rgba(14, 20, 38, 0.45); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
-      border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 28px;
-      padding: 25px 22px; width: 94%; max-width: 430px; box-shadow: 0 35px 70px rgba(0,0,0,0.85);
+      /* Literal glass — near-clear so wallpaper text stays readable */
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px) saturate(1.05);
+      -webkit-backdrop-filter: blur(10px) saturate(1.05);
+      border: 1px solid var(--glass-border);
+      border-radius: 28px;
+      padding: 25px 22px; width: 94%; max-width: 430px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.25);
       display: flex; flex-direction: column; max-height: 95%;
     }
 
@@ -59,7 +68,7 @@
     .header-titles { flex: 1; text-align: center; margin-left: 24px; }
     h2 {
       font-weight: 700; font-size: 24px; letter-spacing: 2px;
-      background: linear-gradient(to right, #fff, var(--ps5-accent));
+      background: linear-gradient(90deg, #e8f1ff 0%, #4d9dff 45%, #1a6bff 100%);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-transform: uppercase; margin-bottom: 2px;
     }
     .subtitle { font-size: 10px; color: rgba(255, 255, 255, 0.35); letter-spacing: 3px; text-transform: uppercase; }
@@ -78,7 +87,7 @@
       width: 100%; padding: 12px; background: rgba(0, 0, 0, 0.55); border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 12px; color: #fff; font-size: 14px; outline: none; transition: all 0.3s ease; font-family: 'Inter', sans-serif;
     }
-    input:focus, select:focus { border-color: var(--ps5-accent); background: rgba(0, 0, 0, 0.7); box-shadow: 0 0 15px rgba(0, 240, 255, 0.15); }
+    input:focus, select:focus { border-color: var(--ps5-accent); background: rgba(0, 0, 0, 0.7); box-shadow: 0 0 16px rgba(0, 245, 255, 0.18), 0 0 28px rgba(177, 77, 255, 0.1); }
 
     select {
       appearance: none; -webkit-appearance: none;
@@ -99,10 +108,257 @@
       letter-spacing: 1px; outline: none; border-bottom: 2px solid transparent; 
       margin-bottom: -1px;
     }
-    .tab-btn.active { color: #1a72ff; border-bottom: 2px solid #1a72ff; }
+    .tab-btn.active {
+      color: #9ec5ff;
+      border-bottom: 2px solid var(--ps5-accent);
+      text-shadow: 0 0 10px rgba(77,157,255,0.35);
+    }
     
-    .tab-content { display: none; flex-direction: column; flex: 1; overflow-y: auto; padding-right: 4px; position: relative; }
+    .tab-stage {
+      position: relative;
+      flex: 1;
+      min-height: 260px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tab-content {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 4px;
+      position: relative;
+      min-height: 260px;
+      transform-origin: 50% 60%;
+      will-change: transform, opacity;
+      backface-visibility: hidden;
+    }
     .tab-content.active { display: flex; }
+
+    /* ---- Tab transition system (selectable) ---- */
+    .tab-content.tab-out {
+      display: flex !important;
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .tab-content.tab-in {
+      display: flex !important;
+      z-index: 2;
+    }
+    .tab-stage { perspective: 1200px; }
+
+    /* 1 Book — vertical axis (open like a book) */
+    @keyframes bookOut {
+      from { opacity: 1; transform: rotateY(0deg); }
+      to   { opacity: 0; transform: rotateY(-75deg); }
+    }
+    @keyframes bookIn {
+      from { opacity: 0; transform: rotateY(75deg); }
+      to   { opacity: 1; transform: rotateY(0deg); }
+    }
+    body[data-tab-anim="book"] .tab-content.tab-out { animation: bookOut 0.34s ease-in forwards; transform-origin: left center; }
+    body[data-tab-anim="book"] .tab-content.tab-in  { animation: bookIn 0.38s cubic-bezier(0.22,1,0.36,1) forwards; transform-origin: right center; }
+
+    /* 2 Fade — iOS cross-dissolve */
+    @keyframes fadeOutA { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes fadeInA  { from { opacity: 0; } to { opacity: 1; } }
+    body[data-tab-anim="fade"] .tab-content.tab-out { animation: fadeOutA 0.25s ease forwards; }
+    body[data-tab-anim="fade"] .tab-content.tab-in  { animation: fadeInA 0.28s ease forwards; }
+
+    /* 3 Slide Up — iOS sheet */
+    @keyframes slideUpOut { from { opacity:1; transform: translateY(0); } to { opacity:0; transform: translateY(-18%); } }
+    @keyframes slideUpIn  { from { opacity:0; transform: translateY(18%); } to { opacity:1; transform: translateY(0); } }
+    body[data-tab-anim="slide-up"] .tab-content.tab-out { animation: slideUpOut 0.3s ease forwards; }
+    body[data-tab-anim="slide-up"] .tab-content.tab-in  { animation: slideUpIn 0.34s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+    /* 4 Slide Left — vivo style */
+    @keyframes slideLeftOut { from { opacity:1; transform: translateX(0); } to { opacity:0; transform: translateX(-28%); } }
+    @keyframes slideLeftIn  { from { opacity:0; transform: translateX(28%); } to { opacity:1; transform: translateX(0); } }
+    body[data-tab-anim="slide-left"] .tab-content.tab-out { animation: slideLeftOut 0.3s ease forwards; }
+    body[data-tab-anim="slide-left"] .tab-content.tab-in  { animation: slideLeftIn 0.34s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+    /* 5 Slide Right */
+    @keyframes slideRightOut { from { opacity:1; transform: translateX(0); } to { opacity:0; transform: translateX(28%); } }
+    @keyframes slideRightIn  { from { opacity:0; transform: translateX(-28%); } to { opacity:1; transform: translateX(0); } }
+    body[data-tab-anim="slide-right"] .tab-content.tab-out { animation: slideRightOut 0.3s ease forwards; }
+    body[data-tab-anim="slide-right"] .tab-content.tab-in  { animation: slideRightIn 0.34s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+    /* 6 Zoom — iOS zoom */
+    @keyframes zoomOutA { from { opacity:1; transform: scale(1); } to { opacity:0; transform: scale(0.88); } }
+    @keyframes zoomInA  { from { opacity:0; transform: scale(1.08); } to { opacity:1; transform: scale(1); } }
+    body[data-tab-anim="zoom"] .tab-content.tab-out { animation: zoomOutA 0.28s ease forwards; }
+    body[data-tab-anim="zoom"] .tab-content.tab-in  { animation: zoomInA 0.32s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+    /* 7 Flip — full page flip on Y */
+    @keyframes flipOut { from { opacity:1; transform: rotateY(0); } to { opacity:0; transform: rotateY(-180deg); } }
+    @keyframes flipIn  { from { opacity:0; transform: rotateY(180deg); } to { opacity:1; transform: rotateY(0); } }
+    body[data-tab-anim="flip"] .tab-content.tab-out { animation: flipOut 0.4s ease-in forwards; transform-origin: center; }
+    body[data-tab-anim="flip"] .tab-content.tab-in  { animation: flipIn 0.4s ease-out forwards; transform-origin: center; }
+
+    /* 8 Cube — vivo 3D cube */
+    @keyframes cubeOut { from { opacity:1; transform: translateX(0) rotateY(0); } to { opacity:0; transform: translateX(-40%) rotateY(-55deg); } }
+    @keyframes cubeIn  { from { opacity:0; transform: translateX(40%) rotateY(55deg); } to { opacity:1; transform: translateX(0) rotateY(0); } }
+    body[data-tab-anim="cube"] .tab-content.tab-out { animation: cubeOut 0.36s ease forwards; transform-origin: right center; }
+    body[data-tab-anim="cube"] .tab-content.tab-in  { animation: cubeIn 0.36s ease forwards; transform-origin: left center; }
+
+    /* 9 Push — vivo push */
+    @keyframes pushOut { from { transform: translateX(0); opacity:1; } to { transform: translateX(-12%); opacity:0.6; } }
+    @keyframes pushIn  { from { transform: translateX(100%); opacity:1; } to { transform: translateX(0); opacity:1; } }
+    body[data-tab-anim="push"] .tab-content.tab-out { animation: pushOut 0.32s ease forwards; }
+    body[data-tab-anim="push"] .tab-content.tab-in  { animation: pushIn 0.32s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+    /* 10 Coverflow */
+    @keyframes coverOut { from { opacity:1; transform: translateX(0) scale(1) rotateY(0); } to { opacity:0; transform: translateX(-30%) scale(0.9) rotateY(35deg); } }
+    @keyframes coverIn  { from { opacity:0; transform: translateX(30%) scale(0.9) rotateY(-35deg); } to { opacity:1; transform: translateX(0) scale(1) rotateY(0); } }
+    body[data-tab-anim="coverflow"] .tab-content.tab-out { animation: coverOut 0.34s ease forwards; }
+    body[data-tab-anim="coverflow"] .tab-content.tab-in  { animation: coverIn 0.34s ease forwards; }
+
+    /* 11 Spring — bouncy iOS */
+    @keyframes springOut { from { opacity:1; transform: scale(1); } to { opacity:0; transform: scale(0.92); } }
+    @keyframes springIn  { 0% { opacity:0; transform: scale(0.9); } 70% { opacity:1; transform: scale(1.03); } 100% { opacity:1; transform: scale(1); } }
+    body[data-tab-anim="spring"] .tab-content.tab-out { animation: springOut 0.22s ease forwards; }
+    body[data-tab-anim="spring"] .tab-content.tab-in  { animation: springIn 0.42s cubic-bezier(0.34,1.4,0.64,1) forwards; }
+
+    /* 12 None */
+    body[data-tab-anim="none"] .tab-content.tab-out { animation: none; opacity: 0; }
+    body[data-tab-anim="none"] .tab-content.tab-in  { animation: none; opacity: 1; }
+
+
+    /* 13 Reveal — Pixel-style fade+rise */
+    @keyframes revealOut { from { opacity:1; transform: translateY(0); filter:blur(0); } to { opacity:0; transform: translateY(-10px); filter:blur(2px); } }
+    @keyframes revealIn  { from { opacity:0; transform: translateY(16px); filter:blur(2px); } to { opacity:1; transform: translateY(0); filter:blur(0); } }
+    body[data-tab-anim="reveal"] .tab-content.tab-out { animation: revealOut 0.3s ease forwards; }
+    body[data-tab-anim="reveal"] .tab-content.tab-in  { animation: revealIn 0.38s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+    /* 14 Morph — Nothing OS soft morph */
+    @keyframes morphOut { from { opacity:1; transform: scale(1); border-radius:0; } to { opacity:0; transform: scale(0.94); } }
+    @keyframes morphIn  { from { opacity:0; transform: scale(1.04); } to { opacity:1; transform: scale(1); } }
+    body[data-tab-anim="morph"] .tab-content.tab-out { animation: morphOut 0.32s ease forwards; }
+    body[data-tab-anim="morph"] .tab-content.tab-in  { animation: morphIn 0.36s ease forwards; }
+
+    /* 15 Blink — Nothing glyph blink */
+    @keyframes blinkOut { 0%{opacity:1} 40%{opacity:0.2} 100%{opacity:0} }
+    @keyframes blinkIn  { 0%{opacity:0} 40%{opacity:0.85} 100%{opacity:1} }
+    body[data-tab-anim="blink"] .tab-content.tab-out { animation: blinkOut 0.28s ease forwards; }
+    body[data-tab-anim="blink"] .tab-content.tab-in  { animation: blinkIn 0.32s ease forwards; }
+
+    /* 16 Depth — HTC Sense depth */
+    @keyframes depthOut { from { opacity:1; transform: translateZ(0) scale(1); } to { opacity:0; transform: translateZ(-80px) scale(0.9); } }
+    @keyframes depthIn  { from { opacity:0; transform: translateZ(80px) scale(1.05); } to { opacity:1; transform: translateZ(0) scale(1); } }
+    body[data-tab-anim="depth"] .tab-content.tab-out { animation: depthOut 0.34s ease forwards; }
+    body[data-tab-anim="depth"] .tab-content.tab-in  { animation: depthIn 0.38s ease forwards; }
+
+    /* 17 Twist — HTC twist */
+    @keyframes twistOut { from { opacity:1; transform: rotateZ(0) scale(1); } to { opacity:0; transform: rotateZ(-8deg) scale(0.92); } }
+    @keyframes twistIn  { from { opacity:0; transform: rotateZ(8deg) scale(0.92); } to { opacity:1; transform: rotateZ(0) scale(1); } }
+    body[data-tab-anim="twist"] .tab-content.tab-out { animation: twistOut 0.32s ease forwards; }
+    body[data-tab-anim="twist"] .tab-content.tab-in  { animation: twistIn 0.36s ease forwards; }
+
+    /* 18 Cascade — ColorOS cascade */
+    @keyframes cascadeOut { from { opacity:1; transform: translateY(0) scaleY(1); } to { opacity:0; transform: translateY(-12%) scaleY(0.92); } }
+    @keyframes cascadeIn  { from { opacity:0; transform: translateY(14%) scaleY(1.04); } to { opacity:1; transform: translateY(0) scaleY(1); } }
+    body[data-tab-anim="cascade"] .tab-content.tab-out { animation: cascadeOut 0.3s ease forwards; }
+    body[data-tab-anim="cascade"] .tab-content.tab-in  { animation: cascadeIn 0.36s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+    /* 19 Float — ColorOS float */
+    @keyframes floatOut { from { opacity:1; transform: translateY(0); } to { opacity:0; transform: translateY(-24px); } }
+    @keyframes floatIn  { from { opacity:0; transform: translateY(28px); } to { opacity:1; transform: translateY(0); } }
+    body[data-tab-anim="float"] .tab-content.tab-out { animation: floatOut 0.32s ease forwards; }
+    body[data-tab-anim="float"] .tab-content.tab-in  { animation: floatIn 0.4s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+    /* 20 Card — Material card swap */
+    @keyframes cardOut { from { opacity:1; transform: translateY(0) scale(1); } to { opacity:0; transform: translateY(12px) scale(0.96); } }
+    @keyframes cardIn  { from { opacity:0; transform: translateY(-16px) scale(0.96); } to { opacity:1; transform: translateY(0) scale(1); } }
+    body[data-tab-anim="card"] .tab-content.tab-out { animation: cardOut 0.28s ease forwards; }
+    body[data-tab-anim="card"] .tab-content.tab-in  { animation: cardIn 0.34s ease forwards; }
+
+    /* 21 Wipe — Graphene/simple wipe */
+    @keyframes wipeOut { from { opacity:1; clip-path: inset(0 0 0 0); } to { opacity:0; clip-path: inset(0 100% 0 0); } }
+    @keyframes wipeIn  { from { opacity:1; clip-path: inset(0 0 0 100%); } to { opacity:1; clip-path: inset(0 0 0 0); } }
+    body[data-tab-anim="wipe"] .tab-content.tab-out { animation: wipeOut 0.34s ease forwards; }
+    body[data-tab-anim="wipe"] .tab-content.tab-in  { animation: wipeIn 0.34s ease forwards; }
+
+    /* 22 Swing — door swing on vertical axis */
+    @keyframes swingOut { from { opacity:1; transform: rotateY(0); } to { opacity:0; transform: rotateY(-95deg); } }
+    @keyframes swingIn  { from { opacity:0; transform: rotateY(95deg); } to { opacity:1; transform: rotateY(0); } }
+    body[data-tab-anim="swing"] .tab-content.tab-out { animation: swingOut 0.36s ease-in forwards; transform-origin: left center; }
+    body[data-tab-anim="swing"] .tab-content.tab-in  { animation: swingIn 0.4s cubic-bezier(0.22,1,0.36,1) forwards; transform-origin: right center; }
+
+    /* 23 Fold — horizontal fold */
+    @keyframes foldOut { from { opacity:1; transform: rotateX(0); } to { opacity:0; transform: rotateX(55deg); } }
+    @keyframes foldIn  { from { opacity:0; transform: rotateX(-55deg); } to { opacity:1; transform: rotateX(0); } }
+    body[data-tab-anim="fold"] .tab-content.tab-out { animation: foldOut 0.34s ease forwards; transform-origin: top center; }
+    body[data-tab-anim="fold"] .tab-content.tab-in  { animation: foldIn 0.38s ease forwards; transform-origin: bottom center; }
+
+    /* 24 Glitch — digital brief */
+    @keyframes glitchOut { 0%{opacity:1; transform:translate(0)} 30%{transform:translate(-4px,2px)} 60%{opacity:0.4; transform:translate(4px,-2px)} 100%{opacity:0} }
+    @keyframes glitchIn  { 0%{opacity:0; transform:translate(6px,0)} 40%{opacity:0.7; transform:translate(-3px,1px)} 100%{opacity:1; transform:translate(0)} }
+    body[data-tab-anim="glitch"] .tab-content.tab-out { animation: glitchOut 0.3s steps(4) forwards; }
+    body[data-tab-anim="glitch"] .tab-content.tab-in  { animation: glitchIn 0.34s steps(5) forwards; }
+
+    /* 25 Soft — Graphene soft */
+    @keyframes softOut { from { opacity:1; } to { opacity:0; } }
+    @keyframes softIn  { from { opacity:0; transform: scale(0.98); } to { opacity:1; transform: scale(1); } }
+    body[data-tab-anim="soft"] .tab-content.tab-out { animation: softOut 0.35s ease forwards; }
+    body[data-tab-anim="soft"] .tab-content.tab-in  { animation: softIn 0.4s ease forwards; }
+
+    /* 26 Rise — Pixel launcher rise */
+    @keyframes riseOut { from { opacity:1; transform: translateY(0) scale(1); } to { opacity:0; transform: translateY(-20%) scale(0.95); } }
+    @keyframes riseIn  { from { opacity:0; transform: translateY(22%) scale(0.95); } to { opacity:1; transform: translateY(0) scale(1); } }
+    body[data-tab-anim="rise"] .tab-content.tab-out { animation: riseOut 0.32s ease forwards; }
+    body[data-tab-anim="rise"] .tab-content.tab-in  { animation: riseIn 0.38s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+    /* 27 Peel — page peel */
+    @keyframes peelOut { from { opacity:1; transform: rotateY(0) translateX(0); } to { opacity:0; transform: rotateY(-40deg) translateX(-10%); } }
+    @keyframes peelIn  { from { opacity:0; transform: rotateY(40deg) translateX(10%); } to { opacity:1; transform: rotateY(0) translateX(0); } }
+    body[data-tab-anim="peel"] .tab-content.tab-out { animation: peelOut 0.36s ease forwards; transform-origin: left center; }
+    body[data-tab-anim="peel"] .tab-content.tab-in  { animation: peelIn 0.4s ease forwards; transform-origin: right center; }
+
+    /* 28 Pop — ColorOS pop */
+    @keyframes popOut { from { opacity:1; transform: scale(1); } to { opacity:0; transform: scale(0.85); } }
+    @keyframes popIn  { 0%{opacity:0; transform:scale(0.85)} 70%{opacity:1; transform:scale(1.04)} 100%{transform:scale(1)} }
+    body[data-tab-anim="pop"] .tab-content.tab-out { animation: popOut 0.24s ease forwards; }
+    body[data-tab-anim="pop"] .tab-content.tab-in  { animation: popIn 0.4s cubic-bezier(0.34,1.4,0.64,1) forwards; }
+
+    /* 29 Slide Fade — hybrid */
+    @keyframes sfOut { from { opacity:1; transform: translateX(0); } to { opacity:0; transform: translateX(-16%); } }
+    @keyframes sfIn  { from { opacity:0; transform: translateX(16%); } to { opacity:1; transform: translateX(0); } }
+    body[data-tab-anim="slide-fade"] .tab-content.tab-out { animation: sfOut 0.32s ease forwards; }
+    body[data-tab-anim="slide-fade"] .tab-content.tab-in  { animation: sfIn 0.36s ease forwards; }
+
+    /* 30 Warp — soft perspective warp */
+    @keyframes warpOut { from { opacity:1; transform: perspective(800px) rotateX(0) scale(1); } to { opacity:0; transform: perspective(800px) rotateX(18deg) scale(0.92); } }
+    @keyframes warpIn  { from { opacity:0; transform: perspective(800px) rotateX(-18deg) scale(0.92); } to { opacity:1; transform: perspective(800px) rotateX(0) scale(1); } }
+    body[data-tab-anim="warp"] .tab-content.tab-out { animation: warpOut 0.34s ease forwards; }
+    body[data-tab-anim="warp"] .tab-content.tab-in  { animation: warpIn 0.38s ease forwards; }
+
+
+    /* Clear-list row exit */
+    @keyframes rowClearOut {
+      0%   { opacity: 1; transform: translateY(0) scale(1); max-height: 64px; }
+      60%  { opacity: 0; transform: translateY(-14px) scale(0.96); }
+      100% { opacity: 0; transform: translateY(-18px) scale(0.94); max-height: 0; margin: 0; padding-top: 0; padding-bottom: 0; border-width: 0; }
+    }
+    .payload-cb-row.clearing {
+      animation: rowClearOut 1.0s ease forwards; /* +0.7s smoother */
+      overflow: hidden;
+      pointer-events: none;
+    }
+    @keyframes listSettleIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .payload-cb-list.settling {
+      animation: listSettleIn 0.55s cubic-bezier(0.22,1,0.36,1) forwards;
+    }
+    #loadoutSelector.option-clearing {
+      animation: rowClearOut 0.85s ease forwards;
+    }
     .tab-content::-webkit-scrollbar { width: 4px; }
     .tab-content::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
 
@@ -120,7 +376,7 @@
       letter-spacing: 1px; outline: none; border-bottom: 2px solid transparent; 
       margin-bottom: -1px;
     }
-    .env-btn.active { color: #1a72ff; border-bottom: 2px solid #1a72ff; }
+    .env-btn.active { color: #fff; border-bottom: 2px solid var(--ps5-accent); text-shadow: 0 0 10px rgba(0,245,255,0.4); }
 
     .local-upload-area { 
       top: 10px; position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 25px; 
@@ -225,7 +481,7 @@
       -webkit-tap-highlight-color: transparent;
     }
     .payload-cb-row:hover { border-color: rgba(0, 240, 255, 0.4); }
-    .payload-cb-row.is-checked { border-color: rgba(0, 240, 255, 0.55); background: rgba(0, 240, 255, 0.06); }
+    .payload-cb-row.is-checked { border-color: rgba(77, 157, 255, 0.4); background: rgba(26, 107, 255, 0.08); box-shadow: 0 0 12px rgba(26, 107, 255, 0.1); }
 
     .payload-cb-row input[type="checkbox"] { display: none; }
     .cb-box {
@@ -246,6 +502,7 @@
     .payload-cb-row.is-checked .cb-label { color: #fff; }
     .cb-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; flex-shrink: 0; transition: color 0.18s, background 0.18s; }
     .payload-cb-row.is-checked .cb-badge { color: var(--ps5-accent); background: rgba(0,240,255,0.1); }
+    .cb-badge.sync-req { color: #ffb020; background: rgba(255,176,32,0.12); }
     .payload-cb-row.local-missing .cb-label { color: var(--ps5-error); text-decoration: line-through; }
 
     
@@ -266,14 +523,14 @@
     }
 
     button.primary-btn {
-      width: 100%; padding: 16px; 
-      background: rgba(26, 114, 255, 0.16);
-      color: #fff; border: 1px solid rgba(26, 114, 255, 0.35); 
-      border-radius: 45px; font-size: 14px; font-weight: 700; 
-      text-transform: uppercase; letter-spacing: 2px; cursor: pointer; 
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); 
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); margin-top: auto; outline: none;
-      display: flex; justify-content: center; align-items: center; gap: 8px; position: relative; overflow: hidden;
+      width: 100%; padding: 16px;
+      background: rgba(26, 107, 255, 0.14);
+      color: #fff; border: 1px solid rgba(77, 157, 255, 0.35);
+      border-radius: 45px; font-size: 14px; font-weight: 700;
+      letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer;
+      position: relative; overflow: hidden;
+      box-shadow: 0 0 18px rgba(26, 107, 255, 0.1);
+      transition: transform 0.15s ease, box-shadow 0.2s ease;
     }
     button.primary-btn:hover { 
       background: rgba(26, 114, 200, 0.28); border-color: var(--ps5-accent);
@@ -332,10 +589,12 @@
     }
 
     .settings-panel {
-      display: none; flex-direction: column; gap: 14px; background: rgba(8, 12, 23, 0.96);
-      border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 20px; padding: 20px;
-      position: absolute; top: 70px; right: 20px; left: 20px; z-index: 100; box-shadow: 0 20px 45px rgba(0,0,0,0.9);
-      backdrop-filter: blur(20px);
+      display: none; flex-direction: column; gap: 14px;
+      background: rgba(0, 0, 0, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 20px; padding: 20px;
+      position: absolute; top: 70px; right: 20px; left: 20px; z-index: 100; box-shadow: 0 20px 45px rgba(0,0,0,0.95);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
     }
     .settings-panel.active { display: flex; animation: fadeUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -372,12 +631,12 @@
       box-shadow: inset 0 0 5px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); 
     }
     .toggle-slider:before { 
-      position: absolute; content: "0"; height: 20px; width: 20px; left: 2px; bottom: 2px; 
+      position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px; 
       background-color: white; transition: .4s; border-radius: 50%; display: flex; 
       justify-content: center; align-items: center; font-size: 11px; font-weight: 700; color: #333; 
     }
     .custom-toggle input:checked + .toggle-slider { background-color: rgba(26, 114, 255, 0.4); border-color: var(--ps5-light-blue); }
-    .custom-toggle input:checked + .toggle-slider:before { transform: translateX(20px); content: "1"; background-color: var(--ps5-accent); color: #000; box-shadow: 0 0 8px var(--ps5-accent); }
+    .custom-toggle input:checked + .toggle-slider:before { transform: translateX(20px); content: ""; background-color: var(--ps5-accent); box-shadow: 0 0 8px rgba(77,157,255,0.55); }
 
     .custom-toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background: rgba(11, 19, 43, 0.96); padding: 14px 28px; border-radius: 50px; font-size: 13px; z-index: 9999; border: 1px solid var(--ps5-accent); white-space: nowrap; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); opacity: 0; box-shadow: 0 10px 30px rgba(0,0,0,0.8); font-weight: 200; }
     .custom-toast.show { bottom: 40px; opacity: 1; }
@@ -447,8 +706,10 @@
       .header-bar, .row { grid-column: 1 / -1; }
       .header-bar + .row .input-group { max-width: 620px; }
       .tabs { display: none; }
+      .tab-stage { display: contents; } /* let panes join app-card grid */
       #tab-exploit, #tab-payloads {
-        display: flex; min-height: 0; padding-right: 8px;
+        display: flex !important; min-height: 0; padding-right: 8px;
+        opacity: 1 !important; pointer-events: auto !important;
       }
       #tab-exploit  { grid-column: 1; grid-row: 3; }
       #tab-payloads { grid-column: 2; grid-row: 3;
@@ -483,9 +744,130 @@
     /* Leave room at bottom for Android nav bar */
     body { padding-bottom: env(safe-area-inset-bottom, 0px); }
     .app-card { margin-bottom: max(12px, env(safe-area-inset-bottom, 0px)); }
+  
+    /* ---- Boot: NEXUS letter draw (blue neon gradient) + presented by isu ---- */
+    #bootSplash {
+      position: fixed; inset: 0; z-index: 99999;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.8s ease;
+      overflow: hidden;
+    }
+    #bootSplash.done { opacity: 0; pointer-events: none; }
+
+    #bootLogo {
+      position: relative;
+      z-index: 2;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-weight: 800;
+      font-style: normal;
+      font-size: clamp(52px, 15vw, 88px);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.04em;
+      line-height: 1;
+    }
+    #bootLogo .boot-letter {
+      display: inline-block;
+      font-style: normal;
+      font-weight: 800;
+      /* Blue neon gradient (photo-style, no green) */
+      background: linear-gradient(180deg, #9ec9ff 0%, #3d8bff 40%, #1a5cff 72%, #0a2f8a 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter:
+        drop-shadow(0 0 6px rgba(61, 139, 255, 0.75))
+        drop-shadow(0 0 18px rgba(26, 92, 255, 0.45));
+      opacity: 0;
+      clip-path: inset(0 100% 0 0);
+    }
+    #bootSplash.play #bootLogo .boot-letter {
+      animation: letterDraw 0.55s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    #bootSplash.play #bootLogo .boot-letter[data-i="0"] { animation-delay: 0.15s; }
+    #bootSplash.play #bootLogo .boot-letter[data-i="1"] { animation-delay: 0.40s; }
+    #bootSplash.play #bootLogo .boot-letter[data-i="2"] { animation-delay: 0.65s; }
+    #bootSplash.play #bootLogo .boot-letter[data-i="3"] { animation-delay: 0.90s; }
+    #bootSplash.play #bootLogo .boot-letter[data-i="4"] { animation-delay: 1.15s; }
+    @keyframes letterDraw {
+      0%   { opacity: 0; clip-path: inset(0 100% 0 0); }
+      15%  { opacity: 1; }
+      100% { opacity: 1; clip-path: inset(0 0 0 0); }
+    }
+
+    .boot-credit {
+      position: absolute;
+      left: 0; right: 0;
+      bottom: 16%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-weight: 400;
+      font-size: 12px;
+      letter-spacing: 0.22em;
+      text-transform: lowercase;
+      color: rgba(200, 220, 255, 0.6);
+    }
+    .boot-credit .credit-letter {
+      display: inline-block;
+      opacity: 0;
+      clip-path: inset(0 100% 0 0);
+      white-space: pre;
+    }
+    #bootSplash.play .boot-credit .credit-letter {
+      animation: letterDraw 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    /* Download spinner badge */
+    .cb-badge.downloading {
+      color: transparent !important;
+      background: transparent !important;
+      width: 18px; height: 18px; min-width: 18px;
+      padding: 0; border: none;
+      position: relative;
+    }
+    .cb-badge.downloading::after {
+      content: '';
+      position: absolute; inset: 0;
+      border: 2px solid rgba(125,211,252,0.25);
+      border-top-color: #7dd3fc;
+      border-radius: 50%;
+      animation: spinDl 0.7s linear infinite;
+    }
+    @keyframes spinDl { to { transform: rotate(360deg); } }
+    .payload-cb-row.deselect-bump {
+      animation: deselectBump 0.45s cubic-bezier(0.22,1,0.36,1) forwards;
+    }
+    @keyframes deselectBump {
+      0%   { transform: translateY(0); }
+      40%  { transform: translateY(-6px); }
+      100% { transform: translateY(0); }
+    }
+
   </style>
 </head>
-<body>
+<body data-tab-anim="spring">
+
+  <div id="bootSplash" aria-hidden="true">
+    <div id="bootLogo">
+      <span class="boot-letter" data-i="0">N</span>
+      <span class="boot-letter" data-i="1">E</span>
+      <span class="boot-letter" data-i="2">X</span>
+      <span class="boot-letter" data-i="3">U</span>
+      <span class="boot-letter" data-i="4">S</span>
+    </div>
+    <div class="boot-credit" id="bootCredit"></div>
+  </div>
 
   <div id="wallpaper-layer"></div>
   <video id="wallpaper-video" muted loop playsinline style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55;z-index:0"></video>
@@ -568,6 +950,41 @@
               <span class="toggle-slider"></span>
             </label>
         </div>
+        <div class="vfx-row" style="flex-direction:column; align-items:stretch; gap:8px;">
+            <span class="vfx-label-text" data-i18n="tabAnimLabel">Tab Animation</span>
+            <select id="animSelector" onchange="setTabAnimation(this.value)" style="width:100%;">
+              <option value="spring">Spring (bouncy)</option>
+              <option value="book">Book (page turn)</option>
+              <option value="fade">Fade (iOS dissolve)</option>
+              <option value="slide-up">Slide Up (iOS sheet)</option>
+              <option value="slide-left">Slide Left (vivo)</option>
+              <option value="slide-right">Slide Right</option>
+              <option value="zoom">Zoom (iOS)</option>
+              <option value="flip">Flip</option>
+              <option value="cube">Cube (vivo 3D)</option>
+              <option value="push">Push (vivo)</option>
+              <option value="coverflow">Coverflow</option>
+              <option value="reveal">Reveal (Pixel)</option>
+              <option value="morph">Morph (Nothing)</option>
+              <option value="blink">Blink (Nothing)</option>
+              <option value="depth">Depth (HTC)</option>
+              <option value="twist">Twist (HTC)</option>
+              <option value="cascade">Cascade (ColorOS)</option>
+              <option value="float">Float (ColorOS)</option>
+              <option value="card">Card (Material)</option>
+              <option value="wipe">Wipe (Graphene)</option>
+              <option value="swing">Swing</option>
+              <option value="fold">Fold</option>
+              <option value="glitch">Glitch</option>
+              <option value="soft">Soft (Graphene)</option>
+              <option value="rise">Rise (Pixel)</option>
+              <option value="peel">Peel</option>
+              <option value="pop">Pop (ColorOS)</option>
+              <option value="slide-fade">Slide Fade</option>
+              <option value="warp">Warp</option>
+              <option value="none">None</option>
+            </select>
+        </div>
       </div>
 
       <div class="panel-btn-row">
@@ -610,6 +1027,7 @@
       <button class="tab-btn" id="tabBtn-payloads" onclick="switchTab('payloads', this)" data-i18n="tabPayloads">Payloads</button>
     </div>
 
+    <div class="tab-stage">
     <div id="tab-exploit" class="tab-content active">
       <div class="pane-title" data-i18n="tabExploit">Exploits</div>
       <div class="unified-control-deck">
@@ -643,9 +1061,17 @@
       <input type="hidden" id="payloadPort" value="9021">
       <div class="loadout-controls-container">
         <select id="loadoutSelector" onchange="handleLoadoutChange()">
-          <option value="default" data-i18n="allPayloads">-- All Payloads --</option>
+          <option value="default" data-i18n="allPayloads">All Payloads</option>
         </select>
         <button id="deleteLoadoutBtn" class="tiny-delete-btn" title="Delete Active Loadout" onclick="deleteCurrentLoadout()">✕</button>
+      </div>
+
+      <div class="vfx-row" id="officialReposRow" style="margin-bottom:12px;">
+        <span class="vfx-label-text" data-i18n="officialReposLabel">Official repos</span>
+        <label class="custom-toggle">
+          <input type="checkbox" id="officialReposToggle" onchange="setOfficialRepos(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
       </div>
 
       <div class="vfx-row" id="macroRow" style="display:none; margin-bottom:12px;">
@@ -689,8 +1115,9 @@
         </button>
         <br/>
       </div>
-    </div>
-  </div>
+    </div><!-- /#tab-payloads -->
+    </div><!-- /.tab-stage -->
+  </div><!-- /.app-card -->
 
   <div id="srcPanel">
     <div class="zone-title" data-i18n="updatesBtn">Updates</div>
@@ -719,65 +1146,110 @@
   </div>
 
   <script>
-    // ── StorageEngine: IndexedDB wrapper ──
+    // ── StorageEngine: hybrid ──
+    // Small settings → Android SharedPreferences (fast, survives restarts)
+    // Large blobs (wallpaper, payload caches, manifests) → IndexedDB
+    // SharedPreferences silently drops multi-MB values; that was breaking
+    // wallpaper + cache persistence.
     const StorageEngine = {
       db: null,
+      _idbKeys: /^(cloud_cache_|local_cache_|nexus_bg|nexus_cloud_manifest|nexus_releases|nexus_dl_complete)/,
+      prefersIdb: function(key, value) {
+        if (!key) return true;
+        if (this._idbKeys.test(key)) return true;
+        if (value != null && String(value).length > 8000) return true;
+        return false;
+      },
       initDB: function() {
         return new Promise((resolve, reject) => {
           if (this.db) return resolve(this.db);
-          const req = indexedDB.open("NexusDB", 1);
-          req.onupgradeneeded = e => { e.target.result.createObjectStore("store"); };
+          const req = indexedDB.open("NexusDB", 2);
+          req.onupgradeneeded = e => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains("store")) db.createObjectStore("store");
+          };
           req.onsuccess = e => { this.db = e.target.result; resolve(this.db); };
           req.onerror = e => reject(e);
         });
       },
+      _idbSet: async function(key, value) {
+        const db = await this.initDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction("store", "readwrite");
+          tx.objectStore("store").put(value, key);
+          tx.oncomplete = () => resolve();
+          tx.onerror = e => reject(e);
+        });
+      },
+      _idbGet: async function(key) {
+        const db = await this.initDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction("store", "readonly");
+          const req = tx.objectStore("store").get(key);
+          req.onsuccess = () => resolve(req.result !== undefined ? req.result : null);
+          req.onerror = e => reject(e);
+        });
+      },
+      _idbDel: async function(key) {
+        const db = await this.initDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction("store", "readwrite");
+          tx.objectStore("store").delete(key);
+          tx.oncomplete = () => resolve();
+          tx.onerror = e => reject(e);
+        });
+      },
       setItem: async function(key, value) {
         try {
-          if (window.AndroidNativeStorage) { window.AndroidNativeStorage.setItem(key, value); return; }
-          const db = await this.initDB();
-          return new Promise((resolve, reject) => {
-            const tx = db.transaction("store", "readwrite");
-            tx.objectStore("store").put(value, key);
-            tx.oncomplete = () => resolve();
-            tx.onerror = e => reject(e);
-          });
-        } catch (e) { console.error("Storage write failure:", e); }
+          const v = value == null ? '' : (typeof value === 'string' ? value : String(value));
+          if (this.prefersIdb(key, v)) {
+            await this._idbSet(key, v);
+            // Drop any stale SharedPreferences stub for this key
+            try { if (window.AndroidNativeStorage) window.AndroidNativeStorage.removeItem(key); } catch (e) {}
+            return;
+          }
+          if (window.AndroidNativeStorage) {
+            window.AndroidNativeStorage.setItem(key, v);
+            return;
+          }
+          await this._idbSet(key, v);
+        } catch (e) { console.error("Storage write failure:", key, e); throw e; }
       },
       getItem: async function(key) {
         try {
-          if (window.AndroidNativeStorage) { return window.AndroidNativeStorage.getItem(key); }
-          const db = await this.initDB();
-          return new Promise((resolve, reject) => {
-            const tx = db.transaction("store", "readonly");
-            const req = tx.objectStore("store").get(key);
-            req.onsuccess = () => resolve(req.result !== undefined ? req.result : null);
-            req.onerror = e => reject(e);
-          });
-        } catch (e) { console.error("Storage read failure:", e); return null; }
+          if (this.prefersIdb(key)) {
+            let v = await this._idbGet(key);
+            if (v != null && v !== '') return v;
+            // One-time migrate from native if an older build left it there
+            if (window.AndroidNativeStorage) {
+              const n = window.AndroidNativeStorage.getItem(key);
+              if (n != null && n !== '') {
+                try { await this._idbSet(key, n); } catch (e) {}
+                return n;
+              }
+            }
+            return null;
+          }
+          if (window.AndroidNativeStorage) {
+            const n = window.AndroidNativeStorage.getItem(key);
+            if (n != null) return n;
+          }
+          return await this._idbGet(key);
+        } catch (e) { console.error("Storage read failure:", key, e); return null; }
       },
       removeItem: async function(key) {
         try {
-          if (window.AndroidNativeStorage) { window.AndroidNativeStorage.removeItem(key); return; }
-          const db = await this.initDB();
-          return new Promise((resolve, reject) => {
-            const tx = db.transaction("store", "readwrite");
-            tx.objectStore("store").delete(key);
-            tx.oncomplete = () => resolve();
-            tx.onerror = e => reject(e);
-          });
-        } catch (e) { console.error("Storage delete failure:", e); }
-      }
-    ,
+          try { if (window.AndroidNativeStorage) window.AndroidNativeStorage.removeItem(key); } catch (e) {}
+          try { await this._idbDel(key); } catch (e) {}
+        } catch (e) { console.error("Storage delete failure:", key, e); }
+      },
       getItems: async function(keys) {
         try {
-          if (window.AndroidNativeStorage) {
-            if (typeof window.AndroidNativeStorage.getItems === 'function') {
-              return JSON.parse(window.AndroidNativeStorage.getItems(JSON.stringify(keys)));
-            }
-            const out = {}; keys.forEach(k => out[k] = window.AndroidNativeStorage.getItem(k)); return out;
+          const out = {};
+          for (let i = 0; i < keys.length; i++) {
+            out[keys[i]] = await this.getItem(keys[i]);
           }
-          const results = await Promise.all(keys.map(k => this.getItem(k)));
-          const out = {}; keys.forEach((k, i) => out[k] = results[i]); return out;
+          return out;
         } catch (e) { console.error("Storage batch read failure:", e); return {}; }
       }
     };
@@ -822,30 +1294,30 @@
         toast_diagnostic: "Diagnostic mode: stream routed through native bridge."
       },
       "eta-wen": { appSubtitle: "ETA WEN? (The age old question)", tabExploit: "Kexps", tabPayloads: "Digital Candy", ipLabel: "Host IP", portLabel: "Port", loadLocal: "Go Dumpster diving", btnTransmit: "Gaslight the System", syncBtn: "Sync", folderBtn: "Map", armoryCloudTitle: "Hall of Fame", armoryLocalTitle: "PWN STAsh", armoryEmpty: "Feed me or feed me files", delayLabel: "Procrastination (ms)", btnInjectSeq: "Initiate Panic Mode", settingsTitle: "IDU Mode", langLabel: "For Casuals", vfxTitle: "Lag Optimization Suite", vfxBubbles: "Pop the bubbles", vfxLightning: "Remove 'I talk to Skynet' evidence", vfxFountain: "Remove 'I touched the screen' evidence", bgBtn: "TRAVELINSTYLE", resetBgBtn: "Hide your shame", dragFallback: "How could I possibly be expected to handle your commands on a day like this?", allPayloads: "All the Yum-Yums", saveLoadoutBtn: "Save" },
-      "sw-KE": { appSubtitle: "KIDUNGUAJI CHA PS4 / PS5", tabExploit: "Matumizi", tabPayloads: "Mizigo", hostTitle: "Pangisha Faili", hostAdd: "Ongeza Faili", hostStart: "Anza Kupangisha", hostStop: "Acha Kupangisha", hostEmpty: "Hakuna faili zilizoongezwa", ipLabel: "IP ya Kifaa", portLabel: "Lango", loadLocal: "Pakia Mzigo wa Ndani...", cloudDivider: "AU TUMIA WINGU", btnTransmit: "Tuma Mzigo", syncBtn: "Sawazisha", folderBtn: "Folda", armoryCloudTitle: "Silaha za Wingu", armoryLocalTitle: "Silaha za Ndani", armoryEmpty: "Sawazisha au chagua folda...", delayLabel: "Kuchelewa (ms)", btnInjectSeq: "Anza Mlolongo", settingsTitle: "Mipangilio", langLabel: "Lugha ya Mfumo", vfxTitle: "Athari za Kuona", vfxBubbles: "Zima Mapovu", vfxLightning: "Zima Umeme", vfxFountain: "Disable Touch Particles", bgBtn: "Badilisha Karatasi", resetBgBtn: "Weka Upya Karatasi", dragFallback: "Chagua mzigo kwanza.", allPayloads: "-- Mizigo Yote --", saveLoadoutBtn: "Hifadhi" },
-      "fr-FR": { appSubtitle: "INJECTEUR DE PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", hostTitle: "Héberger des fichiers", hostAdd: "Ajouter des fichiers", hostStart: "Démarrer l'hébergement", hostStop: "Arrêter l'hébergement", hostEmpty: "Aucun fichier ajouté", ipLabel: "IP de la Console", portLabel: "Port", loadLocal: "Charger Payload Local...", cloudDivider: "OU DÉPLOIEMENT CLOUD", btnTransmit: "Envoyer Payload", syncBtn: "Sync", folderBtn: "Dossier", armoryCloudTitle: "Arsenal Cloud", armoryLocalTitle: "Arsenal Local", armoryEmpty: "Synchronisez ou choisissez un dossier...", delayLabel: "Délai (ms)", btnInjectSeq: "Injecter Séquence", settingsTitle: "Paramètres Système", langLabel: "Langue", vfxTitle: "Effets Visuels", vfxBubbles: "Désactiver les Bulles", vfxLightning: "Désactiver les Éclairs", vfxFountain: "Disable Touch Particles", bgBtn: "Changer Fond", resetBgBtn: "Réinitialiser Fond", dragFallback: "Sélectionnez des payloads d'abord.", allPayloads: "-- Tous les Payloads --", saveLoadoutBtn: "Enregistrer" },
-      "es-ES": { appSubtitle: "INYECTOR DE PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", hostTitle: "Alojar archivos", hostAdd: "Añadir archivos", hostStart: "Iniciar alojamiento", hostStop: "Detener alojamiento", hostEmpty: "Aún no hay archivos", ipLabel: "IP de Consola", portLabel: "Puerto", loadLocal: "Cargar Payload Local...", cloudDivider: "O DESPLIEGUE EN LA NUBE", btnTransmit: "Enviar Payload", syncBtn: "Sync", folderBtn: "Mapear", armoryCloudTitle: "Arsenal en la Nube", armoryLocalTitle: "Arsenal Local", armoryEmpty: "Sincroniza o elige una carpeta...", delayLabel: "Retraso (ms)", btnInjectSeq: "Inyectar Secuencia", settingsTitle: "Ajustes de Sistema", langLabel: "Idioma", vfxTitle: "Efectos Visuales", vfxBubbles: "Desactivar Burbujas", vfxLightning: "Desactivar Relámpagos", vfxFountain: "Disable Touch Particles", bgBtn: "Cambiar Fondo", resetBgBtn: "Restaurar Fondo", dragFallback: "Selecciona payloads primero.", allPayloads: "-- Todos los Payloads --", saveLoadoutBtn: "Guardar" },
-      "pt-BR": { appSubtitle: "INJETOR DE PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", hostTitle: "Hospedar arquivos", hostAdd: "Adicionar arquivos", hostStart: "Iniciar hospedagem", hostStop: "Parar hospedagem", hostEmpty: "Nenhum arquivo adicionado", ipLabel: "IP do Console", portLabel: "Porta", loadLocal: "Carregar Payload Local...", cloudDivider: "OU DEPLOY NA NUVEM", btnTransmit: "Enviar Payload", syncBtn: "Sync", folderBtn: "Pasta", armoryCloudTitle: "Arsenal na Nuvem", armoryLocalTitle: "Arsenal Local", armoryEmpty: "Sincronize ou escolha uma pasta...", delayLabel: "Atraso (ms)", btnInjectSeq: "Injetar Sequência", settingsTitle: "Configurações", langLabel: "Idioma", vfxTitle: "Efeitos Visuais", vfxBubbles: "Desativar Bolhas", vfxLightning: "Desativar Raios", vfxFountain: "Disable Touch Particles", bgBtn: "Alterar Fundo", resetBgBtn: "Resetar Fundo", dragFallback: "Selecione payloads primeiro.", allPayloads: "-- Todos os Payloads --", saveLoadoutBtn: "Salvar" },
-      "et-EE": { appSubtitle: "PS4/PS5 PAYLOAD SÜSTIJA", tabExploit: "Eksploitid", tabPayloads: "Payloadid", hostTitle: "Failide majutus", hostAdd: "Lisa faile", hostStart: "Käivita majutus", hostStop: "Peata majutus", hostEmpty: "Faile pole lisatud", ipLabel: "Konsooli IP", portLabel: "Port", loadLocal: "Laadi Kohalik Payload...", cloudDivider: "VÕI PILVE JUURUTAMINE", btnTransmit: "Saada Payload", syncBtn: "Sünkrooni", folderBtn: "Kaust", armoryCloudTitle: "Pilve Arsenal", armoryLocalTitle: "Kohalik Arsenal", armoryEmpty: "Sünkrooni või vali kaust...", delayLabel: "Viivitus (ms)", btnInjectSeq: "Süsti Järjestus", settingsTitle: "Süsteemi Seaded", langLabel: "Keel", vfxTitle: "Visuaalsed Efektid", vfxBubbles: "Keela Mullid", vfxLightning: "Keela Välk", vfxFountain: "Disable Touch Particles", bgBtn: "Muuda Tausta", resetBgBtn: "Lähtesta Taust", dragFallback: "Vali esmalt payloadid.", allPayloads: "-- Kõik Payloadid --", saveLoadoutBtn: "Salvesta" },
-      "ru-RU": { appSubtitle: "ИНЖЕКТОР ПЕЙЛОАДОВ PS4/PS5", tabExploit: "Эксплойты", tabPayloads: "Пейлоады", hostTitle: "Хостинг файлов", hostAdd: "Добавить файлы", hostStart: "Запустить хостинг", hostStop: "Остановить хостинг", hostEmpty: "Файлы не добавлены", ipLabel: "IP Консоли", portLabel: "Порт", loadLocal: "Локальный Пейлоад...", cloudDivider: "ИЛИ ОБЛАЧНЫЙ СКРИПТ", btnTransmit: "Отправить Пейлоад", syncBtn: "Синхр", folderBtn: "Папка", armoryCloudTitle: "Облачный Арсенал", armoryLocalTitle: "Локальный Арсенал", armoryEmpty: "Синхронизируйте или выберите папку...", delayLabel: "Задержка (мс)", btnInjectSeq: "Запуск Серии", settingsTitle: "Настройки Системы", langLabel: "Язык Интерфейса", vfxTitle: "Визуальные Эффекты", vfxBubbles: "Отключить Пузыри", vfxLightning: "Отключить Молнии", vfxFountain: "Disable Touch Particles", bgBtn: "Изменить Обои", resetBgBtn: "Сбросить Обои", dragFallback: "Сначала выберите пейлоады.", allPayloads: "-- Все Пейлоады --", saveLoadoutBtn: "Сохранить" },
-      "ja-JP": { appSubtitle: "PS4/PS5 ペイロードインジェクタ", tabExploit: "エクスプロイト", tabPayloads: "ペイロード", hostTitle: "ファイルのホスト", hostAdd: "ファイルを追加", hostStart: "ホスティング開始", hostStop: "ホスティング停止", hostEmpty: "ファイルがありません", ipLabel: "コンソールIP", portLabel: "ポート", loadLocal: "ローカルペイロードを読込...", cloudDivider: "またはクラウド展開", btnTransmit: "ペイロード送信", syncBtn: "同期", folderBtn: "フォルダ", armoryCloudTitle: "クラウド武器庫", armoryLocalTitle: "ローカル武器庫", armoryEmpty: "同期またはフォルダを選択...", delayLabel: "遅延 (ms)", btnInjectSeq: "連続インジェクト", settingsTitle: "システム設定", langLabel: "言語", vfxTitle: "視覚効果", vfxBubbles: "泡エフェクトを無効化", vfxLightning: "稲妻エフェクトを無効化", vfxFountain: "Disable Touch Particles", bgBtn: "壁紙を変更", resetBgBtn: "壁紙をリセット", dragFallback: "最初にペイロードを選択してください。", allPayloads: "-- 全てのペイロード --", saveLoadoutBtn: "保存" },
-      "ko-KR": { appSubtitle: "PS4/PS5 페이로드 인젝터", tabExploit: "익스플로잇", tabPayloads: "페이로드", hostTitle: "파일 호스팅", hostAdd: "파일 추가", hostStart: "호스팅 시작", hostStop: "호스팅 중지", hostEmpty: "추가된 파일 없음", ipLabel: "콘솔 IP", portLabel: "포트", loadLocal: "로컬 페이로드 로드...", cloudDivider: "또는 클라우드 배포", btnTransmit: "페이로드 전송", syncBtn: "동기화", folderBtn: "폴더", armoryCloudTitle: "클라우드 무기고", armoryLocalTitle: "로컬 무기고", armoryEmpty: "동기화 또는 폴더를 선택하세요...", delayLabel: "주입 지연 (ms)", btnInjectSeq: "시퀀스 주입", settingsTitle: "시스템 설정", langLabel: "언어", vfxTitle: "시각 효과", vfxBubbles: "버블 비활성화", vfxLightning: "번개 비활성화", vfxFountain: "Disable Touch Particles", bgBtn: "배경화면 변경", resetBgBtn: "배경화면 초기화", dragFallback: "먼저 페이로드를 선택하세요.", allPayloads: "-- 모든 페이로드 --", saveLoadoutBtn: "저장" },
-      "zh-CN": { appSubtitle: "PS4/PS5 有效载荷注入器", tabExploit: "漏洞利用", tabPayloads: "有效载荷", hostTitle: "托管文件", hostAdd: "添加文件", hostStart: "开始托管", hostStop: "停止托管", hostEmpty: "尚未添加文件", ipLabel: "主机 IP", portLabel: "端口", loadLocal: "加载本地有效载荷...", cloudDivider: "或使用云端部署", btnTransmit: "发送有效载荷", syncBtn: "同步", folderBtn: "文件夹", armoryCloudTitle: "云端武器库", armoryLocalTitle: "本地武器库", armoryEmpty: "同步或选择一个文件夹...", delayLabel: "注入延迟 (毫秒)", btnInjectSeq: "序列注入", settingsTitle: "系统设置", langLabel: "界面语言", vfxTitle: "视觉效果", vfxBubbles: "禁用气泡", vfxLightning: "禁用闪电", vfxFountain: "Disable Touch Particles", bgBtn: "更改壁纸", resetBgBtn: "重置壁纸", dragFallback: "请先选择有效载荷。", allPayloads: "-- 所有有效载荷 --", saveLoadoutBtn: "保存" },
-      "fi-FI": { appSubtitle: "PS4/PS5 PAYLOAD SYÖTTÄJÄ", tabExploit: "Exploitit", tabPayloads: "Payloadit", hostTitle: "Isännöi tiedostoja", hostAdd: "Lisää tiedostoja", hostStart: "Aloita isännöinti", hostStop: "Lopeta isännöinti", hostEmpty: "Ei lisättyjä tiedostoja", ipLabel: "Konsolin IP", portLabel: "Portti", loadLocal: "Lataa Paikallinen Payload...", cloudDivider: "TAI PILVIKÄYTTÖ", btnTransmit: "Lähetä Payload", syncBtn: "Synkronoi", folderBtn: "Kansio", armoryCloudTitle: "Pilviarsenaali", armoryLocalTitle: "Paikallinen Arsenaali", armoryEmpty: "Synkronoi tai valitse kansio...", delayLabel: "Viive (ms)", btnInjectSeq: "Syötä Sarja", settingsTitle: "Järjestelmäasetukset", langLabel: "Kieli", vfxTitle: "Visuaaliset Efektit", vfxBubbles: "Poista Kuplat", vfxLightning: "Poista Salamat", vfxFountain: "Disable Touch Particles", bgBtn: "Vaihda Taustakuva", resetBgBtn: "Nollaa Taustakuva", dragFallback: "Valitse payloadit ensin.", allPayloads: "-- Kaikki Payloadit --", saveLoadoutBtn: "Tallenna" },
-      "gd-GB": { appSubtitle: "INJECTOR PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", hostTitle: "Òstadh fhaidhlichean", hostAdd: "Cuir faidhlichean ris", hostStart: "Tòisich air òstadh", hostStop: "Sguir de dh'òstadh", hostEmpty: "Chan eil faidhle ann fhathast", ipLabel: "IP a' Chonsail", portLabel: "Port", loadLocal: "Luchdaich Payload Ionadail...", cloudDivider: "NÒ CLEACHDADH CLOUD", btnTransmit: "Cuir Payload", syncBtn: "Sioncronaich", folderBtn: "Pasgan", armoryCloudTitle: "Armlann Cloud", armoryLocalTitle: "Armlann Ionadail", armoryEmpty: "Sioncronaich no tagh pasgan...", delayLabel: "Dàil (ms)", btnInjectSeq: "Cuir Sreath", settingsTitle: "Roghainnean Siostaim", langLabel: "Cànan", vfxTitle: "Buaidhean Lèirsinneach", vfxBubbles: "Cuir dheth builgeanan", vfxLightning: "Cuir dheth dealanach", vfxFountain: "Disable Touch Particles", bgBtn: "Atharraich Pàipear-balla", resetBgBtn: "Ath-shuidhich Pàipear-balla", dragFallback: "Tagh payloads an toiseach.", allPayloads: "-- Na h-Uile Payloads --", saveLoadoutBtn: "Sàbhail" },
-      "ga-IE": { appSubtitle: "INJECTOR PAYLOAD PS4/PS5", tabExploit: "Saothrú", tabPayloads: "Ualaí", hostTitle: "Óstáil Comhaid", hostAdd: "Cuir Comhaid Leis", hostStart: "Tosaigh Óstáil", hostStop: "Stop Óstáil", hostEmpty: "Níor cuireadh aon chomhad leis", ipLabel: "IP Consóil", portLabel: "Port", loadLocal: "Lódáil Ualach Áitiúil...", cloudDivider: "NÓ ÚSÁID NÉAL", btnTransmit: "Seol Ualach", syncBtn: "Sionc", folderBtn: "Fillteán", armoryCloudTitle: "Armlann Néal", armoryLocalTitle: "Armlann Áitiúil", armoryEmpty: "Sioncronaigh nó roghnaigh fillteán...", delayLabel: "Moill (ms)", btnInjectSeq: "Instealladh Seicheamh", settingsTitle: "Socruithe Córais", langLabel: "Teanga", vfxTitle: "Éifeachtaí Físiúla", vfxBubbles: "Díchumasaigh Boilgeoga", vfxLightning: "Díchumasaigh Tintreach", vfxFountain: "Disable Touch Particles", bgBtn: "Athraigh Cúlbhrat", resetBgBtn: "Athshocraigh Cúlbhrat", dragFallback: "Roghnaigh ualaí ar dtús.", allPayloads: "-- Gach Ualach --", saveLoadoutBtn: "Sábháil" },
-      "zu-ZA": { appSubtitle: "UMFAKI WE-PAYLOAD WE-PS4/PS5", tabExploit: "Ukusetshenziswa", tabPayloads: "Imithwalo", hostTitle: "Yengamela Amafayela", hostAdd: "Engeza Amafayela", hostStart: "Qala Ukwengamela", hostStop: "Misa Ukwengamela", hostEmpty: "Awekho amafayela anezelwe", ipLabel: "I-IP Yekhonsoli", portLabel: "Imbobo", loadLocal: "Layisha Umthwalo Wasendaweni...", cloudDivider: "NOMA UKUSEBENZISA IFU", btnTransmit: "Thumela Umthwalo", syncBtn: "Vumelanisa", folderBtn: "Ifolda", armoryCloudTitle: "Izikhali Zefu", armoryLocalTitle: "Izikhali Zasendaweni", armoryEmpty: "Vumelanisa noma khetha ifolda...", delayLabel: "Ukulibaziseka (ms)", btnInjectSeq: "Faka Ukulandelana", settingsTitle: "Izilungiselelo", langLabel: "Ulimi", vfxTitle: "Imiphumela Ebonakalayo", vfxBubbles: "Khubaza Amabhamuza", vfxLightning: "Khubaza Umbani", vfxFountain: "Disable Touch Particles", bgBtn: "Shintsha Isizinda", resetBgBtn: "Setha Kabusha Isizinda", dragFallback: "Khetha imithwalo kuqala.", allPayloads: "-- Yonke Imithwalo --", saveLoadoutBtn: "Londoloza" },
-      "hi-IN": { appSubtitle: "PS4/PS5 पेलोड इंजेक्टर", tabExploit: "एक्सप्लॉइट्स", tabPayloads: "पेलोड्स", hostTitle: "फ़ाइलें होस्ट करें", hostAdd: "फ़ाइलें जोड़ें", hostStart: "होस्टिंग शुरू करें", hostStop: "होस्टिंग रोकें", hostEmpty: "अभी कोई फ़ाइल नहीं जोड़ी गई", ipLabel: "कंसोल IP", portLabel: "पोर्ट", loadLocal: "स्थानीय पेलोड लोड करें...", cloudDivider: "या क्लाउड डिप्लॉयमेंट", btnTransmit: "पेलोड भेजें", syncBtn: "सिंक", folderBtn: "फ़ोल्डर", armoryCloudTitle: "क्लाउड शस्त्रागार", armoryLocalTitle: "स्थानीय शस्त्रागार", armoryEmpty: "फ़ोल्डर सिंक करें या चुनें...", delayLabel: "इंजेक्शन देरी (ms)", btnInjectSeq: "अनुक्रम इंजेक्ट करें", settingsTitle: "सिस्टम सेटिंग्स", langLabel: "भाषा", vfxTitle: "दृश्य प्रभाव", vfxBubbles: "बुलबुले अक्षम करें", vfxLightning: "बिजली अक्षम करें", vfxFountain: "Disable Touch Particles", bgBtn: "वॉलपेपर बदलें", resetBgBtn: "वॉलपेपर रीसेट करें", dragFallback: "पहले पेलोड चुनें।", allPayloads: "-- सभी पेलोड्स --", saveLoadoutBtn: "सहेजें" },
-      "ar-SA": { appSubtitle: "حاقن الحمولات PS4/PS5", tabExploit: "الثغرات", tabPayloads: "الحمولات", hostTitle: "استضافة الملفات", hostAdd: "إضافة ملفات", hostStart: "بدء الاستضافة", hostStop: "إيقاف الاستضافة", hostEmpty: "لم تتم إضافة ملفات بعد", ipLabel: "عنوان IP لجهاز التحكم", portLabel: "المنفذ", loadLocal: "تحميل حمولة محلية...", cloudDivider: "أو النشر السحابي", btnTransmit: "إرسال الحمولة", syncBtn: "مزامنة", folderBtn: "مجلد", armoryCloudTitle: "ترسانة السحابة", armoryLocalTitle: "ترسانة محلية", armoryEmpty: "قم بالمزامنة أو اختر مجلداً...", delayLabel: "تأخير الحقن (ملي ثانية)", btnInjectSeq: "حقن تسلسلي", settingsTitle: "إعدادات النظام", langLabel: "اللغة", vfxTitle: "مؤثرات بصرية", vfxBubbles: "تعطيل الفقاعات", vfxLightning: "تعطيل البرق", vfxFountain: "Disable Touch Particles", bgBtn: "تغيير الخلفية", resetBgBtn: "إعادة ضبط الخلفية", dragFallback: "اختر الحمولات أولاً.", allPayloads: "-- كل الحمولات --", saveLoadoutBtn: "حفظ" },
-      "ur-PK": { appSubtitle: "PS4/PS5 پے لوڈ انجیکٹر", tabExploit: "ایکسپلائٹس", tabPayloads: "پے لوڈز", hostTitle: "فائلیں ہوسٹ کریں", hostAdd: "فائلیں شامل کریں", hostStart: "ہوسٹنگ شروع کریں", hostStop: "ہوسٹنگ روکیں", hostEmpty: "ابھی کوئی فائل شامل نہیں کی گئی", ipLabel: "کنسول آئی پی", portLabel: "پورٹ", loadLocal: "مقامی پے لوڈ لوڈ کریں...", cloudDivider: "یا کلاؤڈ ڈپلائمنٹ", btnTransmit: "پے لوڈ بھیجیں", syncBtn: "سنک", folderBtn: "فولڈر", armoryCloudTitle: "کلاؤڈ اسلحہ خانہ", armoryLocalTitle: "مقامی اسلحہ خانہ", armoryEmpty: "سنک کریں یا فولڈر منتخب کریں...", delayLabel: "انجیکشن تاخیر (ms)", btnInjectSeq: "سلسلہ انجیکٹ کریں", settingsTitle: "سسٹم سیٹنگز", langLabel: "زبان", vfxTitle: "بصری اثرات", vfxBubbles: "بلبلے غیر فعال کریں", vfxLightning: "بجلی غیر فعال کریں", vfxFountain: "Disable Touch Particles", bgBtn: "وال پیپر تبدیل کریں", resetBgBtn: "وال پیپر ری سیٹ کریں", dragFallback: "پہلے پے لوڈز منتخب کریں۔", allPayloads: "-- تمام پے لوڈز --", saveLoadoutBtn: "محفوظ کریں" },
-      "fa-IR": { appSubtitle: "تزریق‌کننده پی‌لود PS4/PS5", tabExploit: "اکسپلویت‌ها", tabPayloads: "پی‌لودها", hostTitle: "میزبانی فایل‌ها", hostAdd: "افزودن فایل", hostStart: "شروع میزبانی", hostStop: "توقف میزبانی", hostEmpty: "هنوز فایلی اضافه نشده", ipLabel: "IP کنسول", portLabel: "پورت", loadLocal: "بارگذاری پی‌لود محلی...", cloudDivider: "یا استقرار ابری", btnTransmit: "ارسال پی‌لود", syncBtn: "همگام‌سازی", folderBtn: "پوشه", armoryCloudTitle: "زرادخانه ابری", armoryLocalTitle: "زرادخانه محلی", armoryEmpty: "همگام‌سازی یا انتخاب پوشه...", delayLabel: "تاخیر تزریق (ms)", btnInjectSeq: "تزریق متوالی", settingsTitle: "تنظیمات سیستم", langLabel: "زبان", vfxTitle: "جلوه‌های بصری", vfxBubbles: "غیرفعال کردن حباب‌ها", vfxLightning: "غیرفعال کردن رعد و برق", vfxFountain: "Disable Touch Particles", bgBtn: "تغییر تصویر پس‌زمینه", resetBgBtn: "بازنشانی تصویر پس‌زمینه", dragFallback: "ابتدا پی‌لودها را انتخاب کنید.", allPayloads: "-- تمام پی‌لودها --", saveLoadoutBtn: "ذخیره" },
-      "tl-PH": { appSubtitle: "PS4/PS5 PAYLOAD INJECTOR", tabExploit: "Exploits", tabPayloads: "Payloads", hostTitle: "I-host ang mga File", hostAdd: "Magdagdag ng File", hostStart: "Simulan ang Hosting", hostStop: "Ihinto ang Hosting", hostEmpty: "Wala pang idinagdag na file", ipLabel: "Console IP", portLabel: "Port", loadLocal: "Mag-load ng Lokal na Payload...", cloudDivider: "O CLOUD DEPLOYMENT", btnTransmit: "Ipadala ang Payload", syncBtn: "I-sync", folderBtn: "Folder", armoryCloudTitle: "Cloud Armory", armoryLocalTitle: "Lokal na Armory", armoryEmpty: "I-sync o pumili ng folder...", delayLabel: "Injection Delay (ms)", btnInjectSeq: "I-inject ang Sequence", settingsTitle: "Mga Setting", langLabel: "Wika", vfxTitle: "Visual Effects", vfxBubbles: "I-disable ang Bubbles", vfxLightning: "I-disable ang Lightning", vfxFountain: "Disable Touch Particles", bgBtn: "Baguhin ang Wallpaper", resetBgBtn: "I-reset ang Wallpaper", dragFallback: "Pumili muna ng payloads.", allPayloads: "-- Lahat ng Payloads --", saveLoadoutBtn: "I-save" },
-      "ta-IN": { appSubtitle: "PS4/PS5 பேலோடு இன்ஜெக்டர்", tabExploit: "எக்ஸ்ப்ளாயிட்ஸ்", tabPayloads: "பேலோடுகள்", hostTitle: "கோப்புகளை ஹோஸ்ட் செய்", hostAdd: "கோப்புகளைச் சேர்", hostStart: "ஹோஸ்டிங்கைத் தொடங்கு", hostStop: "ஹோஸ்டிங்கை நிறுத்து", hostEmpty: "கோப்புகள் எதுவும் சேர்க்கப்படவில்லை", ipLabel: "கன்சோல் IP", portLabel: "போர்ட்", loadLocal: "உள்ளூர் பேலோடை ஏற்றவும்...", cloudDivider: "அல்லது கிளவுட் வரிசைப்படுத்தல்", btnTransmit: "பேலோடை அனுப்பு", syncBtn: "ஒத்திசை", folderBtn: "கோப்புறை", armoryCloudTitle: "கிளவுட் ஆயுதக்கிடங்கு", armoryLocalTitle: "உள்ளூர் ஆயுதக்கிடங்கு", armoryEmpty: "ஒத்திசைக்கவும் அல்லது கோப்புறையைத் தேர்ந்தெடுக்கவும்...", delayLabel: "ஊசி தாமதம் (ms)", btnInjectSeq: "வரிசையை ஊசி போடு", settingsTitle: "கணினி அமைப்புகள்", langLabel: "மொழி", vfxTitle: "காட்சி விளைவுகள்", vfxBubbles: "குமிழ்களை முடக்கு", vfxLightning: "மின்னலை முடக்கு", vfxFountain: "Disable Touch Particles", bgBtn: "வால்பேப்பரை மாற்று", resetBgBtn: "வால்பேப்பரை மீட்டமை", dragFallback: "முதலில் பேலோடுகளைத் தேர்ந்தெடுக்கவும்.", allPayloads: "-- அனைத்து பேலோடுகள் --", saveLoadoutBtn: "சேமி" },
-      "tr-TR": { appSubtitle: "PS4/PS5 PAYLOAD ENJEKTÖRÜ", tabExploit: "Açıklar", tabPayloads: "Payloadlar", hostTitle: "Dosyaları Barındır", hostAdd: "Dosya Ekle", hostStart: "Barındırmayı Başlat", hostStop: "Barındırmayı Durdur", hostEmpty: "Henüz dosya eklenmedi", ipLabel: "Konsol IP'si", portLabel: "Port", loadLocal: "Yerel Payload Yükle...", cloudDivider: "VEYA BULUT DAĞITIMI", btnTransmit: "Payload Gönder", syncBtn: "Senkronize", folderBtn: "Klasör", armoryCloudTitle: "Bulut Cephaneliği", armoryLocalTitle: "Yerel Cephanelik", armoryEmpty: "Senkronize edin veya klasör seçin...", delayLabel: "Enjeksiyon Gecikmesi (ms)", btnInjectSeq: "Sıralı Enjekte Et", settingsTitle: "Sistem Ayarları", langLabel: "Arayüz Dili", vfxTitle: "Görsel Efektler", vfxBubbles: "Baloncukları Kapat", vfxLightning: "Şimşeği Kapat", vfxFountain: "Disable Touch Particles", bgBtn: "Duvar Kağıdını Değiştir", resetBgBtn: "Duvar Kağıdını Sıfırla", dragFallback: "Önce payload seçmelisiniz.", allPayloads: "-- Tüm Payloadlar --", saveLoadoutBtn: "Kaydet" },
-      "ms-MY": { appSubtitle: "PENYUNTIK PAYLOAD PS4/PS5", tabExploit: "Eksploit", tabPayloads: "Payload", hostTitle: "Hos Fail", hostAdd: "Tambah Fail", hostStart: "Mula Hosting", hostStop: "Henti Hosting", hostEmpty: "Belum ada fail ditambah", ipLabel: "IP Konsol", portLabel: "Port", loadLocal: "Muat Payload Tempatan...", cloudDivider: "ATAU AWAN DEPLOYMENT", btnTransmit: "Hantar Payload", syncBtn: "Segerak", folderBtn: "Folder", armoryCloudTitle: "Gudang Senjata Awan", armoryLocalTitle: "Gudang Senjata Tempatan", armoryEmpty: "Segerak atau pilih folder...", delayLabel: "Lengah Suntikan (ms)", btnInjectSeq: "Suntik Jujukan", settingsTitle: "Tetapan Sistem", langLabel: "Bahasa", vfxTitle: "Kesan Visual", vfxBubbles: "Nyahaktif Gelembung", vfxLightning: "Nyahaktif Kilat", vfxFountain: "Disable Touch Particles", bgBtn: "Tukar Kertas Dinding", resetBgBtn: "Tetap Semula Kertas Dinding", dragFallback: "Pilih payload dahulu.", allPayloads: "-- Semua Payload --", saveLoadoutBtn: "Simpan" },
-      "hu-HU": { appSubtitle: "PS4/PS5 PAYLOAD INJEKTOR", tabExploit: "Exploitok", tabPayloads: "Payloadok", hostTitle: "Fájlok tárolása", hostAdd: "Fájlok hozzáadása", hostStart: "Tárolás indítása", hostStop: "Tárolás leállítása", hostEmpty: "Még nincs hozzáadott fájl", ipLabel: "Konzol IP", portLabel: "Port", loadLocal: "Helyi Payload Betöltése...", cloudDivider: "VAGY FELHŐ TELEPÍTÉS", btnTransmit: "Payload Küldése", syncBtn: "Szinkr", folderBtn: "Mappa", armoryCloudTitle: "Felhő Fegyvertár", armoryLocalTitle: "Helyi Fegyvertár", armoryEmpty: "Szinkronizálj vagy válassz mappát...", delayLabel: "Injektálási Késleltetés (ms)", btnInjectSeq: "Szekvencia Injektálása", settingsTitle: "Rendszerbeállítások", langLabel: "Nyelv", vfxTitle: "Vizuális Efektek", vfxBubbles: "Buborékok Kikapcs.", vfxLightning: "Villámok Kikapcs.", vfxFountain: "Disable Touch Particles", bgBtn: "Háttérkép Módosítása", resetBgBtn: "Háttérkép Visszaállítása", dragFallback: "Válassz payloadokat előbb.", allPayloads: "-- Összes Payload --", saveLoadoutBtn: "Mentés" },
-      "de-DE": { appSubtitle: "PS4/PS5 PAYLOAD INJEKTOR", tabExploit: "Exploits", tabPayloads: "Payloads", hostTitle: "Dateien hosten", hostAdd: "Dateien hinzufügen", hostStart: "Hosting starten", hostStop: "Hosting stoppen", hostEmpty: "Noch keine Dateien hinzugefügt", ipLabel: "Konsolen-IP", portLabel: "Port", loadLocal: "Lokalen Payload laden...", cloudDivider: "ODER CLOUD-BEREITSTELLUNG", btnTransmit: "Payload Senden", syncBtn: "Sync", folderBtn: "Ordner", armoryCloudTitle: "Cloud Waffenkammer", armoryLocalTitle: "Lokale Waffenkammer", armoryEmpty: "Synchronisieren oder Ordner wählen...", delayLabel: "Injektionsverzögerung (ms)", btnInjectSeq: "Sequenz Injezieren", settingsTitle: "Systemeinstellungen", langLabel: "Sprache", vfxTitle: "Visuelle Effekte", vfxBubbles: "Blasen Deaktivieren", vfxLightning: "Blitze Deaktivieren", vfxFountain: "Disable Touch Particles", bgBtn: "Hintergrund Ändern", resetBgBtn: "Hintergrund Zurücksetzen", dragFallback: "Zuerst Payloads auswählen.", allPayloads: "-- Alle Payloads --", saveLoadoutBtn: "Speichern" },
-      "pl-PL": { appSubtitle: "INIEKTOR PAYLOADÓW PS4/PS5", tabExploit: "Exploity", tabPayloads: "Payloady", hostTitle: "Hostowanie plików", hostAdd: "Dodaj pliki", hostStart: "Rozpocznij hosting", hostStop: "Zatrzymaj hosting", hostEmpty: "Nie dodano jeszcze plików", ipLabel: "IP Konsoli", portLabel: "Port", loadLocal: "Załaduj Lokalny Payload...", cloudDivider: "LUB WDROŻENIE W CHMURZE", btnTransmit: "Wyślij Payload", syncBtn: "Sync", folderBtn: "Folder", armoryCloudTitle: "Arsenał w Chmurze", armoryLocalTitle: "Arsenał Lokalny", armoryEmpty: "Zsynchronizuj lub wybierz folder...", delayLabel: "Opóźnienie Iniekcji (ms)", btnInjectSeq: "Iniekcja Sekwencji", settingsTitle: "Ustawienia Systemu", langLabel: "Język", vfxTitle: "Efekty Wizualne", vfxBubbles: "Wyłącz Bąbelki", vfxLightning: "Wyłącz Błyskawice", vfxFountain: "Disable Touch Particles", bgBtn: "Zmień Tapetę", resetBgBtn: "Zresetuj Tapetę", dragFallback: "Najpierw wybierz payloady.", allPayloads: "-- Wszystkie Payloady --", saveLoadoutBtn: "Zapisz" }
+      "sw-KE": { appSubtitle: "KIDUNGUAJI CHA PS4 / PS5", tabExploit: "Matumizi", tabPayloads: "Mizigo", hostTitle: "Pangisha Faili", hostAdd: "Ongeza Faili", hostStart: "Anza Kupangisha", hostStop: "Acha Kupangisha", hostEmpty: "Hakuna faili zilizoongezwa", ipLabel: "IP ya Kifaa", portLabel: "Lango", loadLocal: "Pakia Mzigo wa Ndani...", cloudDivider: "AU TUMIA WINGU", btnTransmit: "Tuma Mzigo", syncBtn: "Sawazisha", folderBtn: "Folda", armoryCloudTitle: "Silaha za Wingu", armoryLocalTitle: "Silaha za Ndani", armoryEmpty: "Sawazisha au chagua folda...", delayLabel: "Kuchelewa (ms)", btnInjectSeq: "Anza Mlolongo", settingsTitle: "Mipangilio", langLabel: "Lugha ya Mfumo", vfxTitle: "Athari za Kuona", vfxBubbles: "Zima Mapovu", vfxLightning: "Zima Umeme", vfxFountain: "Disable Touch Particles", bgBtn: "Badilisha Karatasi", resetBgBtn: "Weka Upya Karatasi", dragFallback: "Chagua mzigo kwanza.", allPayloads: "Mizigo Yote", saveLoadoutBtn: "Hifadhi" },
+      "fr-FR": { appSubtitle: "INJECTEUR DE PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", hostTitle: "Héberger des fichiers", hostAdd: "Ajouter des fichiers", hostStart: "Démarrer l'hébergement", hostStop: "Arrêter l'hébergement", hostEmpty: "Aucun fichier ajouté", ipLabel: "IP de la Console", portLabel: "Port", loadLocal: "Charger Payload Local...", cloudDivider: "OU DÉPLOIEMENT CLOUD", btnTransmit: "Envoyer Payload", syncBtn: "Sync", folderBtn: "Dossier", armoryCloudTitle: "Arsenal Cloud", armoryLocalTitle: "Arsenal Local", armoryEmpty: "Synchronisez ou choisissez un dossier...", delayLabel: "Délai (ms)", btnInjectSeq: "Injecter Séquence", settingsTitle: "Paramètres Système", langLabel: "Langue", vfxTitle: "Effets Visuels", vfxBubbles: "Désactiver les Bulles", vfxLightning: "Désactiver les Éclairs", vfxFountain: "Disable Touch Particles", bgBtn: "Changer Fond", resetBgBtn: "Réinitialiser Fond", dragFallback: "Sélectionnez des payloads d'abord.", allPayloads: "Tous les Payloads", saveLoadoutBtn: "Enregistrer" },
+      "es-ES": { appSubtitle: "INYECTOR DE PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", hostTitle: "Alojar archivos", hostAdd: "Añadir archivos", hostStart: "Iniciar alojamiento", hostStop: "Detener alojamiento", hostEmpty: "Aún no hay archivos", ipLabel: "IP de Consola", portLabel: "Puerto", loadLocal: "Cargar Payload Local...", cloudDivider: "O DESPLIEGUE EN LA NUBE", btnTransmit: "Enviar Payload", syncBtn: "Sync", folderBtn: "Mapear", armoryCloudTitle: "Arsenal en la Nube", armoryLocalTitle: "Arsenal Local", armoryEmpty: "Sincroniza o elige una carpeta...", delayLabel: "Retraso (ms)", btnInjectSeq: "Inyectar Secuencia", settingsTitle: "Ajustes de Sistema", langLabel: "Idioma", vfxTitle: "Efectos Visuales", vfxBubbles: "Desactivar Burbujas", vfxLightning: "Desactivar Relámpagos", vfxFountain: "Disable Touch Particles", bgBtn: "Cambiar Fondo", resetBgBtn: "Restaurar Fondo", dragFallback: "Selecciona payloads primero.", allPayloads: "Todos los Payloads", saveLoadoutBtn: "Guardar" },
+      "pt-BR": { appSubtitle: "INJETOR DE PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", hostTitle: "Hospedar arquivos", hostAdd: "Adicionar arquivos", hostStart: "Iniciar hospedagem", hostStop: "Parar hospedagem", hostEmpty: "Nenhum arquivo adicionado", ipLabel: "IP do Console", portLabel: "Porta", loadLocal: "Carregar Payload Local...", cloudDivider: "OU DEPLOY NA NUVEM", btnTransmit: "Enviar Payload", syncBtn: "Sync", folderBtn: "Pasta", armoryCloudTitle: "Arsenal na Nuvem", armoryLocalTitle: "Arsenal Local", armoryEmpty: "Sincronize ou escolha uma pasta...", delayLabel: "Atraso (ms)", btnInjectSeq: "Injetar Sequência", settingsTitle: "Configurações", langLabel: "Idioma", vfxTitle: "Efeitos Visuais", vfxBubbles: "Desativar Bolhas", vfxLightning: "Desativar Raios", vfxFountain: "Disable Touch Particles", bgBtn: "Alterar Fundo", resetBgBtn: "Resetar Fundo", dragFallback: "Selecione payloads primeiro.", allPayloads: "Todos os Payloads", saveLoadoutBtn: "Salvar" },
+      "et-EE": { appSubtitle: "PS4/PS5 PAYLOAD SÜSTIJA", tabExploit: "Eksploitid", tabPayloads: "Payloadid", hostTitle: "Failide majutus", hostAdd: "Lisa faile", hostStart: "Käivita majutus", hostStop: "Peata majutus", hostEmpty: "Faile pole lisatud", ipLabel: "Konsooli IP", portLabel: "Port", loadLocal: "Laadi Kohalik Payload...", cloudDivider: "VÕI PILVE JUURUTAMINE", btnTransmit: "Saada Payload", syncBtn: "Sünkrooni", folderBtn: "Kaust", armoryCloudTitle: "Pilve Arsenal", armoryLocalTitle: "Kohalik Arsenal", armoryEmpty: "Sünkrooni või vali kaust...", delayLabel: "Viivitus (ms)", btnInjectSeq: "Süsti Järjestus", settingsTitle: "Süsteemi Seaded", langLabel: "Keel", vfxTitle: "Visuaalsed Efektid", vfxBubbles: "Keela Mullid", vfxLightning: "Keela Välk", vfxFountain: "Disable Touch Particles", bgBtn: "Muuda Tausta", resetBgBtn: "Lähtesta Taust", dragFallback: "Vali esmalt payloadid.", allPayloads: "Kõik Payloadid", saveLoadoutBtn: "Salvesta" },
+      "ru-RU": { appSubtitle: "ИНЖЕКТОР ПЕЙЛОАДОВ PS4/PS5", tabExploit: "Эксплойты", tabPayloads: "Пейлоады", hostTitle: "Хостинг файлов", hostAdd: "Добавить файлы", hostStart: "Запустить хостинг", hostStop: "Остановить хостинг", hostEmpty: "Файлы не добавлены", ipLabel: "IP Консоли", portLabel: "Порт", loadLocal: "Локальный Пейлоад...", cloudDivider: "ИЛИ ОБЛАЧНЫЙ СКРИПТ", btnTransmit: "Отправить Пейлоад", syncBtn: "Синхр", folderBtn: "Папка", armoryCloudTitle: "Облачный Арсенал", armoryLocalTitle: "Локальный Арсенал", armoryEmpty: "Синхронизируйте или выберите папку...", delayLabel: "Задержка (мс)", btnInjectSeq: "Запуск Серии", settingsTitle: "Настройки Системы", langLabel: "Язык Интерфейса", vfxTitle: "Визуальные Эффекты", vfxBubbles: "Отключить Пузыри", vfxLightning: "Отключить Молнии", vfxFountain: "Disable Touch Particles", bgBtn: "Изменить Обои", resetBgBtn: "Сбросить Обои", dragFallback: "Сначала выберите пейлоады.", allPayloads: "Все Пейлоады", saveLoadoutBtn: "Сохранить" },
+      "ja-JP": { appSubtitle: "PS4/PS5 ペイロードインジェクタ", tabExploit: "エクスプロイト", tabPayloads: "ペイロード", hostTitle: "ファイルのホスト", hostAdd: "ファイルを追加", hostStart: "ホスティング開始", hostStop: "ホスティング停止", hostEmpty: "ファイルがありません", ipLabel: "コンソールIP", portLabel: "ポート", loadLocal: "ローカルペイロードを読込...", cloudDivider: "またはクラウド展開", btnTransmit: "ペイロード送信", syncBtn: "同期", folderBtn: "フォルダ", armoryCloudTitle: "クラウド武器庫", armoryLocalTitle: "ローカル武器庫", armoryEmpty: "同期またはフォルダを選択...", delayLabel: "遅延 (ms)", btnInjectSeq: "連続インジェクト", settingsTitle: "システム設定", langLabel: "言語", vfxTitle: "視覚効果", vfxBubbles: "泡エフェクトを無効化", vfxLightning: "稲妻エフェクトを無効化", vfxFountain: "Disable Touch Particles", bgBtn: "壁紙を変更", resetBgBtn: "壁紙をリセット", dragFallback: "最初にペイロードを選択してください。", allPayloads: "全てのペイロード", saveLoadoutBtn: "保存" },
+      "ko-KR": { appSubtitle: "PS4/PS5 페이로드 인젝터", tabExploit: "익스플로잇", tabPayloads: "페이로드", hostTitle: "파일 호스팅", hostAdd: "파일 추가", hostStart: "호스팅 시작", hostStop: "호스팅 중지", hostEmpty: "추가된 파일 없음", ipLabel: "콘솔 IP", portLabel: "포트", loadLocal: "로컬 페이로드 로드...", cloudDivider: "또는 클라우드 배포", btnTransmit: "페이로드 전송", syncBtn: "동기화", folderBtn: "폴더", armoryCloudTitle: "클라우드 무기고", armoryLocalTitle: "로컬 무기고", armoryEmpty: "동기화 또는 폴더를 선택하세요...", delayLabel: "주입 지연 (ms)", btnInjectSeq: "시퀀스 주입", settingsTitle: "시스템 설정", langLabel: "언어", vfxTitle: "시각 효과", vfxBubbles: "버블 비활성화", vfxLightning: "번개 비활성화", vfxFountain: "Disable Touch Particles", bgBtn: "배경화면 변경", resetBgBtn: "배경화면 초기화", dragFallback: "먼저 페이로드를 선택하세요.", allPayloads: "모든 페이로드", saveLoadoutBtn: "저장" },
+      "zh-CN": { appSubtitle: "PS4/PS5 有效载荷注入器", tabExploit: "漏洞利用", tabPayloads: "有效载荷", hostTitle: "托管文件", hostAdd: "添加文件", hostStart: "开始托管", hostStop: "停止托管", hostEmpty: "尚未添加文件", ipLabel: "主机 IP", portLabel: "端口", loadLocal: "加载本地有效载荷...", cloudDivider: "或使用云端部署", btnTransmit: "发送有效载荷", syncBtn: "同步", folderBtn: "文件夹", armoryCloudTitle: "云端武器库", armoryLocalTitle: "本地武器库", armoryEmpty: "同步或选择一个文件夹...", delayLabel: "注入延迟 (毫秒)", btnInjectSeq: "序列注入", settingsTitle: "系统设置", langLabel: "界面语言", vfxTitle: "视觉效果", vfxBubbles: "禁用气泡", vfxLightning: "禁用闪电", vfxFountain: "Disable Touch Particles", bgBtn: "更改壁纸", resetBgBtn: "重置壁纸", dragFallback: "请先选择有效载荷。", allPayloads: "所有有效载荷", saveLoadoutBtn: "保存" },
+      "fi-FI": { appSubtitle: "PS4/PS5 PAYLOAD SYÖTTÄJÄ", tabExploit: "Exploitit", tabPayloads: "Payloadit", hostTitle: "Isännöi tiedostoja", hostAdd: "Lisää tiedostoja", hostStart: "Aloita isännöinti", hostStop: "Lopeta isännöinti", hostEmpty: "Ei lisättyjä tiedostoja", ipLabel: "Konsolin IP", portLabel: "Portti", loadLocal: "Lataa Paikallinen Payload...", cloudDivider: "TAI PILVIKÄYTTÖ", btnTransmit: "Lähetä Payload", syncBtn: "Synkronoi", folderBtn: "Kansio", armoryCloudTitle: "Pilviarsenaali", armoryLocalTitle: "Paikallinen Arsenaali", armoryEmpty: "Synkronoi tai valitse kansio...", delayLabel: "Viive (ms)", btnInjectSeq: "Syötä Sarja", settingsTitle: "Järjestelmäasetukset", langLabel: "Kieli", vfxTitle: "Visuaaliset Efektit", vfxBubbles: "Poista Kuplat", vfxLightning: "Poista Salamat", vfxFountain: "Disable Touch Particles", bgBtn: "Vaihda Taustakuva", resetBgBtn: "Nollaa Taustakuva", dragFallback: "Valitse payloadit ensin.", allPayloads: "Kaikki Payloadit", saveLoadoutBtn: "Tallenna" },
+      "gd-GB": { appSubtitle: "INJECTOR PAYLOAD PS4/PS5", tabExploit: "Exploits", tabPayloads: "Payloads", hostTitle: "Òstadh fhaidhlichean", hostAdd: "Cuir faidhlichean ris", hostStart: "Tòisich air òstadh", hostStop: "Sguir de dh'òstadh", hostEmpty: "Chan eil faidhle ann fhathast", ipLabel: "IP a' Chonsail", portLabel: "Port", loadLocal: "Luchdaich Payload Ionadail...", cloudDivider: "NÒ CLEACHDADH CLOUD", btnTransmit: "Cuir Payload", syncBtn: "Sioncronaich", folderBtn: "Pasgan", armoryCloudTitle: "Armlann Cloud", armoryLocalTitle: "Armlann Ionadail", armoryEmpty: "Sioncronaich no tagh pasgan...", delayLabel: "Dàil (ms)", btnInjectSeq: "Cuir Sreath", settingsTitle: "Roghainnean Siostaim", langLabel: "Cànan", vfxTitle: "Buaidhean Lèirsinneach", vfxBubbles: "Cuir dheth builgeanan", vfxLightning: "Cuir dheth dealanach", vfxFountain: "Disable Touch Particles", bgBtn: "Atharraich Pàipear-balla", resetBgBtn: "Ath-shuidhich Pàipear-balla", dragFallback: "Tagh payloads an toiseach.", allPayloads: "Na h-Uile Payloads", saveLoadoutBtn: "Sàbhail" },
+      "ga-IE": { appSubtitle: "INJECTOR PAYLOAD PS4/PS5", tabExploit: "Saothrú", tabPayloads: "Ualaí", hostTitle: "Óstáil Comhaid", hostAdd: "Cuir Comhaid Leis", hostStart: "Tosaigh Óstáil", hostStop: "Stop Óstáil", hostEmpty: "Níor cuireadh aon chomhad leis", ipLabel: "IP Consóil", portLabel: "Port", loadLocal: "Lódáil Ualach Áitiúil...", cloudDivider: "NÓ ÚSÁID NÉAL", btnTransmit: "Seol Ualach", syncBtn: "Sionc", folderBtn: "Fillteán", armoryCloudTitle: "Armlann Néal", armoryLocalTitle: "Armlann Áitiúil", armoryEmpty: "Sioncronaigh nó roghnaigh fillteán...", delayLabel: "Moill (ms)", btnInjectSeq: "Instealladh Seicheamh", settingsTitle: "Socruithe Córais", langLabel: "Teanga", vfxTitle: "Éifeachtaí Físiúla", vfxBubbles: "Díchumasaigh Boilgeoga", vfxLightning: "Díchumasaigh Tintreach", vfxFountain: "Disable Touch Particles", bgBtn: "Athraigh Cúlbhrat", resetBgBtn: "Athshocraigh Cúlbhrat", dragFallback: "Roghnaigh ualaí ar dtús.", allPayloads: "Gach Ualach", saveLoadoutBtn: "Sábháil" },
+      "zu-ZA": { appSubtitle: "UMFAKI WE-PAYLOAD WE-PS4/PS5", tabExploit: "Ukusetshenziswa", tabPayloads: "Imithwalo", hostTitle: "Yengamela Amafayela", hostAdd: "Engeza Amafayela", hostStart: "Qala Ukwengamela", hostStop: "Misa Ukwengamela", hostEmpty: "Awekho amafayela anezelwe", ipLabel: "I-IP Yekhonsoli", portLabel: "Imbobo", loadLocal: "Layisha Umthwalo Wasendaweni...", cloudDivider: "NOMA UKUSEBENZISA IFU", btnTransmit: "Thumela Umthwalo", syncBtn: "Vumelanisa", folderBtn: "Ifolda", armoryCloudTitle: "Izikhali Zefu", armoryLocalTitle: "Izikhali Zasendaweni", armoryEmpty: "Vumelanisa noma khetha ifolda...", delayLabel: "Ukulibaziseka (ms)", btnInjectSeq: "Faka Ukulandelana", settingsTitle: "Izilungiselelo", langLabel: "Ulimi", vfxTitle: "Imiphumela Ebonakalayo", vfxBubbles: "Khubaza Amabhamuza", vfxLightning: "Khubaza Umbani", vfxFountain: "Disable Touch Particles", bgBtn: "Shintsha Isizinda", resetBgBtn: "Setha Kabusha Isizinda", dragFallback: "Khetha imithwalo kuqala.", allPayloads: "Yonke Imithwalo", saveLoadoutBtn: "Londoloza" },
+      "hi-IN": { appSubtitle: "PS4/PS5 पेलोड इंजेक्टर", tabExploit: "एक्सप्लॉइट्स", tabPayloads: "पेलोड्स", hostTitle: "फ़ाइलें होस्ट करें", hostAdd: "फ़ाइलें जोड़ें", hostStart: "होस्टिंग शुरू करें", hostStop: "होस्टिंग रोकें", hostEmpty: "अभी कोई फ़ाइल नहीं जोड़ी गई", ipLabel: "कंसोल IP", portLabel: "पोर्ट", loadLocal: "स्थानीय पेलोड लोड करें...", cloudDivider: "या क्लाउड डिप्लॉयमेंट", btnTransmit: "पेलोड भेजें", syncBtn: "सिंक", folderBtn: "फ़ोल्डर", armoryCloudTitle: "क्लाउड शस्त्रागार", armoryLocalTitle: "स्थानीय शस्त्रागार", armoryEmpty: "फ़ोल्डर सिंक करें या चुनें...", delayLabel: "इंजेक्शन देरी (ms)", btnInjectSeq: "अनुक्रम इंजेक्ट करें", settingsTitle: "सिस्टम सेटिंग्स", langLabel: "भाषा", vfxTitle: "दृश्य प्रभाव", vfxBubbles: "बुलबुले अक्षम करें", vfxLightning: "बिजली अक्षम करें", vfxFountain: "Disable Touch Particles", bgBtn: "वॉलपेपर बदलें", resetBgBtn: "वॉलपेपर रीसेट करें", dragFallback: "पहले पेलोड चुनें।", allPayloads: "सभी पेलोड्स", saveLoadoutBtn: "सहेजें" },
+      "ar-SA": { appSubtitle: "حاقن الحمولات PS4/PS5", tabExploit: "الثغرات", tabPayloads: "الحمولات", hostTitle: "استضافة الملفات", hostAdd: "إضافة ملفات", hostStart: "بدء الاستضافة", hostStop: "إيقاف الاستضافة", hostEmpty: "لم تتم إضافة ملفات بعد", ipLabel: "عنوان IP لجهاز التحكم", portLabel: "المنفذ", loadLocal: "تحميل حمولة محلية...", cloudDivider: "أو النشر السحابي", btnTransmit: "إرسال الحمولة", syncBtn: "مزامنة", folderBtn: "مجلد", armoryCloudTitle: "ترسانة السحابة", armoryLocalTitle: "ترسانة محلية", armoryEmpty: "قم بالمزامنة أو اختر مجلداً...", delayLabel: "تأخير الحقن (ملي ثانية)", btnInjectSeq: "حقن تسلسلي", settingsTitle: "إعدادات النظام", langLabel: "اللغة", vfxTitle: "مؤثرات بصرية", vfxBubbles: "تعطيل الفقاعات", vfxLightning: "تعطيل البرق", vfxFountain: "Disable Touch Particles", bgBtn: "تغيير الخلفية", resetBgBtn: "إعادة ضبط الخلفية", dragFallback: "اختر الحمولات أولاً.", allPayloads: "كل الحمولات", saveLoadoutBtn: "حفظ" },
+      "ur-PK": { appSubtitle: "PS4/PS5 پے لوڈ انجیکٹر", tabExploit: "ایکسپلائٹس", tabPayloads: "پے لوڈز", hostTitle: "فائلیں ہوسٹ کریں", hostAdd: "فائلیں شامل کریں", hostStart: "ہوسٹنگ شروع کریں", hostStop: "ہوسٹنگ روکیں", hostEmpty: "ابھی کوئی فائل شامل نہیں کی گئی", ipLabel: "کنسول آئی پی", portLabel: "پورٹ", loadLocal: "مقامی پے لوڈ لوڈ کریں...", cloudDivider: "یا کلاؤڈ ڈپلائمنٹ", btnTransmit: "پے لوڈ بھیجیں", syncBtn: "سنک", folderBtn: "فولڈر", armoryCloudTitle: "کلاؤڈ اسلحہ خانہ", armoryLocalTitle: "مقامی اسلحہ خانہ", armoryEmpty: "سنک کریں یا فولڈر منتخب کریں...", delayLabel: "انجیکشن تاخیر (ms)", btnInjectSeq: "سلسلہ انجیکٹ کریں", settingsTitle: "سسٹم سیٹنگز", langLabel: "زبان", vfxTitle: "بصری اثرات", vfxBubbles: "بلبلے غیر فعال کریں", vfxLightning: "بجلی غیر فعال کریں", vfxFountain: "Disable Touch Particles", bgBtn: "وال پیپر تبدیل کریں", resetBgBtn: "وال پیپر ری سیٹ کریں", dragFallback: "پہلے پے لوڈز منتخب کریں۔", allPayloads: "تمام پے لوڈز", saveLoadoutBtn: "محفوظ کریں" },
+      "fa-IR": { appSubtitle: "تزریق‌کننده پی‌لود PS4/PS5", tabExploit: "اکسپلویت‌ها", tabPayloads: "پی‌لودها", hostTitle: "میزبانی فایل‌ها", hostAdd: "افزودن فایل", hostStart: "شروع میزبانی", hostStop: "توقف میزبانی", hostEmpty: "هنوز فایلی اضافه نشده", ipLabel: "IP کنسول", portLabel: "پورت", loadLocal: "بارگذاری پی‌لود محلی...", cloudDivider: "یا استقرار ابری", btnTransmit: "ارسال پی‌لود", syncBtn: "همگام‌سازی", folderBtn: "پوشه", armoryCloudTitle: "زرادخانه ابری", armoryLocalTitle: "زرادخانه محلی", armoryEmpty: "همگام‌سازی یا انتخاب پوشه...", delayLabel: "تاخیر تزریق (ms)", btnInjectSeq: "تزریق متوالی", settingsTitle: "تنظیمات سیستم", langLabel: "زبان", vfxTitle: "جلوه‌های بصری", vfxBubbles: "غیرفعال کردن حباب‌ها", vfxLightning: "غیرفعال کردن رعد و برق", vfxFountain: "Disable Touch Particles", bgBtn: "تغییر تصویر پس‌زمینه", resetBgBtn: "بازنشانی تصویر پس‌زمینه", dragFallback: "ابتدا پی‌لودها را انتخاب کنید.", allPayloads: "تمام پی‌لودها", saveLoadoutBtn: "ذخیره" },
+      "tl-PH": { appSubtitle: "PS4/PS5 PAYLOAD INJECTOR", tabExploit: "Exploits", tabPayloads: "Payloads", hostTitle: "I-host ang mga File", hostAdd: "Magdagdag ng File", hostStart: "Simulan ang Hosting", hostStop: "Ihinto ang Hosting", hostEmpty: "Wala pang idinagdag na file", ipLabel: "Console IP", portLabel: "Port", loadLocal: "Mag-load ng Lokal na Payload...", cloudDivider: "O CLOUD DEPLOYMENT", btnTransmit: "Ipadala ang Payload", syncBtn: "I-sync", folderBtn: "Folder", armoryCloudTitle: "Cloud Armory", armoryLocalTitle: "Lokal na Armory", armoryEmpty: "I-sync o pumili ng folder...", delayLabel: "Injection Delay (ms)", btnInjectSeq: "I-inject ang Sequence", settingsTitle: "Mga Setting", langLabel: "Wika", vfxTitle: "Visual Effects", vfxBubbles: "I-disable ang Bubbles", vfxLightning: "I-disable ang Lightning", vfxFountain: "Disable Touch Particles", bgBtn: "Baguhin ang Wallpaper", resetBgBtn: "I-reset ang Wallpaper", dragFallback: "Pumili muna ng payloads.", allPayloads: "Lahat ng Payloads", saveLoadoutBtn: "I-save" },
+      "ta-IN": { appSubtitle: "PS4/PS5 பேலோடு இன்ஜெக்டர்", tabExploit: "எக்ஸ்ப்ளாயிட்ஸ்", tabPayloads: "பேலோடுகள்", hostTitle: "கோப்புகளை ஹோஸ்ட் செய்", hostAdd: "கோப்புகளைச் சேர்", hostStart: "ஹோஸ்டிங்கைத் தொடங்கு", hostStop: "ஹோஸ்டிங்கை நிறுத்து", hostEmpty: "கோப்புகள் எதுவும் சேர்க்கப்படவில்லை", ipLabel: "கன்சோல் IP", portLabel: "போர்ட்", loadLocal: "உள்ளூர் பேலோடை ஏற்றவும்...", cloudDivider: "அல்லது கிளவுட் வரிசைப்படுத்தல்", btnTransmit: "பேலோடை அனுப்பு", syncBtn: "ஒத்திசை", folderBtn: "கோப்புறை", armoryCloudTitle: "கிளவுட் ஆயுதக்கிடங்கு", armoryLocalTitle: "உள்ளூர் ஆயுதக்கிடங்கு", armoryEmpty: "ஒத்திசைக்கவும் அல்லது கோப்புறையைத் தேர்ந்தெடுக்கவும்...", delayLabel: "ஊசி தாமதம் (ms)", btnInjectSeq: "வரிசையை ஊசி போடு", settingsTitle: "கணினி அமைப்புகள்", langLabel: "மொழி", vfxTitle: "காட்சி விளைவுகள்", vfxBubbles: "குமிழ்களை முடக்கு", vfxLightning: "மின்னலை முடக்கு", vfxFountain: "Disable Touch Particles", bgBtn: "வால்பேப்பரை மாற்று", resetBgBtn: "வால்பேப்பரை மீட்டமை", dragFallback: "முதலில் பேலோடுகளைத் தேர்ந்தெடுக்கவும்.", allPayloads: "அனைத்து பேலோடுகள்", saveLoadoutBtn: "சேமி" },
+      "tr-TR": { appSubtitle: "PS4/PS5 PAYLOAD ENJEKTÖRÜ", tabExploit: "Açıklar", tabPayloads: "Payloadlar", hostTitle: "Dosyaları Barındır", hostAdd: "Dosya Ekle", hostStart: "Barındırmayı Başlat", hostStop: "Barındırmayı Durdur", hostEmpty: "Henüz dosya eklenmedi", ipLabel: "Konsol IP'si", portLabel: "Port", loadLocal: "Yerel Payload Yükle...", cloudDivider: "VEYA BULUT DAĞITIMI", btnTransmit: "Payload Gönder", syncBtn: "Senkronize", folderBtn: "Klasör", armoryCloudTitle: "Bulut Cephaneliği", armoryLocalTitle: "Yerel Cephanelik", armoryEmpty: "Senkronize edin veya klasör seçin...", delayLabel: "Enjeksiyon Gecikmesi (ms)", btnInjectSeq: "Sıralı Enjekte Et", settingsTitle: "Sistem Ayarları", langLabel: "Arayüz Dili", vfxTitle: "Görsel Efektler", vfxBubbles: "Baloncukları Kapat", vfxLightning: "Şimşeği Kapat", vfxFountain: "Disable Touch Particles", bgBtn: "Duvar Kağıdını Değiştir", resetBgBtn: "Duvar Kağıdını Sıfırla", dragFallback: "Önce payload seçmelisiniz.", allPayloads: "Tüm Payloadlar", saveLoadoutBtn: "Kaydet" },
+      "ms-MY": { appSubtitle: "PENYUNTIK PAYLOAD PS4/PS5", tabExploit: "Eksploit", tabPayloads: "Payload", hostTitle: "Hos Fail", hostAdd: "Tambah Fail", hostStart: "Mula Hosting", hostStop: "Henti Hosting", hostEmpty: "Belum ada fail ditambah", ipLabel: "IP Konsol", portLabel: "Port", loadLocal: "Muat Payload Tempatan...", cloudDivider: "ATAU AWAN DEPLOYMENT", btnTransmit: "Hantar Payload", syncBtn: "Segerak", folderBtn: "Folder", armoryCloudTitle: "Gudang Senjata Awan", armoryLocalTitle: "Gudang Senjata Tempatan", armoryEmpty: "Segerak atau pilih folder...", delayLabel: "Lengah Suntikan (ms)", btnInjectSeq: "Suntik Jujukan", settingsTitle: "Tetapan Sistem", langLabel: "Bahasa", vfxTitle: "Kesan Visual", vfxBubbles: "Nyahaktif Gelembung", vfxLightning: "Nyahaktif Kilat", vfxFountain: "Disable Touch Particles", bgBtn: "Tukar Kertas Dinding", resetBgBtn: "Tetap Semula Kertas Dinding", dragFallback: "Pilih payload dahulu.", allPayloads: "Semua Payload", saveLoadoutBtn: "Simpan" },
+      "hu-HU": { appSubtitle: "PS4/PS5 PAYLOAD INJEKTOR", tabExploit: "Exploitok", tabPayloads: "Payloadok", hostTitle: "Fájlok tárolása", hostAdd: "Fájlok hozzáadása", hostStart: "Tárolás indítása", hostStop: "Tárolás leállítása", hostEmpty: "Még nincs hozzáadott fájl", ipLabel: "Konzol IP", portLabel: "Port", loadLocal: "Helyi Payload Betöltése...", cloudDivider: "VAGY FELHŐ TELEPÍTÉS", btnTransmit: "Payload Küldése", syncBtn: "Szinkr", folderBtn: "Mappa", armoryCloudTitle: "Felhő Fegyvertár", armoryLocalTitle: "Helyi Fegyvertár", armoryEmpty: "Szinkronizálj vagy válassz mappát...", delayLabel: "Injektálási Késleltetés (ms)", btnInjectSeq: "Szekvencia Injektálása", settingsTitle: "Rendszerbeállítások", langLabel: "Nyelv", vfxTitle: "Vizuális Efektek", vfxBubbles: "Buborékok Kikapcs.", vfxLightning: "Villámok Kikapcs.", vfxFountain: "Disable Touch Particles", bgBtn: "Háttérkép Módosítása", resetBgBtn: "Háttérkép Visszaállítása", dragFallback: "Válassz payloadokat előbb.", allPayloads: "Összes Payload", saveLoadoutBtn: "Mentés" },
+      "de-DE": { appSubtitle: "PS4/PS5 PAYLOAD INJEKTOR", tabExploit: "Exploits", tabPayloads: "Payloads", hostTitle: "Dateien hosten", hostAdd: "Dateien hinzufügen", hostStart: "Hosting starten", hostStop: "Hosting stoppen", hostEmpty: "Noch keine Dateien hinzugefügt", ipLabel: "Konsolen-IP", portLabel: "Port", loadLocal: "Lokalen Payload laden...", cloudDivider: "ODER CLOUD-BEREITSTELLUNG", btnTransmit: "Payload Senden", syncBtn: "Sync", folderBtn: "Ordner", armoryCloudTitle: "Cloud Waffenkammer", armoryLocalTitle: "Lokale Waffenkammer", armoryEmpty: "Synchronisieren oder Ordner wählen...", delayLabel: "Injektionsverzögerung (ms)", btnInjectSeq: "Sequenz Injezieren", settingsTitle: "Systemeinstellungen", langLabel: "Sprache", vfxTitle: "Visuelle Effekte", vfxBubbles: "Blasen Deaktivieren", vfxLightning: "Blitze Deaktivieren", vfxFountain: "Disable Touch Particles", bgBtn: "Hintergrund Ändern", resetBgBtn: "Hintergrund Zurücksetzen", dragFallback: "Zuerst Payloads auswählen.", allPayloads: "Alle Payloads", saveLoadoutBtn: "Speichern" },
+      "pl-PL": { appSubtitle: "INIEKTOR PAYLOADÓW PS4/PS5", tabExploit: "Exploity", tabPayloads: "Payloady", hostTitle: "Hostowanie plików", hostAdd: "Dodaj pliki", hostStart: "Rozpocznij hosting", hostStop: "Zatrzymaj hosting", hostEmpty: "Nie dodano jeszcze plików", ipLabel: "IP Konsoli", portLabel: "Port", loadLocal: "Załaduj Lokalny Payload...", cloudDivider: "LUB WDROŻENIE W CHMURZE", btnTransmit: "Wyślij Payload", syncBtn: "Sync", folderBtn: "Folder", armoryCloudTitle: "Arsenał w Chmurze", armoryLocalTitle: "Arsenał Lokalny", armoryEmpty: "Zsynchronizuj lub wybierz folder...", delayLabel: "Opóźnienie Iniekcji (ms)", btnInjectSeq: "Iniekcja Sekwencji", settingsTitle: "Ustawienia Systemu", langLabel: "Język", vfxTitle: "Efekty Wizualne", vfxBubbles: "Wyłącz Bąbelki", vfxLightning: "Wyłącz Błyskawice", vfxFountain: "Disable Touch Particles", bgBtn: "Zmień Tapetę", resetBgBtn: "Zresetuj Tapetę", dragFallback: "Najpierw wybierz payloady.", allPayloads: "Wszystkie Payloady", saveLoadoutBtn: "Zapisz" }
     };
 
     function T(key, fallback) {
@@ -933,35 +1405,61 @@
     let currentEnv = 'luac0re';
     let localFolderMode = false;
     let payloadsLoaded = false;
+    let _downloadingKey = null;
+    let _lastExploitPortMem = null; // in-memory; avoids await glitch on tab switch
     let _pendingCache = null; // {key,b64} commit previous only when next download starts
     let localPayloadFiles = [];
     let _syncLock = false;
 
     window.onload = async () => {
+      // Boot badge draws + flies to header while storage warms up
+      const bootPromise = playBootSequence();
+
       placePortField();
-      const ip = await StorageEngine.getItem('nexus_ip');
+
+      // Single batch read — avoids sequential IDB round-trips blocking first paint
+      const boot = await StorageEngine.getItems([
+        'nexus_ip', 'nexus_port', 'last_exploit_port', 'nexus_delay',
+        'nexus_disable_bubbles', 'nexus_disable_lightning',
+        'nexus_disable_fountain', 'nexus_disable_sounds', 'nexus_lang', 'nexus_tab_anim', 'nexus_official_repos'
+      ]);
+      const ip = boot['nexus_ip'];
       if (ip) document.getElementById('ip').value = ip;
-      const port = await StorageEngine.getItem('nexus_port');
+      const port = boot['nexus_port'];
       if (port) document.getElementById('port').value = port;
-      const delay = await StorageEngine.getItem('nexus_delay');
+      const lep = boot['last_exploit_port'];
+      if (lep) _lastExploitPortMem = lep;
+      else if (port) _lastExploitPortMem = port;
+      const delay = boot['nexus_delay'];
       if (delay) document.getElementById('delay').value = delay;
 
-      let bVal = await StorageEngine.getItem('nexus_disable_bubbles');
-      bubblesDisabled = bVal === null ? true : (bVal === 'true');
-      let lVal = await StorageEngine.getItem('nexus_disable_lightning');
-      lightningDisabled = lVal === null ? true : (lVal === 'true');
-      let fVal = await StorageEngine.getItem('nexus_disable_fountain');
-      fountainDisabled = fVal === null ? true : (fVal === 'true');
-      let sVal = await StorageEngine.getItem('nexus_disable_sounds');
-      soundsDisabled = sVal === null ? true : (sVal === 'true'); 
+      // Defaults: all effects DISABLED until the user turns them on
+      let bVal = boot['nexus_disable_bubbles'];
+      let lVal = boot['nexus_disable_lightning'];
+      let fVal = boot['nexus_disable_fountain'];
+      let sVal = boot['nexus_disable_sounds'];
+      bubblesDisabled = (bVal === null || bVal === undefined || bVal === 'true');
+      lightningDisabled = (lVal === null || lVal === undefined || lVal === 'true');
+      fountainDisabled = (fVal === null || fVal === undefined || fVal === 'true');
+      soundsDisabled = (sVal === null || sVal === undefined || sVal === 'true');
+      // Persist defaults off the critical path
+      if (bVal == null) StorageEngine.setItem('nexus_disable_bubbles', 'true').catch(function(){});
+      if (lVal == null) StorageEngine.setItem('nexus_disable_lightning', 'true').catch(function(){});
+      if (fVal == null) StorageEngine.setItem('nexus_disable_fountain', 'true').catch(function(){});
+      if (sVal == null) StorageEngine.setItem('nexus_disable_sounds', 'true').catch(function(){});
 
       document.getElementById('toggleBubbles').checked = bubblesDisabled;
       document.getElementById('toggleLightning').checked = lightningDisabled;
       document.getElementById('toggleFountain').checked = fountainDisabled;
       document.getElementById('toggleSounds').checked = soundsDisabled; 
 
-      const savedLang = await StorageEngine.getItem('nexus_lang') || "en-US";
+      const savedLang = boot['nexus_lang'] || "en-US";
       await changeLanguage(savedLang);
+      setTabAnimation(boot['nexus_tab_anim'] || 'spring');
+      officialReposEnabled = (boot['nexus_official_repos'] === 'true');
+      var offEl = document.getElementById('officialReposToggle');
+      if (offEl) offEl.checked = officialReposEnabled;
+      await bootPromise;
 
       const savedVid = await StorageEngine.getItem('nexus_bg_video');
       if (savedVid) showWallpaperVideo(savedVid);
@@ -973,13 +1471,20 @@
 
       await refreshLoadoutSelector();
 
-      // Exploits only at startup — never block UI on payload network work
+      // Restore local stash + selection from disk before any UI paint of payloads
+      try {
+        await restoreLocalStash();
+        await restorePayloadSelection();
+      } catch (e) {}
+
+      // Restore UI from cache. Network only on first install (no manifest yet).
+      // Manual Sync button is the only way to refresh after that.
       const manifestStr = await StorageEngine.getItem('nexus_cloud_manifest');
       if (manifestStr) {
         await renderExploits();
       } else {
-        // Quiet exploit-only sync in background (does not touch payloads tab)
-        try { syncExploitsOnly(0); } catch (e) {}
+        // First boot only — quiet background fetch (never blocks UI)
+        setTimeout(function() { syncExploitsOnly(0).catch(function(){}); }, 0);
       }
 
       const lastLoadout = await StorageEngine.getItem('nexus_last_loadout');
@@ -999,11 +1504,35 @@
     }
 
     let _toastTimer = null;
+    function shortErr(msg) {
+      msg = String(msg == null ? 'error' : msg);
+      if (msg.indexOf('ERR:') === 0) msg = msg.slice(4);
+      msg = msg.replace(/^java\.[\w.$]+(?::\s*)?/i, '').replace(/\s+at\s+[\s\S]*/m, '').trim();
+      var portEl = document.getElementById('port');
+      var port = (portEl && portEl.value) ? portEl.value : '9021';
+      var low = msg.toLowerCase();
+      if (/conn_refused|connection refused|failed to connect|econnrefused|connectException/i.test(low))
+        return 'Host unreachable — make sure port ' + port + ' is listening';
+      if (/timeout|etimedout|timed out/i.test(low))
+        return 'Timed out — is the console on and port ' + port + ' open?';
+      if (/unreachable|network is unreachable|enotreach|no route|enetunreach|ehostunreach/i.test(low))
+        return 'No route to host — check IP and Wi‑Fi';
+      if (/port closed|send_fail|send failed/i.test(low))
+        return 'Could not send — make sure port ' + port + ' is listening';
+      if (!msg || msg === 'error')
+        return 'Send failed — make sure port ' + port + ' is listening';
+      if (msg.length > 90) msg = msg.slice(0, 87) + '...';
+      return msg;
+    }
+
     function showToast(msg, type = 'success') {
       const toast = document.getElementById('toastNotification');
       clearTimeout(_toastTimer);
       toast.className = 'custom-toast';
       void toast.offsetWidth; // force reflow so transition restarts
+      msg = String(msg == null ? '' : msg);
+      if (type === 'error') msg = shortErr(msg);
+      else if (msg.length > 120) msg = msg.slice(0, 117) + '...';
       toast.textContent = msg;
       toast.className = `custom-toast ${type} show`;
       _toastTimer = setTimeout(() => { toast.classList.remove('show'); }, 2200);
@@ -1110,7 +1639,7 @@
       const src = await getSources(), s = src.splice(i, 1)[0];
       await StorageEngine.setItem('nexus_sources', JSON.stringify(src));
       const rel = JSON.parse(await StorageEngine.getItem('nexus_releases') || '[]').filter(r => r.id !== relId(s.name));
-      await StorageEngine.setItem('nexus_releases', JSON.stringify(rel)); await StorageEngine.removeItem('cloud_cache_' + relId(s.name));
+      await StorageEngine.setItem('nexus_releases', JSON.stringify(rel)); await StorageEngine.removeItem('cloud_cache_' + relId(s.name)); await clearDownloadComplete('cloud_cache_' + relId(s.name));
       renderSources(); renderPayloads();
     }
     // Curated official list (order fixed). Display names have no version tags.
@@ -1122,6 +1651,7 @@
       { name: "FTP Server",            repo: "ps5-payload-dev/ftpsrv",          asset: "*.elf" },
       { name: "PS5 Upload",            repo: "phantomptr/ps5upload",            asset: "*.elf" },
       { name: "NanoDNS",               repo: "drakmor/nanoDNS",                 asset: "nanodns.elf" },
+      { name: "Payload Manager",       repo: "LightningMods/PS5-Payload-Manager", asset: "*.elf" },
       { name: "CheatRunner",           repo: "notmaj0r/CheatRunner",            asset: "*.elf" },
       { name: "OnionHEN",              repo: "aydencharles/onionHEN",           asset: "OnionHEN.elf" },
       { name: "EtaHEN",                repo: "etaHEN/etaHEN",                   asset: "*.bin" },
@@ -1131,8 +1661,25 @@
       { name: "Fan Target",            repo: "PixelPop25/fan_target",           asset: "fan_target.elf" },
       { name: "ShadowMountPlus Fan",   repo: "PixelPop25/fan_target",           asset: "fan_target.elf" }
     ];
+    let officialReposEnabled = false; // payloads tab only; default OFF
+
+    async function setOfficialRepos(on) {
+      officialReposEnabled = !!on;
+      var el = document.getElementById('officialReposToggle');
+      if (el) el.checked = officialReposEnabled;
+      await StorageEngine.setItem('nexus_official_repos', officialReposEnabled ? 'true' : 'false');
+      if (officialReposEnabled) {
+        await seedOfficialSources();
+        // Refresh release assets in background; list merges into IDB caches
+        payloadsLoaded = false;
+        try { await ensurePayloadsLoadedBackground(); } catch (e) {}
+        try { if (typeof updateAllSources === 'function') await updateAllSources(); } catch (e) {}
+      }
+      try { await renderPayloads(); } catch (e) {}
+    }
 
     async function seedOfficialSources() {
+      if (!officialReposEnabled) return;
       // Merge: official names overwrite matching entries; user-added custom sources kept
       const officialNames = new Set(OFFICIAL_SOURCES.map(s => s.name));
       const custom = (await getSources()).filter(s => !officialNames.has(s.name));
@@ -1142,6 +1689,10 @@
     }
 
     async function updateFromOfficialRepo() {
+      if (!officialReposEnabled) {
+        showToast(T('toast_official_off', 'Turn on Official repos first'), 'error');
+        return;
+      }
       showToast(T('toast_official_updating', 'Updating from official repo...'));
       await seedOfficialSources();
       // Also pull Nexus cloud manifest payloads (concatenate / overwrite by id)
@@ -1171,7 +1722,17 @@
           const id = relId(s.name), cur = rel.find(x => x.id === id);
           if (cur && cur.tag === tag && await StorageEngine.getItem('cloud_cache_' + id)) continue;  // already latest
           showToast(`Downloading ${s.name}...`);
-          await StorageEngine.setItem('cloud_cache_' + id, await nativeGet(downloadUrl));
+          _downloadingKey = 'cloud_cache_' + id;
+          setRowDownloadState(id, s.name, 'downloading');
+          try {
+            var _b64rel = await nativeGet(downloadUrl);
+            await StorageEngine.setItem('cloud_cache_' + id, _b64rel);
+            await markDownloadComplete('cloud_cache_' + id, (_b64rel && _b64rel.length) || 0);
+            setRowDownloadState(id, s.name, 'ready');
+          } catch (dlE) {
+            setRowDownloadState(id, s.name, 'sync');
+            throw dlE;
+          } finally { _downloadingKey = null; }
           // Keep display name clean (no version tag) per product request
           rel = rel.filter(x => x.id !== id); rel.push({ id, name: s.name, tag: tag }); updated++;
         } catch (e) { showToast(`${s.name}: ${e.message}`, 'error'); await new Promise(r => setTimeout(r, 1200)); }
@@ -1201,6 +1762,14 @@
       if (_macroBusy) return;
       const l = JSON.parse(await StorageEngine.getItem('nexus_loadouts') || '[]').find(x => x.macro);
       if (!l || !l.payloads.length) return;
+      const ip = document.getElementById('ip').value;
+      if (window.AndroidTCP && typeof AndroidTCP.probe === 'function') {
+        const pr = AndroidTCP.probe(ip, 9021);
+        if (pr !== 'ok') {
+          showToast('Port 9021 not open — start the bin loader first', 'error');
+          return;
+        }
+      }
       _macroBusy = true;
       try {
         const delayMs = Math.max(parseInt(document.getElementById('delay').value) || 4000, 500);
@@ -1219,10 +1788,19 @@
 
     function triggerBgUpload() { document.getElementById('bgUploader').click(); }
 
-    function showWallpaperVideo(blob) {
+    function showWallpaperVideo(src) {
       const v = document.getElementById('wallpaper-video');
-      if (v.src) URL.revokeObjectURL(v.src);
-      v.src = URL.createObjectURL(blob); v.style.display = 'block'; v.play().catch(()=>{});
+      try { if (v.src && v.src.indexOf('blob:') === 0) URL.revokeObjectURL(v.src); } catch (e) {}
+      // Accept data: URLs (persisted) or File/Blob (live pick)
+      if (typeof src === 'string') {
+        v.src = src;
+      } else if (src) {
+        v.src = URL.createObjectURL(src);
+      } else {
+        return;
+      }
+      v.style.display = 'block';
+      v.play().catch(function(){});
       document.getElementById('wallpaper-layer').style.backgroundImage = 'none';
       document.getElementById('gradient-layer').style.background = 'transparent';
     }
@@ -1238,24 +1816,42 @@
     function handleBgUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
-      if (file.type.startsWith('video/')) {
-        (async () => { try { await StorageEngine.setItem('nexus_bg_video', file); await StorageEngine.removeItem('nexus_bg');
-          showWallpaperVideo(file); showToast(T('toast_wallpaper_updated', "Wallpaper updated!"));
-        } catch(err) { showToast(T('toast_wallpaper_too_big', "Image too large for storage, try a smaller one."), "error"); } })();
+      if (file.type && file.type.startsWith('video/')) {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+          const dataUrl = e.target.result;
+          try {
+            await StorageEngine.setItem('nexus_bg_video', dataUrl);
+            await StorageEngine.removeItem('nexus_bg');
+            showWallpaperVideo(dataUrl);
+            showToast(T('toast_wallpaper_updated', "Wallpaper updated!"));
+          } catch (err) {
+            showToast(T('toast_wallpaper_too_big', "Video too large for storage, try a smaller one."), "error");
+          }
+        };
+        reader.onerror = function() {
+          showToast(T('toast_wallpaper_too_big', "Could not read video."), "error");
+        };
+        reader.readAsDataURL(file);
         return;
       }
-      StorageEngine.removeItem('nexus_bg_video'); (()=>{const wv=document.getElementById('wallpaper-video'); wv.pause(); wv.removeAttribute('src'); wv.style.display='none';})();
       const reader = new FileReader();
       reader.onload = async function(e) {
         const b64 = e.target.result;
-        document.getElementById('wallpaper-layer').style.backgroundImage = `url(${b64})`;
-        document.getElementById('gradient-layer').style.background = 'transparent';
+        const wv = document.getElementById('wallpaper-video');
+        if (wv) { try { wv.pause(); } catch (e) {} wv.removeAttribute('src'); wv.style.display = 'none'; }
+        document.getElementById('wallpaper-layer').style.backgroundImage = 'url(' + b64 + ')';
+        const g = document.getElementById('gradient-layer'); if (g) g.style.background = 'transparent';
         try {
           await StorageEngine.setItem('nexus_bg', b64);
+          await StorageEngine.removeItem('nexus_bg_video');
           showToast(T('toast_wallpaper_updated', "Wallpaper updated!"));
-        } catch(err) {
+        } catch (err) {
           showToast(T('toast_wallpaper_too_big', "Image too large for storage, try a smaller one."), "error");
         }
+      };
+      reader.onerror = function() {
+        showToast(T('toast_wallpaper_too_big', "Could not read image."), "error");
       };
       reader.readAsDataURL(file);
     }
@@ -1268,8 +1864,8 @@
 
     // In split view the header Port belongs to the Exploits pane and the Payloads pane has its own port.
     function getPayloadPort() {
-      if (isSplit()) return 9021;
-      return parseInt(document.getElementById('port').value);
+      // Universal payload port — same on phone and tablet split view
+      return 9021;
     }
 
     // In split view the exploit Port field lives inside the Exploits pane (so it isn't mistaken for the
@@ -1308,24 +1904,129 @@
     if (splitMQ.addEventListener) splitMQ.addEventListener('change', onLayoutModeChange);
     else splitMQ.addListener(onLayoutModeChange);
 
-    async function switchTab(tabId, btnElement) {
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+    function playBootSequence() {
+      return new Promise(function(resolve) {
+        var splash = document.getElementById('bootSplash');
+        if (!splash) { resolve(); return; }
+        var credit = document.getElementById('bootCredit');
+        if (credit && !credit.dataset.built) {
+          var text = 'presented by isu';
+          var base = 1.75;
+          for (var i = 0; i < text.length; i++) {
+            var sp = document.createElement('span');
+            sp.className = 'credit-letter';
+            sp.textContent = text[i];
+            sp.style.animationDelay = (base + i * 0.045) + 's';
+            credit.appendChild(sp);
+          }
+          credit.dataset.built = '1';
+        }
+        splash.classList.add('play');
+        setTimeout(function() {
+          splash.classList.add('done');
+          setTimeout(function() {
+            if (splash.parentNode) splash.parentNode.removeChild(splash);
+            resolve();
+          }, 850);
+        }, 3200);
+      });
+    }
+
+
+    let _tabAnimating = false;
+
+    function setTabAnimation(name) {
+      const allowed = ['spring','book','fade','slide-up','slide-left','slide-right','zoom','flip','cube','push','coverflow','reveal','morph','blink','depth','twist','cascade','float','card','wipe','swing','fold','glitch','soft','rise','peel','pop','slide-fade','warp','none'];
+      if (allowed.indexOf(name) < 0) name = 'spring';
+      document.body.setAttribute('data-tab-anim', name);
+      var sel = document.getElementById('animSelector');
+      if (sel) sel.value = name;
+      StorageEngine.setItem('nexus_tab_anim', name).catch(function(){});
+    }
+
+
+    function switchTab(tabId, btnElement) {
+      const next = document.getElementById('tab-' + tabId);
+      if (!next) return;
+      const current = document.querySelector('.tab-content.active:not(.tab-out):not(.windmill-out)');
+      if (next === current && !next.classList.contains('tab-out')) return;
+      if (_tabAnimating) return;
+
+      // Buttons immediately
+      document.querySelectorAll('.tab-btn').forEach(function(btn) { btn.classList.remove('active'); });
       btnElement.classList.add('active');
-      document.getElementById(`tab-${tabId}`).classList.add('active');
-      if (tabId === 'payloads') {
-        // First open: render cached list, then fetch missing (Nexus → official)
-        try { await ensurePayloadsLoaded(); } catch (e) { console.warn(e); }
+
+      // Port field — memory only, never await storage on UI path
+      if (!isSplit()) {
+        const portInput = document.getElementById('port');
+        if (portInput) {
+          if (tabId === 'payloads') {
+            _lastExploitPortMem = portInput.value || _lastExploitPortMem || '9026';
+            portInput.value = '9021';
+            StorageEngine.setItem('last_exploit_port', String(_lastExploitPortMem)).catch(function(){});
+          } else if (_lastExploitPortMem != null && _lastExploitPortMem !== '') {
+            portInput.value = _lastExploitPortMem;
+          }
+        }
       }
-      if (isSplit()) return;  // both panes are visible; each has its own port
-      const portInput = document.getElementById('port');
-      let lastExploitPort = await StorageEngine.getItem('last_exploit_port') || 9026;
-      if (tabId === 'payloads') {
-        lastExploitPort = portInput.value;
-        await StorageEngine.setItem('last_exploit_port', lastExploitPort);
-        portInput.value = 9021;
+
+      // Split layout: both panes visible — no transition
+      if (isSplit()) {
+        document.querySelectorAll('.tab-content').forEach(function(c) {
+          c.classList.remove('tab-out', 'tab-in', 'windmill-out', 'windmill-in');
+          c.classList.add('active');
+        });
+      } else if (!current || current === next || document.body.getAttribute('data-tab-anim') === 'none') {
+        document.querySelectorAll('.tab-content').forEach(function(c) {
+          c.classList.remove('active', 'tab-out', 'tab-in', 'windmill-out', 'windmill-in');
+        });
+        next.classList.add('active');
       } else {
-        portInput.value = lastExploitPort;
+        _tabAnimating = true;
+        current.classList.remove('tab-in', 'windmill-in');
+        current.classList.add('tab-out');
+        current.classList.remove('active');
+        next.classList.remove('tab-out', 'windmill-out');
+        next.classList.add('active', 'tab-in');
+
+        var finished = false;
+        function finishAnim() {
+          if (finished) return;
+          finished = true;
+          current.classList.remove('tab-out', 'windmill-out');
+          next.classList.remove('tab-in', 'windmill-in');
+          document.querySelectorAll('.tab-content').forEach(function(c) {
+            if (c !== next) c.classList.remove('active');
+          });
+          next.classList.add('active');
+          _tabAnimating = false;
+        }
+        next.addEventListener('animationend', finishAnim, { once: true });
+        setTimeout(finishAnim, 450);
+      }
+
+      // Payloads: restore off critical path (never blocks transition)
+      if (tabId === 'payloads') {
+        setTimeout(function() {
+          Promise.resolve().then(async function() {
+            try {
+              await restoreLocalStash();
+              await restorePayloadSelection();
+              var list = document.getElementById('payload-cb-list');
+              var empty = !list || list.children.length === 0 ||
+                !!list.querySelector('.payload-cb-empty');
+              if (empty || localFolderMode) {
+                await renderPayloads();
+              } else {
+                applyPendingSelection();
+              }
+            } catch (e) { console.warn(e); }
+            if (!payloadsLoaded) {
+              ensurePayloadsLoadedBackground().catch(function(e) { console.warn(e); });
+            }
+          });
+        }, 40);
       }
     }
 
@@ -1362,12 +2063,75 @@
     /** Startup / Sync: exploits only (no payload binaries). */
     async function commitPendingCache() {
       if (_pendingCache && _pendingCache.key && _pendingCache.b64) {
-        try { await StorageEngine.setItem(_pendingCache.key, _pendingCache.b64); } catch (e) {}
+        try {
+          await StorageEngine.setItem(_pendingCache.key, _pendingCache.b64);
+          await markDownloadComplete(_pendingCache.key, _pendingCache.b64.length);
+        } catch (e) {}
       }
       _pendingCache = null;
     }
 
+    /** Persistent "fully downloaded" registry — Sync never re-fetches these. */
+    async function getCompleteMap() {
+      try {
+        const raw = await StorageEngine.getItem('nexus_dl_complete');
+        return raw ? (JSON.parse(raw) || {}) : {};
+      } catch (e) { return {}; }
+    }
+
+    async function markDownloadComplete(key, bytes) {
+      if (!key) return;
+      try {
+        const map = await getCompleteMap();
+        map[key] = { complete: true, bytes: bytes || 0, ts: Date.now() };
+        await StorageEngine.setItem('nexus_dl_complete', JSON.stringify(map));
+      } catch (e) {}
+    }
+
+    async function clearDownloadComplete(key) {
+      if (!key) return;
+      try {
+        const map = await getCompleteMap();
+        if (map[key]) {
+          delete map[key];
+          await StorageEngine.setItem('nexus_dl_complete', JSON.stringify(map));
+        }
+      } catch (e) {}
+    }
+
     /** Hold completed download in memory. Previous held file is written when the NEXT download is about to start. */
+
+    function setRowDownloadState(itemId, file, state) {
+      // state: 'downloading' | 'ready' | 'sync'
+      var list = document.getElementById('payload-cb-list');
+      if (!list) return;
+      var rows = list.querySelectorAll('.payload-cb-row');
+      var matchId = itemId || file || '';
+      rows.forEach(function(row) {
+        var id = row.dataset.id || '';
+        var label = (row.querySelector('.cb-label') || {}).textContent || '';
+        var hit = (matchId && (id === matchId || id === String(matchId))) ||
+                  (file && label.indexOf(file) !== -1);
+        if (!hit && matchId) {
+          // cloud_cache_foo style
+          hit = id === matchId.replace(/^cloud_cache_/, '');
+        }
+        if (!hit) return;
+        var badge = row.querySelector('.cb-badge');
+        if (!badge) return;
+        if (state === 'downloading') {
+          badge.textContent = '';
+          badge.className = 'cb-badge downloading';
+        } else if (state === 'ready') {
+          badge.textContent = '';
+          badge.className = 'cb-badge';
+        } else {
+          badge.textContent = 'SYNC REQ';
+          badge.className = 'cb-badge sync-req';
+        }
+      });
+    }
+
     async function beginNextDownload() {
       // Called immediately before starting a new network fetch
       await commitPendingCache();
@@ -1379,8 +2143,20 @@
     }
 
     async function cacheHas(key) {
+      if (!key) return false;
       const v = await StorageEngine.getItem(key);
-      return !!(v && v.length > 8);
+      if (!(v && v.length > 8)) return false;
+      // Explicit complete flag — once set, Sync will not re-download
+      try {
+        const map = await getCompleteMap();
+        if (map[key] && map[key].complete) return true;
+        // Migrate older caches: non-empty blob counts as complete
+        if (v.length > 32) {
+          await markDownloadComplete(key, v.length);
+          return true;
+        }
+      } catch (e) {}
+      return true; // blob present
     }
 
     async function syncExploitsOnly(showerr) {
@@ -1423,21 +2199,116 @@
       }
     }
 
-    /** Payloads tab: Nexus payloads first, then official; skip cached; deferred commit. */
-    async function ensurePayloadsLoaded() {
-      // Always show whatever is already cached
-      await renderPayloads();
-      if (payloadsLoaded && !_syncLock) {
-        // still allow manual Sync to refresh; on first open we always try missing
-      }
-      if (_syncLock) return;
-      _syncLock = true;
-      let nexusOk = false;
-      let officialOk = 0;
+    /** Persist local mapped names (File handles can't survive reload). */
+    async function persistLocalStash() {
       try {
-        showToast(T('toast_syncing', 'Loading payloads (Nexus)…'));
-        await yieldUI();
-        // Nexus payload list
+        const names = (localPayloadFiles || []).map(function(f) {
+          return (typeof f === 'string') ? f : f.name;
+        });
+        await StorageEngine.setItem('nexus_local_stash', JSON.stringify(names));
+        await StorageEngine.setItem('nexus_local_folder_mode', localFolderMode ? 'true' : 'false');
+      } catch (e) {}
+    }
+
+    async function restoreLocalStash() {
+      try {
+        const mode = await StorageEngine.getItem('nexus_local_folder_mode');
+        const raw = await StorageEngine.getItem('nexus_local_stash');
+        if (mode === 'true') localFolderMode = true;
+        if (!raw) return;
+        const names = JSON.parse(raw) || [];
+        const existing = new Set((localPayloadFiles || []).map(function(f) {
+          return (typeof f === 'string') ? f : (f && f.name) ? f.name : '';
+        }));
+        let restored = 0;
+        for (let i = 0; i < names.length; i++) {
+          const n = names[i];
+          if (!n || existing.has(n)) continue;
+          // Prefer entries that still have bytes in IDB; keep name either way so UI matches last session
+          localPayloadFiles.push({ name: n, __cachedOnly: true });
+          existing.add(n);
+          restored++;
+        }
+        if (names.length > 0 || restored > 0) localFolderMode = true;
+      } catch (e) {}
+    }
+
+    async function persistPayloadSelection() {
+      try {
+        const rows = document.querySelectorAll('#payload-cb-list .payload-cb-row.is-checked');
+        const sel = [];
+        rows.forEach(function(row) {
+          sel.push({
+            source: row.dataset.source || '',
+            id: row.dataset.id || '',
+            name: (row.querySelector('.cb-label') || {}).textContent || ''
+          });
+        });
+        await StorageEngine.setItem('nexus_payload_selection', JSON.stringify(sel));
+      } catch (e) {}
+    }
+
+    async function restorePayloadSelection() {
+      try {
+        const raw = await StorageEngine.getItem('nexus_payload_selection');
+        window.__pendingPayloadSelection = raw ? (JSON.parse(raw) || []) : [];
+      } catch (e) { window.__pendingPayloadSelection = []; }
+    }
+
+    function applyPendingSelection() {
+      const pending = window.__pendingPayloadSelection;
+      if (!pending || !pending.length) return;
+      const rows = document.querySelectorAll('#payload-cb-list .payload-cb-row');
+      rows.forEach(function(row) {
+        const id = row.dataset.id || '';
+        const name = (row.querySelector('.cb-label') || {}).textContent || '';
+        const source = row.dataset.source || '';
+        const hit = pending.some(function(p) {
+          return (p.id && id && p.id === id) ||
+            (p.name && p.name === name && (!p.source || p.source === source));
+        });
+        if (hit) {
+          row.classList.add('is-checked');
+          const cb = row.querySelector('input[type="checkbox"]');
+          if (cb) cb.checked = true;
+        }
+      });
+    }
+
+    /**
+     * Background cloud fill only. Never clears local stash / selection.
+     * Called via setTimeout from switchTab — does not block UI.
+     */
+    async function ensurePayloadsLoadedBackground() {
+      if (_syncLock || payloadsLoaded) return;
+
+      try {
+        const manStr = await StorageEngine.getItem('nexus_cloud_manifest');
+        const relStr = await StorageEngine.getItem('nexus_releases');
+        const man = manStr ? JSON.parse(manStr) : null;
+        const rel = relStr ? JSON.parse(relStr) : [];
+        const items = ((man && man.payloads) ? man.payloads : []).concat(rel || []);
+        let missing = 0;
+        for (let i = 0; i < items.length; i++) {
+          const it = items[i];
+          const ck = it.id ? ('cloud_cache_' + it.id) : ('cloud_cache_' + (it.file || it.name));
+          if (!(await cacheHas(ck))) missing++;
+        }
+        // Fully cached → silent exit, no toast, no render
+        if (items.length > 0 && missing === 0) {
+          payloadsLoaded = true;
+          return;
+        }
+        // Manifest exists but empty payload list
+        if (manStr && items.length === 0) {
+          payloadsLoaded = true;
+          return;
+        }
+      } catch (e) {}
+
+      _syncLock = true;
+      let downloaded = 0;
+      try {
         try {
           const res = await fetch(CLOUD_URL + 'manifest.json');
           if (res.ok) {
@@ -1449,41 +2320,40 @@
               const cacheKey = item.id ? ('cloud_cache_' + item.id) : ('cloud_cache_' + (item.file || item.name));
               if (await cacheHas(cacheKey)) continue;
               try {
-                await beginNextDownload(); // cache previous when this download starts
-                await yieldUI();
+                await beginNextDownload();
+                _downloadingKey = cacheKey;
+                setRowDownloadState(item.id, item.file || item.name, 'downloading');
                 const fRes = await fetch(CLOUD_URL + item.file);
-                if (!fRes.ok) continue;
+                if (!fRes.ok) {
+                  setRowDownloadState(item.id, item.file || item.name, 'sync');
+                  continue;
+                }
                 const b64 = arrayBufferToB64(await fRes.arrayBuffer());
                 await holdCompletedDownload(cacheKey, b64);
-              } catch (e2) {}
+                setRowDownloadState(item.id, item.file || item.name, 'ready');
+                downloaded++;
+              } catch (e2) {
+                setRowDownloadState(item.id, item.file || item.name, 'sync');
+              } finally {
+                _downloadingKey = null;
+              }
             }
             await commitPendingCache();
-            nexusOk = true;
-            await renderPayloads();
           }
-        } catch (e) {
-          console.warn('nexus payloads', e);
-        }
+        } catch (e) { console.warn('nexus payloads bg', e); }
 
-        // Official overlay — only missing
         try {
-          showToast(T('toast_syncing', 'Loading official payloads…'));
-          await seedOfficialSources();
-          await yieldUI();
+          const src = await getSources();
           let rel = JSON.parse(await StorageEngine.getItem('nexus_releases') || '[]');
-          for (const s of OFFICIAL_SOURCES) {
+          for (let si = 0; si < src.length; si++) {
+            const s = src[si];
             try {
-              await yieldUI();
-              const infoRaw = await nativeGet('https://api.github.com/repos/' + s.repo + '/releases?per_page=5');
-              // nativeGet returns b64 of body for binary; for github API JSON we need text — prefer fetch
               let releases;
               try {
                 const r = await fetch('https://api.github.com/repos/' + s.repo + '/releases?per_page=5');
                 if (!r.ok) throw new Error('gh ' + r.status);
                 releases = await r.json();
-              } catch (fe) {
-                continue;
-              }
+              } catch (fe) { continue; }
               if (!releases || !releases.length) continue;
               const latest = releases[0];
               const tag = latest.tag_name || '';
@@ -1493,54 +2363,55 @@
               for (const a of assets) {
                 const n = (a.name || '').toLowerCase();
                 if (s.asset && s.asset.indexOf('*') >= 0) {
-                  if (n.endsWith(mask.replace('.', '')) || n.indexOf(mask.replace('*','').toLowerCase()) >= 0 || n.endsWith('.elf') || n.endsWith('.bin')) {
+                  if (n.endsWith(mask.replace('.', '')) || n.indexOf(mask.replace('*', '').toLowerCase()) >= 0 || n.endsWith('.elf') || n.endsWith('.bin')) {
                     asset = a; break;
                   }
                 } else if (s.asset && n === s.asset.toLowerCase()) {
                   asset = a; break;
                 }
               }
-              if (!asset) {
-                asset = assets.find(a => /\.(elf|bin)$/i.test(a.name || '')) || assets[0];
-              }
+              if (!asset) asset = assets.find(function(a) { return /\.(elf|bin)$/i.test(a.name || ''); }) || assets[0];
               if (!asset || !asset.browser_download_url) continue;
               const id = relId(s.name);
               if (await cacheHas('cloud_cache_' + id)) {
-                // already have body — still refresh release meta
-                rel = rel.filter(x => x.id !== id);
-                rel.push({ id, name: s.name, tag: tag });
-                officialOk++;
+                rel = rel.filter(function(x) { return x.id !== id; });
+                rel.push({ id: id, name: s.name, tag: tag });
                 continue;
               }
               await beginNextDownload();
               const b64 = await nativeGet(asset.browser_download_url);
               if (!b64 || b64.length < 8) continue;
               await holdCompletedDownload('cloud_cache_' + id, b64);
-              rel = rel.filter(x => x.id !== id);
-              rel.push({ id, name: s.name, tag: tag });
-              officialOk++;
-            } catch (e) {
-              console.warn('official', s.name, e);
-            }
+              downloaded++;
+              rel = rel.filter(function(x) { return x.id !== id; });
+              rel.push({ id: id, name: s.name, tag: tag });
+            } catch (e) { console.warn('official', s.name, e); }
           }
           await commitPendingCache();
           await StorageEngine.setItem('nexus_releases', JSON.stringify(rel));
-        } catch (e) {
-          console.warn('official payloads', e);
-        }
+        } catch (e) { console.warn('official payloads bg', e); }
 
-        localFolderMode = false;
-        updateArmoryTitle();
-        await renderPayloads();
         payloadsLoaded = true;
-        if (nexusOk && officialOk > 0) showToast('Payloads ready · ' + officialOk + ' official');
-        else if (nexusOk) showToast(T('toast_sync_done', 'Nexus payloads ready.'));
-        else if (officialOk > 0) showToast(officialOk + ' official payload(s) ready');
-        else showToast(T('toast_sync_fail', 'No new payloads (offline or cached).'), 'error');
+        // Toast only if we downloaded something AND user is viewing cloud list
+        if (downloaded > 0 && !localFolderMode) {
+          const payloadsTab = document.getElementById('tab-payloads');
+          if (payloadsTab && payloadsTab.classList.contains('active')) {
+            await persistPayloadSelection();
+            await renderPayloads();
+            applyPendingSelection();
+            showToast(downloaded + ' new payload(s) cached');
+          }
+        }
       } finally {
         _syncLock = false;
       }
     }
+
+    async function ensurePayloadsLoaded() {
+      // Manual Sync / legacy callers — same background path, no UI wipe
+      await ensurePayloadsLoadedBackground();
+    }
+
 
 
     async function syncCloud(showerr = 1) {
@@ -1560,8 +2431,27 @@
       (async () => {
         await syncExploitsOnly(showerr);
         if (wantPayloads) {
-          payloadsLoaded = false; // allow refresh of missing only
-          await ensurePayloadsLoaded();
+          // Only reopen the downloader if something is not fully cached
+          let missing = 0;
+          try {
+            const manStr = await StorageEngine.getItem('nexus_cloud_manifest');
+            const relStr = await StorageEngine.getItem('nexus_releases');
+            const man = manStr ? JSON.parse(manStr) : null;
+            const rel = (officialReposEnabled && relStr) ? JSON.parse(relStr) : [];
+            const items = ((man && man.payloads) ? man.payloads : []).concat(rel || []);
+            for (let i = 0; i < items.length; i++) {
+              const it = items[i];
+              const ck = it.id ? ('cloud_cache_' + it.id) : ('cloud_cache_' + (it.file || it.name));
+              if (!(await cacheHas(ck))) missing++;
+            }
+          } catch (e) { missing = 1; }
+          if (missing > 0) {
+            payloadsLoaded = false; // allow fetch of missing only
+            await ensurePayloadsLoaded();
+          } else {
+            payloadsLoaded = true;
+            if (showerr) showToast(T('toast_all_cached', 'Everything already downloaded'));
+          }
         }
       })();
     }
@@ -1631,22 +2521,92 @@
 
       if (added > 0) {
         localFolderMode = true;
+        await persistLocalStash();
         updateArmoryTitle();
         await renderPayloads();
+        applyPendingSelection();
         showToast(`${added} ${T('toast_files_loaded', 'payload(s) registered.')}`);
       } else if (dupes > 0) {
-        localFolderMode = true; updateArmoryTitle(); await renderPayloads();  // already mapped: keep the one we have
+        localFolderMode = true;
+        await persistLocalStash();
+        updateArmoryTitle();
+        await renderPayloads();
+        applyPendingSelection();
       } else {
         showToast(T('toast_no_valid_files', "No valid files found."), "error");
       }
     }
 
+    async function animateListClear(list) {
+      const rows = list ? Array.from(list.querySelectorAll('.payload-cb-row')) : [];
+      if (rows.length === 0) return;
+      rows.forEach(function(row, i) {
+        row.style.animationDelay = (i * 55) + 'ms';
+        row.classList.add('clearing');
+      });
+      var wait = Math.min(1800, 1100 + rows.length * 55);
+      await new Promise(function(r) { setTimeout(r, wait); });
+    }
+
     async function clearPayloadList() {
-      const old = localPayloadFiles.map(f => f.name);
-      localPayloadFiles = [];
-      for (const n of old) await dropOrphanLocalCache(n);
+      const list = document.getElementById('payload-cb-list');
+      const loadoutSelector = document.getElementById('loadoutSelector');
+      const activeLoadoutId = loadoutSelector ? loadoutSelector.value : 'default';
+      const isCloudArmory = !localFolderMode && activeLoadoutId === 'default';
+
+      // Cloud armory: only deselect — do not remove rows or rebuild list
+      if (isCloudArmory) {
+        const checked = list ? Array.from(list.querySelectorAll('.payload-cb-row.is-checked')) : [];
+        checked.forEach(function(row, i) {
+          setTimeout(function() {
+            row.classList.remove('is-checked');
+            var cb = row.querySelector('input[type="checkbox"]');
+            if (cb) cb.checked = false;
+            row.classList.remove('deselect-bump');
+            void row.offsetWidth;
+            row.classList.add('deselect-bump');
+          }, i * 40);
+        });
+        await persistPayloadSelection();
+        if (checked.length === 0) {
+          showToast(T('toast_nothing_selected', 'Nothing selected'), 'error');
+        } else {
+          showToast(T('toast_deselected', 'Selection cleared'));
+        }
+        return;
+      }
+
+      // Local stash / loadout: smooth stagger-out then rebuild
+      await animateListClear(list);
+      if (localFolderMode) {
+        const old = localPayloadFiles.map(f => (typeof f === 'string' ? f : f.name));
+        localPayloadFiles = [];
+        localFolderMode = false;
+        for (const n of old) await dropOrphanLocalCache(n);
+        await persistLocalStash();
+      }
+      await persistPayloadSelection();
       updateArmoryTitle();
+      // Soft crossfade rebuild
+      if (list) {
+        list.style.transition = 'opacity 0.35s ease';
+        list.style.opacity = '0';
+        await new Promise(function(r) { setTimeout(r, 320); });
+      }
       await renderPayloads();
+      if (list) {
+        list.style.opacity = '0';
+        void list.offsetWidth;
+        list.style.transition = 'opacity 0.45s ease';
+        list.style.opacity = '1';
+        list.classList.remove('settling');
+        void list.offsetWidth;
+        list.classList.add('settling');
+        setTimeout(function() {
+          list.classList.remove('settling');
+          list.style.transition = '';
+        }, 500);
+      }
     }
 
     async function saveCurrentLoadout() {
@@ -1664,14 +2624,25 @@
         if (source === 'cloud') {
           payloads.push({ source: 'cloud', id: id, name: name });
         } else if (source === 'local' || source === 'local_missing' || source === 'local_cached') {
-          const localId = id || `local_${name}`;
+          const localId = id || ('local_' + name);
           payloads.push({ source: 'local', id: localId, name: name });
+          // Only re-cache when we still have a real File handle (not a post-restart stub)
           if (source === 'local') {
-            const index = parseInt(row.dataset.index);
+            const index = parseInt(row.dataset.index, 10);
             const file = localPayloadFiles[index];
-            if (file) {
-              const buffer = await file.arrayBuffer();
-              await StorageEngine.setItem(`local_cache_${localId}`, arrayBufferToBase64(buffer));
+            const realFile = file && typeof file.arrayBuffer === 'function' && !file.__cachedOnly;
+            if (realFile) {
+              try {
+                const buffer = await file.arrayBuffer();
+                await StorageEngine.setItem('local_cache_' + localId, arrayBufferToBase64(buffer));
+              } catch (e) { console.warn('local cache write failed', name, e); }
+            } else {
+              // Stub from previous session — cache must already exist from map time
+              const existing = await StorageEngine.getItem('local_cache_' + localId);
+              if (existing == null) {
+                showToast(T('toast_missing_local', 'Re-map local file: ') + name, 'error');
+                return;
+              }
             }
           }
         }
@@ -1695,6 +2666,8 @@
       const loadoutSelector = document.getElementById('loadoutSelector');
       const activeLoadoutId = loadoutSelector.value;
       if (activeLoadoutId === 'default') return showToast(T('toast_cant_delete_default', "Can't delete the default."), "error");
+      const list = document.getElementById('payload-cb-list');
+      await animateListClear(list);
       const loadoutsStr = await StorageEngine.getItem('nexus_loadouts');
       let loadouts = JSON.parse(loadoutsStr || '[]');
       loadouts = loadouts.filter(l => l.id !== activeLoadoutId);
@@ -1702,7 +2675,25 @@
       await StorageEngine.removeItem('nexus_last_loadout');
       await refreshLoadoutSelector();
       document.getElementById('loadoutSelector').value = 'default';
+      if (list) {
+        list.style.transition = 'opacity 0.35s ease';
+        list.style.opacity = '0';
+        await new Promise(function(r) { setTimeout(r, 320); });
+      }
       await renderPayloads();
+      if (list) {
+        list.style.opacity = '0';
+        void list.offsetWidth;
+        list.style.transition = 'opacity 0.45s ease';
+        list.style.opacity = '1';
+        list.classList.remove('settling');
+        void list.offsetWidth;
+        list.classList.add('settling');
+        setTimeout(function() {
+          list.classList.remove('settling');
+          list.style.transition = '';
+        }, 500);
+      }
       showToast(T('toast_loadout_deleted', "Loadout deleted."));
     }
 
@@ -1738,6 +2729,8 @@
     async function dropOrphanLocalCache(name) {
       if (localPayloadFiles.some(f => f.name === name)) return;  // still mapped
       const id = `local_${name}`;
+      await clearDownloadComplete('local_cache_' + id);
+      await clearDownloadComplete('cloud_cache_' + id);
       const ls = JSON.parse(await StorageEngine.getItem('nexus_loadouts') || '[]');
       if (ls.some(l => l.payloads.some(p => p.source === 'local' && (p.id || `local_${p.name}`) === id))) return;  // a saved loadout needs it
       await StorageEngine.removeItem(`local_cache_${id}`);
@@ -1766,6 +2759,8 @@
 
       rowEl.remove();
       if (loadoutVal === 'default' && localFolderMode) await renderPayloads();  // refresh rows so indexes can't go stale
+      await persistLocalStash();
+      await persistPayloadSelection();
       showToast(T('toast_item_removed', "Removed ✓"));
 
       // If list now empty, show empty state
@@ -1833,15 +2828,24 @@
         if (localPayloadFiles.length === 0) {
           list.innerHTML = `<div class="payload-cb-empty">${dictionary[currentLang].armoryEmpty}</div>`; return;
         }
-        localPayloadFiles.forEach((file, index) => {
-          const ext = file.name.substring(file.name.lastIndexOf('.') + 1).toUpperCase();
-          // Show remove X for local mapped files
-          fragment.appendChild(makeCheckRow(`local_${index}`, file.name, ext, 'local', String(index), `local_${file.name}`, true));
-        });
+        for (let index = 0; index < localPayloadFiles.length; index++) {
+          const file = localPayloadFiles[index];
+          const fname = (typeof file === 'string') ? file : (file && file.name) ? file.name : '';
+          if (!fname) continue;
+          const localId = 'local_' + fname;
+          const isStub = (typeof file === 'string') || !file || file.__cachedOnly || typeof file.arrayBuffer !== 'function';
+          const ext = fname.substring(fname.lastIndexOf('.') + 1).toUpperCase();
+          // After restart stubs have no File handle — use local_cached so Save/send use IndexedDB
+          const source = isStub ? 'local_cached' : 'local';
+          const badge = isStub ? 'CACHED' : ext;
+          fragment.appendChild(makeCheckRow('local_' + index, fname, badge, source, String(index), localId, true));
+        }
         list.appendChild(fragment);
       } else {
         const manifestStr = await StorageEngine.getItem('nexus_cloud_manifest');
-        const rel = JSON.parse(await StorageEngine.getItem('nexus_releases') || '[]');
+        const relRaw = JSON.parse(await StorageEngine.getItem('nexus_releases') || '[]');
+        // Official-repo releases only when toggle is on (exploits tab unaffected)
+        const rel = officialReposEnabled ? relRaw : [];
         const items = ((manifestStr ? JSON.parse(manifestStr).payloads : null) || []).concat(rel);
         if (items.length === 0) {
           list.innerHTML = `<div class="payload-cb-empty">${dictionary[currentLang].armoryEmpty}</div>`; return;
@@ -1854,6 +2858,9 @@
         }
         list.appendChild(fragment);
       }
+
+      applyPendingSelection();
+
     }
 
     // showRemove: true for loadout rows and local mapped, false for cloud armory
@@ -1868,11 +2875,14 @@
         ? `<button class="cb-remove-btn" title="Remove">✕</button>`
         : '';
 
+      var isDl = (_downloadingKey && id && (_downloadingKey === ('cloud_cache_' + id) || _downloadingKey.indexOf(id) !== -1));
+      const badgeClass = isDl ? 'cb-badge downloading' : ((badge === 'SYNC REQ') ? 'cb-badge sync-req' : 'cb-badge');
+      const badgeText = isDl ? '' : badge;
       row.innerHTML = `
         <input type="checkbox" id="cb_${uid}">
         <div class="cb-box"></div>
         <label class="cb-label">${name}</label>
-        <span class="cb-badge">${badge}</span>
+        <span class="${badgeClass}">${badgeText}</span>
         ${removeBtn}
       `;
 
@@ -1881,6 +2891,7 @@
         if (e.target.classList.contains('cb-remove-btn')) return;
         row.classList.toggle('is-checked');
         row.querySelector('input[type="checkbox"]').checked = row.classList.contains('is-checked');
+        persistPayloadSelection();
       });
 
       // Wire remove button
@@ -1909,12 +2920,24 @@
 
     function executeRawStream(base64Data, portOverride) {
       const ip = document.getElementById('ip').value;
-      const port = portOverride || parseInt(document.getElementById('port').value);
-      if (window.AndroidNativeTCP) {
-        window.AndroidNativeTCP.performRawStream(ip, port, base64Data);
-      } else {
-        setTimeout(() => { showToast(T('toast_diagnostic', "Diagnostic mode: stream routed through native.")); }, 1000);
+      const port = (portOverride != null && portOverride !== undefined)
+        ? portOverride
+        : parseInt(document.getElementById('port').value, 10);
+      if (window.AndroidTCP && typeof AndroidTCP.sendBase64 === 'function') {
+        try {
+          const r = AndroidTCP.sendBase64(ip, port, base64Data);
+          if (r && r !== 'ok') {
+            showToast(shortErr(r), 'error');
+            return false;
+          }
+          return true;
+        } catch (e) {
+          showToast(shortErr(e && e.message ? e.message : e), 'error');
+          return false;
+        }
       }
+      showToast('Native TCP bridge missing', 'error');
+      return false;
     }
 
     async function transmitLocalPayload(event) {

@@ -767,8 +767,11 @@
     #bootArtWrap video {
       position: absolute; inset: 0;
       width: 100%; height: 100%;
-      object-fit: cover;
+      /* contain = full video always visible (letterbox on tall screens).
+         Works for phones, tablets, and 4K — never crops the 16:9 frame. */
+      object-fit: contain;
       object-position: center center;
+      background: #000;
     }
 
     #bootVignette {
@@ -1469,7 +1472,9 @@
           document.getElementById('loadoutSelector').value = lastLoadout;
         }
       }
-      // Payloads list is filled only when user opens the Payloads tab
+      // Phone: payloads filled when user opens Payloads tab.
+      // Split/landscape: both panes visible — activate + populate payloads now.
+      if (isSplit()) ensureSplitPayloadsActive();
     };
 
     async function saveConfig() {
@@ -1874,17 +1879,51 @@
       }
     }
 
+    /** Split/landscape: both panes visible — mark payloads active + populate list (same as opening Payloads tab). */
+    function ensureSplitPayloadsActive() {
+      if (!isSplit()) return;
+      document.querySelectorAll('.tab-content').forEach(function(c) {
+        c.classList.remove('tab-out', 'tab-in', 'windmill-out', 'windmill-in');
+        c.classList.add('active');
+      });
+      var payBtn = document.getElementById('tabBtn-payloads');
+      if (payBtn) payBtn.classList.add('active');
+      // Populate payloads pane (restore cache + background fill if needed)
+      setTimeout(function() {
+        Promise.resolve().then(async function() {
+          try {
+            await restoreLocalStash();
+            await restorePayloadSelection();
+            var list = document.getElementById('payload-cb-list');
+            var empty = !list || list.children.length === 0 ||
+              !!list.querySelector('.payload-cb-empty');
+            if (empty || localFolderMode) {
+              await renderPayloads();
+            } else {
+              applyPendingSelection();
+            }
+          } catch (e) { console.warn(e); }
+          if (!payloadsLoaded) {
+            ensurePayloadsLoadedBackground().catch(function(e) { console.warn(e); });
+          }
+        });
+      }, 40);
+    }
+
     async function onLayoutModeChange() {
       placePortField();
       const portInput = document.getElementById('port');
       const payloadPortInput = document.getElementById('payloadPort');
       const payloadsActive = document.getElementById('tab-payloads').classList.contains('active');
-      if (!payloadsActive) return;  // exploit tab active: header port already is the exploit port
       if (isSplit()) {
-        // single-tab (port holds payload port) -> split
-        payloadPortInput.value = portInput.value;
-        portInput.value = await StorageEngine.getItem('last_exploit_port') || 9026;
-      } else {
+        // Entering split: always activate + populate payloads so Sync and list work
+        if (payloadsActive) {
+          // was on payloads single-tab (port holds payload port) -> restore exploit port
+          payloadPortInput.value = portInput.value;
+          portInput.value = await StorageEngine.getItem('last_exploit_port') || 9026;
+        }
+        ensureSplitPayloadsActive();
+      } else if (payloadsActive) {
         // split -> single-tab with Payloads tab showing
         await StorageEngine.setItem('last_exploit_port', portInput.value);
         portInput.value = payloadPortInput.value || 9021;
@@ -2471,9 +2510,9 @@
         showToast(T('toast_sync_busy', 'Sync already running in background…'));
         return;
       }
-      // Exploits first (always). Payloads only if Payloads tab is active / already visited.
+      // Exploits first (always). Payloads if Payloads tab is active, already visited, or split view (both panes visible).
       const payloadsTab = document.getElementById('tab-payloads');
-      const wantPayloads = payloadsLoaded || (payloadsTab && payloadsTab.classList.contains('active'));
+      const wantPayloads = payloadsLoaded || isSplit() || (payloadsTab && payloadsTab.classList.contains('active'));
       // Non-blocking: never freeze UI on toggle or sync
       setTimeout(function() {
       (async () => {

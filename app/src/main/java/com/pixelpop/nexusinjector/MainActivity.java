@@ -38,12 +38,8 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Phones locked portrait; tablets (sw >= 600dp) free to rotate
-        if (getResources().getConfiguration().smallestScreenWidthDp >= 600) {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_USER);
-        } else {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-        }
+        // Allow free rotation on all devices (phones + tablets of any size)
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_USER);
 
         requestWindowFeature(Window.FEATURE_NO_TITLE);
 

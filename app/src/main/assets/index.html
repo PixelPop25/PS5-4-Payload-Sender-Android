@@ -835,6 +835,79 @@
       100% { transform: translateY(0); }
     }
 
+  
+    /* —— Socket log floating tab + fullscreen panel —— */
+    .sock-log-fab {
+      position: fixed; right: 10px; top: 42%; z-index: 99990;
+      writing-mode: vertical-rl; text-orientation: mixed;
+      padding: 14px 10px; border-radius: 14px 0 0 14px;
+      background: linear-gradient(180deg, rgba(26,107,255,0.92), rgba(0,40,90,0.95));
+      border: 1px solid rgba(77,157,255,0.45); border-right: none;
+      color: #e8f1ff; font-size: 11px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; cursor: pointer;
+      box-shadow: -4px 8px 24px rgba(0,0,0,0.35);
+    }
+    .sock-log-fab.has-data { box-shadow: -4px 8px 28px rgba(0,245,255,0.25); border-color: rgba(0,245,255,0.55); }
+    .sock-log-overlay {
+      display: none !important; position: fixed; inset: 0; z-index: 99999;
+      background: rgba(0,0,0,0.82); backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      align-items: stretch; justify-content: center; padding: 12px;
+      box-sizing: border-box;
+    }
+    .sock-log-overlay.open { display: flex !important; }
+    .sock-log-card {
+      width: 100%; max-width: 720px; margin: 0 auto;
+      background: rgba(12,16,28,0.96);
+      border: 1px solid rgba(77,157,255,0.35);
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      display: flex; flex-direction: column;
+      max-height: 100%; min-height: 0; overflow: hidden;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    .sock-log-header {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; margin-bottom: 12px; flex-shrink: 0;
+    }
+    .sock-log-header h3 {
+      margin: 0; font-size: 15px; letter-spacing: 1px; text-transform: uppercase;
+      color: #e8f1ff; font-weight: 700;
+    }
+    .sock-log-meta { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 2px; }
+    .sock-log-close {
+      width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
+      border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06);
+      color: #fff; font-size: 20px; cursor: pointer;
+    }
+    .sock-log-body {
+      flex: 1; min-height: 0; overflow: auto;
+      background: rgba(0,0,0,0.55); border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 12px; margin-bottom: 12px;
+    }
+    .sock-log-body pre {
+      margin: 0; white-space: pre-wrap; word-break: break-word;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px; line-height: 1.45; color: #b8d4ff;
+    }
+    .sock-log-actions {
+      display: flex; flex-wrap: wrap; gap: 10px; flex-shrink: 0;
+      align-items: stretch;
+    }
+    .sock-log-actions button {
+      flex: 1 1 0; min-width: 100px; padding: 12px 10px;
+      border-radius: 12px; border: 1px solid rgba(77,157,255,0.35);
+      background: rgba(26,107,255,0.25); color: #e8f1ff;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      font-family: inherit;
+    }
+    .sock-log-actions button.secondary {
+      background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12);
+    }
+    .sock-log-actions button:active { opacity: 0.85; }
+
   </style>
 </head>
 <body data-tab-anim="spring">
@@ -854,7 +927,7 @@
   </div>
   
   <input type="file" id="bgUploader" accept="image/*,video/*" style="display: none;" onchange="handleBgUpload(event)">
-  <input type="file" id="folderUploader" accept=".bin,.elf" multiple style="display: none;" onchange="handleFolderSelected(event)">
+  <input type="file" id="folderUploader" multiple style="display: none;" onchange="handleFolderSelected(event)">
 
   <div class="app-card">
     <div class="settings-panel" id="configPanel">
@@ -1015,7 +1088,7 @@
             <div class="upload-icon">📁</div>
             <div id="fileNameText" class="file-name-display" data-i18n="loadLocal">Load Local Payload...</div>
           </label>
-          <input type="file" id="fileInput" onchange="handleFileSelected()" accept=".bin,.elf,.js,.lua,.jar,.mjs,.py">
+          <input type="file" id="fileInput" onchange="handleFileSelected()">
         </div>
       
         <div class="cloud-deck">
@@ -1632,20 +1705,20 @@
     const OFFICIAL_SOURCES = [
       { name: "Kstuff Lite (Echo)",    repo: "EchoStretch/kstuff-lite",              asset: "kstuff.elf" },
       { name: "Kstuff Lite (Drakmor)", repo: "drakmor/kstuff-lite",                  asset: "kstuff.elf" },
-      { name: "ShadowMountPlus",       repo: "drakmor/ShadowMountPlus",              asset: "*.elf" },
+      { name: "ShadowMountPlus",       repo: "drakmor/ShadowMountPlus",              asset: "*ShadowMount*.elf" },
       { name: "FTP Server",            repo: "ps5-payload-dev/ftpsrv",               asset: "*.elf" },
       { name: "PS5 Upload",            repo: "phantomptr/ps5upload",                 asset: "*.elf" },
       { name: "NanoDNS",               repo: "drakmor/nanoDNS",                      asset: "nanodns.elf" },
       { name: "Payload Manager",       repo: "itsPLK/ps5-payload-manager",           asset: "pldmgr*.elf" },
       { name: "CheatRunner",           repo: "notmaj0r/CheatRunner",                 asset: "*.elf" },
-      { name: "OnionHEN",              repo: "aydencharles/onionHEN",                asset: "*.elf" },
+      { name: "OnionHEN",              repo: "aydencharles/onionHEN",                asset: "OnionHEN.elf" },
       { name: "EtaHEN",                repo: "etaHEN/etaHEN",                        asset: "*.bin" },
       { name: "BFPilot",               repo: "ItsBlurf/BFpilot",                     asset: "*.elf" },
       { name: "PS Patch System",       repo: "illusionyy/ps-patch-system",           asset: "*.elf" },
       { name: "WebFile Manager",       repo: "owendswang/ps5-web-file-manager",      asset: "*.elf" },
-      { name: "Fan Control",           repo: "owendswang/ps5-fan-control",           asset: "*.elf" },
+      { name: "Fan Control",           repo: "owendswang/ps5-fan-control",           asset: "ps5-fan-control.elf" },
       { name: "Fan Target",            repo: "drakmor/fan_target",                   asset: "fan_target*.elf" },
-      { name: "Linux Loader",          repo: "ps5-linux/ps5-linux-loader",           asset: "*.elf" },
+      { name: "Linux Loader",          repo: "ps5-linux/ps5-linux-loader",           asset: "*linux*.elf" },
       { name: "Game Compressor",       repo: "juma-sayeh/PS5-Game-Compressor",       asset: "game-compressor.elf" },
       { name: "LZ4 Compression",       repo: "theghostonline/PS5-LZ4-Compression",   asset: "lz4-compression.elf" },
       { name: "UnRAR",                 repo: "bizkut/unrar-ps5",                     asset: "unrar*.elf" },
@@ -1775,7 +1848,7 @@
           const b64 = await StorageEngine.getItem(p.source === 'cloud' ? `cloud_cache_${p.id}` : `local_cache_${p.id || 'local_' + p.name}`);
           if (!b64) { showToast(T('toast_seq_skip', "Skipped — asset unmapped."), "error"); continue; }
           showToast(`${l.name}: ${i + 1}/${l.payloads.length} ${p.name}`);
-          executeRawStream(b64, 9021);
+          executeRawStream(b64, 9021, p.name);
           if (i < l.payloads.length - 1) await wait(delayMs);
         }
       } finally { _macroBusy = false; }
@@ -2591,16 +2664,11 @@
 
       if (files.length === 0) return;
 
-      const validExtensions = ['.bin', '.elf','.py','.lua','.js','.jar'];
       let added = 0, dupes = 0;
 
       for (let i = 0; i < files.length; i++) {
         const f = files[i];
-        const dotIdx = f.name.lastIndexOf('.');
-        const ext = dotIdx !== -1 ? f.name.substring(dotIdx).toLowerCase() : '';
-        if (!validExtensions.includes(ext)) { 
-          continue; }
-        // Skip duplicates by name
+        // Accept any file type (user requested); skip duplicates by name
         if (localPayloadFiles.some(ex => ex.name === f.name)) {
           dupes++; continue;}
         localPayloadFiles.push(f);
@@ -3010,13 +3078,159 @@
     }
 
     
+
+    /* —— Socket log panel (recv from elfldr client socket) —— */
+    var _lastSocketLog = '';
+    var _lastSocketTarget = '';
+    var _lastPayloadName = '';
+
+    function openSocketLogPanel() {
+      try {
+        var ov = document.getElementById('sockLogOverlay');
+        if (!ov) {
+          console.error('sockLogOverlay missing');
+          return;
+        }
+        ov.classList.add('open');
+        ov.style.display = 'flex';
+        refreshSocketLogView();
+      } catch (e) {
+        console.error(e);
+        alert('Log panel error: ' + e);
+      }
+    }
+    function closeSocketLogPanel() {
+      var ov = document.getElementById('sockLogOverlay');
+      if (ov) {
+        ov.classList.remove('open');
+        ov.style.display = 'none';
+      }
+    }
+    function refreshSocketLogView() {
+      var pre = document.getElementById('sockLogPre');
+      var meta = document.getElementById('sockLogMeta');
+      var fab = document.getElementById('sockLogFab');
+      if (pre) pre.textContent = _lastSocketLog || '(empty)';
+      if (meta) {
+        meta.textContent = _lastSocketTarget
+          ? ('Last: ' + _lastSocketTarget + ' · ' + (_lastSocketLog ? (_lastSocketLog.length + ' chars') : 'no data'))
+          : 'No capture yet — send a payload via elfldr to capture stdout';
+      }
+      if (fab) {
+        if (_lastSocketLog && _lastSocketLog.length) fab.classList.add('has-data');
+        else fab.classList.remove('has-data');
+      }
+    }
+    function setSocketLog(text, target, payloadName) {
+      _lastSocketLog = text || '';
+      if (target) _lastSocketTarget = target;
+      if (payloadName) _lastPayloadName = payloadName;
+      refreshSocketLogView();
+    }
+    function appendSocketLog(text, target) {
+      if (text) _lastSocketLog = (_lastSocketLog ? (_lastSocketLog + '\n') : '') + text;
+      if (target) _lastSocketTarget = target;
+      refreshSocketLogView();
+    }
+    function clearSocketLog() {
+      _lastSocketLog = '';
+      try {
+        if (window.AndroidTCP && AndroidTCP.clearLastCapture) AndroidTCP.clearLastCapture();
+      } catch (e) {}
+      refreshSocketLogView();
+      try { showToast('Log cleared'); } catch (e) {}
+    }
+    function copySocketLog() {
+      var text = _lastSocketLog || '';
+      if (!text) { try { showToast('Nothing to copy', 'error'); } catch (e) {} return; }
+      try {
+        if (window.AndroidTCP && typeof AndroidTCP.copyToClipboard === 'function') {
+          var r = AndroidTCP.copyToClipboard(text);
+          if (r === 'ok') { try { showToast('Copied to clipboard'); } catch (e) {} return; }
+        }
+      } catch (e) {}
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () {
+          try { showToast('Copied to clipboard'); } catch (e) {}
+        }).catch(function () {
+          try { showToast('Copy failed', 'error'); } catch (e) {}
+        });
+        return;
+      }
+      try { showToast('Copy failed', 'error'); } catch (e) {}
+    }
+    function saveSocketLog() {
+      var text = _lastSocketLog || '';
+      if (!text) { try { showToast('Nothing to save', 'error'); } catch (e) {} return; }
+      var base = (_lastPayloadName || 'nexus-socket-log').toString();
+      // strip path / extension then force .txt
+      base = base.replace(/^.*[\\\/]/, '');
+      base = base.replace(/\.[^.]+$/, '');
+      if (!base) base = 'nexus-socket-log';
+      var name = base + '.txt';
+      try {
+        if (window.AndroidTCP && typeof AndroidTCP.saveLogFile === 'function') {
+          var r = AndroidTCP.saveLogFile(text, name);
+          if (r === 'ok') {
+            try { showToast('Pick where to save ' + name); } catch (e) {}
+            return;
+          }
+          if (r && r.indexOf('ERR') === 0) {
+            try { showToast('Save failed', 'error'); } catch (e) {}
+            return;
+          }
+          // legacy path string
+          if (r) { try { showToast('Saved: ' + r); } catch (e) {} return; }
+        }
+      } catch (e) {}
+      try {
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+        a.download = name;
+        a.click();
+        try { showToast('Download started'); } catch (e) {}
+      } catch (e2) {
+        try { showToast('Save failed', 'error'); } catch (e) {}
+      }
+    }
+
     let _streamBusy = false;
 
-    function executeRawStream(base64Data, portOverride) {
+    function executeRawStream(base64Data, portOverride, payloadName) {
       const ip = document.getElementById('ip').value;
       const port = (portOverride != null && portOverride !== undefined)
         ? portOverride
         : parseInt(document.getElementById('port').value, 10);
+      const target = ip + ':' + port;
+      if (payloadName) _lastPayloadName = payloadName;
+      // Prefer capture path (elfldr wires payload stdout back on this socket)
+      if (window.AndroidTCP && typeof AndroidTCP.sendAndCaptureBase64 === 'function') {
+        try {
+          const idleMs = 120000;
+          const raw = AndroidTCP.sendAndCaptureBase64(ip, port, base64Data, idleMs);
+          let parsed = null;
+          try { parsed = JSON.parse(raw); } catch (je) { parsed = null; }
+          if (parsed && parsed.ok) {
+            setSocketLog(parsed.log || '', target, _lastPayloadName);
+            if (parsed.log && String(parsed.log).trim().length)
+              showToast('Sent · log ' + (parsed.bytes || 0) + ' B');
+            else
+              showToast('Sent (no socket output)');
+            return true;
+          }
+          if (parsed && !parsed.ok) {
+            if (parsed.log) setSocketLog(parsed.log, target, _lastPayloadName);
+            showToast(shortErr(parsed.error || 'ERR:SEND_FAIL'), 'error');
+            return false;
+          }
+          // unexpected non-JSON
+          showToast(shortErr(raw || 'ERR:SEND_FAIL'), 'error');
+          return false;
+        } catch (e) {
+          showToast(shortErr(e && e.message ? e.message : e), 'error');
+          return false;
+        }
+      }
       if (window.AndroidTCP && typeof AndroidTCP.sendBase64 === 'function') {
         try {
           const r = AndroidTCP.sendBase64(ip, port, base64Data);
@@ -3024,6 +3238,7 @@
             showToast(shortErr(r), 'error');
             return false;
           }
+          showToast('Sent (no capture bridge)');
           return true;
         } catch (e) {
           showToast(shortErr(e && e.message ? e.message : e), 'error');
@@ -3042,7 +3257,7 @@
         const file = fileInput.files[0];
         const arrayBuffer = await file.arrayBuffer();
         showToast(T('toast_sending', `Sending ${file.name}...`).replace('${file.name}', file.name));
-        executeRawStream(arrayBufferToBase64(arrayBuffer));
+        executeRawStream(arrayBufferToBase64(arrayBuffer), undefined, file.name);
         runMacro();
       } else {
         showToast(dictionary[currentLang].loadLocal || "Select a local payload first.", "error");
@@ -3055,7 +3270,7 @@
       if (b64) {
         playTurbo(); 
         showToast(T(`Sending ${name}`));
-        executeRawStream(b64);
+        executeRawStream(b64, undefined, name);
         runMacro();
       } else {
         showToast(T('toast_no_cache', "Script not in cache — run a sync first."), "error");
@@ -3108,7 +3323,8 @@
 
         if (!b64Data) { showToast(T('toast_seq_skip', "Skipped — asset unmapped."), "error"); continue; }
 
-        executeRawStream(b64Data, getPayloadPort());
+        const rowName = (card.querySelector('.cb-label') && card.querySelector('.cb-label').textContent) || 'payload';
+        executeRawStream(b64Data, getPayloadPort(), rowName);
 
         if (i < checkedRows.length - 1) await new Promise(r => setTimeout(r, delayMs));
       }
@@ -3340,6 +3556,50 @@
       _rafId = requestAnimationFrame(renderLoop);
     }
     renderLoop();
-  </script>
+  
+    document.addEventListener('DOMContentLoaded', function () {
+      var fab = document.getElementById('sockLogFab');
+      if (fab) {
+        fab.onclick = function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          openSocketLogPanel();
+        };
+      }
+    });
+    // If script runs after DOMContentLoaded already fired:
+    (function () {
+      var fab = document.getElementById('sockLogFab');
+      if (fab) {
+        fab.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          openSocketLogPanel();
+        });
+      }
+    })();
+
+</script>
+
+  <button type="button" class="sock-log-fab" id="sockLogFab" onclick="openSocketLogPanel()" title="Socket log">LOG</button>
+  <div class="sock-log-overlay" id="sockLogOverlay" onclick="if(event.target===this)closeSocketLogPanel()">
+    <div class="sock-log-card" role="dialog" aria-label="Socket log">
+      <div class="sock-log-header">
+        <div>
+          <h3>Socket log</h3>
+          <div class="sock-log-meta" id="sockLogMeta">No capture yet — send a payload via elfldr to capture stdout</div>
+        </div>
+        <button type="button" class="sock-log-close" onclick="closeSocketLogPanel()" aria-label="Close">×</button>
+      </div>
+      <div class="sock-log-body"><pre id="sockLogPre">(empty)</pre></div>
+      <div class="sock-log-actions">
+        <button type="button" onclick="copySocketLog()">Copy</button>
+        <button type="button" onclick="saveSocketLog()">Save</button>
+        <button type="button" class="secondary" onclick="clearSocketLog()">Clear</button>
+        <button type="button" class="secondary" onclick="closeSocketLogPanel()">Close</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

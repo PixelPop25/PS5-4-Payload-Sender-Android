@@ -1153,7 +1153,7 @@
       <div class="delay-clear-row">
         <div class="input-group">
           <label data-i18n="delayLabel">Injection Delay (ms)</label>
-          <input type="number" id="delay" value="4000" oninput="saveConfigDebounced()">
+          <input type="number" id="delay" value="4000" min="0" step="100" oninput="saveConfigDebounced()">
         </div>
         <button class="btn-clear-list" onclick="clearPayloadList()" title="Clear list">🗑 Clear</button>
       </div>
@@ -1482,7 +1482,10 @@
       if (lep) _lastExploitPortMem = lep;
       else if (port) _lastExploitPortMem = port;
       const delay = boot['nexus_delay'];
-      if (delay) document.getElementById('delay').value = delay;
+      if (delay != null && delay !== '' && !isNaN(parseInt(delay, 10)))
+        document.getElementById('delay').value = String(Math.max(0, parseInt(delay, 10)));
+      else
+        document.getElementById('delay').value = '4000';
 
       // Defaults: all effects DISABLED until the user turns them on
       let bVal = boot['nexus_disable_bubbles'];
@@ -1840,7 +1843,7 @@
       }
       _macroBusy = true;
       try {
-        const delayMs = Math.max(parseInt(document.getElementById('delay').value) || 4000, 500);
+        const delayMs = Math.max(parseInt(document.getElementById('delay').value, 10) || 4000, 0);
         const wait = ms => new Promise(r => setTimeout(r, ms));
         await wait(delayMs);  // give the exploit time to land
         for (let i = 0; i < l.payloads.length; i++) {
@@ -2025,29 +2028,30 @@
         function go() {
           splash.classList.add('ready');
           if (vid) {
-            vid.play().catch(function(){});
-            // Start HTML fade slightly before video ends so it syncs cleanly
-            // (video was trimmed to ~4.33s at the point screen begins to darken)
-            var startFade = function() {
-              var remaining = (vid.duration || 4.3) - vid.currentTime;
-              if (remaining <= 0.55) finish();
-              else setTimeout(finish, Math.max(0, (remaining - 0.55) * 1000));
+            // Cap intro at ~1.5s: speed up playback to fit, hard finish at 1.5s
+            var TARGET_S = 1.5;
+            var applyRate = function() {
+              var d = vid.duration || TARGET_S;
+              if (d > TARGET_S && isFinite(d))
+                vid.playbackRate = d / TARGET_S;
+              else
+                vid.playbackRate = 1;
             };
-            if (vid.readyState >= 1) startFade();
-            else vid.addEventListener('loadedmetadata', startFade, { once: true });
+            if (vid.readyState >= 1) applyRate();
+            else vid.addEventListener('loadedmetadata', applyRate, { once: true });
+            vid.play().catch(function(){});
             vid.addEventListener('ended', finish, { once: true });
-            // safety net
-            setTimeout(finish, 5500);
+            setTimeout(finish, Math.round(TARGET_S * 1000));
           } else {
-            setTimeout(finish, 2400);
+            setTimeout(finish, 1500);
           }
         }
         if (vid) {
           if (vid.readyState >= 2) go();
           else {
             vid.addEventListener('canplay', go, { once: true });
-            vid.addEventListener('error', function() { setTimeout(finish, 800); }, { once: true });
-            setTimeout(go, 1500); // safety
+            vid.addEventListener('error', function() { setTimeout(finish, 400); }, { once: true });
+            setTimeout(go, 800); // safety if canplay never fires
           }
         } else {
           go();
@@ -3195,85 +3199,83 @@
     }
 
     let _streamBusy = false;
+    const _sendWaiters = {};
+    let _sendCbSeq = 1;
 
-    function executeRawStream(base64Data, portOverride, payloadName) {
+    window.__nativeSendCb = function(id, result) {
+      const w = _sendWaiters[id];
+      if (w) { delete _sendWaiters[id]; try { w(result); } catch (e) {} }
+    };
+
+    function getDelayMs() {
+      const v = parseInt(document.getElementById('delay').value, 10);
+      return (isNaN(v) || v < 0) ? 4000 : v;
+    }
+
+    /**
+     * Payloads tab: send only — NO socket log capture (that blocked UI / sequences).
+     * Non-blocking: runs on native thread, Promise resolves when write finishes or errors.
+     */
+    function sendPayloadOnlyAsync(base64Data, portOverride) {
       const ip = document.getElementById('ip').value;
       const port = (portOverride != null && portOverride !== undefined)
         ? portOverride
         : parseInt(document.getElementById('port').value, 10);
-      const target = ip + ':' + port;
+
+      return new Promise(function(resolve) {
+        if (!window.AndroidTCP) {
+          resolve('ERR:NO_BRIDGE');
+          return;
+        }
+        // Prefer async native send so WebView/UI stays responsive
+        if (typeof AndroidTCP.sendBase64Async === 'function') {
+          const cbId = String(_sendCbSeq++);
+          const timer = setTimeout(function() {
+            if (_sendWaiters[cbId]) {
+              delete _sendWaiters[cbId];
+              resolve('ERR:TIMEOUT');
+            }
+          }, 12000);
+          _sendWaiters[cbId] = function(result) {
+            clearTimeout(timer);
+            resolve(result || 'ok');
+          };
+          try {
+            AndroidTCP.sendBase64Async(ip, port, base64Data, cbId);
+          } catch (e) {
+            clearTimeout(timer);
+            delete _sendWaiters[cbId];
+            resolve((e && e.message) ? e.message : 'ERR:SEND_FAIL');
+          }
+          return;
+        }
+        // Fallback: sync sendBase64 (may jank briefly)
+        try {
+          resolve(AndroidTCP.sendBase64(ip, port, base64Data) || 'ok');
+        } catch (e) {
+          resolve((e && e.message) ? e.message : 'ERR:SEND_FAIL');
+        }
+      });
+    }
+
+    /** Single-button payload send (payloads tab / armory) — no logging. */
+    async function executeRawStream(base64Data, portOverride, payloadName) {
       if (payloadName) _lastPayloadName = payloadName;
-      // Prefer capture path (elfldr wires payload stdout back on this socket)
-      if (window.AndroidTCP && typeof AndroidTCP.sendAndCaptureBase64 === 'function') {
-        try {
-          const idleMs = 120000;
-          const raw = AndroidTCP.sendAndCaptureBase64(ip, port, base64Data, idleMs);
-          let parsed = null;
-          try { parsed = JSON.parse(raw); } catch (je) { parsed = null; }
-          if (parsed && parsed.ok) {
-            setSocketLog(parsed.log || '', target, _lastPayloadName);
-            if (parsed.log && String(parsed.log).trim().length)
-              showToast('Sent · log ' + (parsed.bytes || 0) + ' B');
-            else
-              showToast('Sent (no socket output)');
-            return true;
-          }
-          if (parsed && !parsed.ok) {
-            if (parsed.log) setSocketLog(parsed.log, target, _lastPayloadName);
-            showToast(shortErr(parsed.error || 'ERR:SEND_FAIL'), 'error');
-            return false;
-          }
-          // unexpected non-JSON
-          showToast(shortErr(raw || 'ERR:SEND_FAIL'), 'error');
-          return false;
-        } catch (e) {
-          showToast(shortErr(e && e.message ? e.message : e), 'error');
+      if (_streamBusy) {
+        showToast('Busy — wait for current send', 'error');
+        return false;
+      }
+      _streamBusy = true;
+      try {
+        const r = await sendPayloadOnlyAsync(base64Data, portOverride);
+        if (r && r !== 'ok') {
+          showToast(shortErr(r), 'error');
           return false;
         }
-      }
-      if (window.AndroidTCP && typeof AndroidTCP.sendBase64 === 'function') {
-        try {
-          const r = AndroidTCP.sendBase64(ip, port, base64Data);
-          if (r && r !== 'ok') {
-            showToast(shortErr(r), 'error');
-            return false;
-          }
-          showToast('Sent (no capture bridge)');
-          return true;
-        } catch (e) {
-          showToast(shortErr(e && e.message ? e.message : e), 'error');
-          return false;
-        }
-      }
-      showToast('Native TCP bridge missing', 'error');
-      return false;
-    }
-
-    async function transmitLocalPayload(event) {
-      if (event && !fountainDisabled) triggerFountain(event);
-      const fileInput = document.getElementById('fileInput');
-      if (fileInput.files.length > 0) {
-        playTurbo(); 
-        const file = fileInput.files[0];
-        const arrayBuffer = await file.arrayBuffer();
-        showToast(T('toast_sending', `Sending ${file.name}...`).replace('${file.name}', file.name));
-        executeRawStream(arrayBufferToBase64(arrayBuffer), undefined, file.name);
-        runMacro();
-      } else {
-        showToast(dictionary[currentLang].loadLocal || "Select a local payload first.", "error");
-      }
-    }
-
-    async function transmitCloudPayload(id, name, event) {
-      if (event && !fountainDisabled) triggerFountain(event);
-      const b64 = await StorageEngine.getItem(`cloud_cache_${id}`);
-      if (b64) {
-        playTurbo(); 
-        showToast(T(`Sending ${name}`));
-        executeRawStream(b64, undefined, name);
-        runMacro();
-      } else {
-        showToast(T('toast_no_cache', "Script not in cache — run a sync first."), "error");
+        showToast('Sent');
+        return true;
+      } finally {
+        _streamBusy = false;
       }
     }
 
@@ -3282,59 +3284,82 @@
       const checkedRows = Array.from(document.querySelectorAll('#payload-cb-list .payload-cb-row.is-checked'));
       if (checkedRows.length === 0) return showToast(T('toast_no_payloads', dictionary[currentLang].dragFallback), "error");
 
-      playTurbo(); 
-      
+      playTurbo();
+
       const btnTextSpan = document.querySelector('#injectSeqBtn span[data-i18n]');
       const progressFill = document.getElementById('injectProgressFill');
       const originalText = dictionary[currentLang].btnInjectSeq;
       const btn = document.getElementById('injectSeqBtn');
-      const delayMs = Math.max(parseInt(document.getElementById('delay').value) || 5000, 500);
+      const delayMs = getDelayMs();
 
+      if (_streamBusy) {
+        showToast('Busy — wait for current send', 'error');
+        return;
+      }
+      _streamBusy = true;
       btn.disabled = true;
       progressFill.style.width = '0%';
+      await new Promise(r => setTimeout(r, 0));
 
-      for (let i = 0; i < checkedRows.length; i++) {
-        const card = checkedRows[i];
-        let b64Data = "";
-        const source = card.dataset.source;
+      let sent = 0;
+      try {
+        for (let i = 0; i < checkedRows.length; i++) {
+          const card = checkedRows[i];
+          let b64Data = "";
+          const source = card.dataset.source;
 
-        // Advance progress bar and label before each send
-        const pct = Math.round(((i + 1) / checkedRows.length) * 100);
-        progressFill.style.width = pct + '%';
-        btnTextSpan.textContent = `Transmitting ${i + 1} / ${checkedRows.length}`;
+          const pct = Math.round(((i + 1) / checkedRows.length) * 100);
+          progressFill.style.width = pct + '%';
+          if (btnTextSpan) btnTextSpan.textContent = 'Transmitting ' + (i + 1) + ' / ' + checkedRows.length;
+          await new Promise(r => setTimeout(r, 0));
 
-        if (source === "local_missing") {
-          showToast(T('toast_missing', `${card.querySelector('.cb-label').textContent} not found. Remap folder.`), "error");
-          if (i < checkedRows.length - 1) await new Promise(r => setTimeout(r, delayMs));
-          continue;
+          if (source === "local_missing") {
+            showToast(T('toast_missing', ((card.querySelector('.cb-label') || {}).textContent || '') + ' not found. Remap folder.'), "error");
+            if (i < checkedRows.length - 1) await new Promise(r => setTimeout(r, delayMs));
+            continue;
+          }
+
+          try {
+            if (source === "local") {
+              const index = parseInt(card.dataset.index, 10);
+              const file = localPayloadFiles[index];
+              if (!file) { showToast(T('toast_seq_skip', "Skipped — asset unmapped."), "error"); continue; }
+              const buffer = await file.arrayBuffer();
+              b64Data = arrayBufferToBase64(buffer);
+            } else if (source === "local_cached") {
+              b64Data = await StorageEngine.getItem('local_cache_' + card.dataset.id);
+            } else if (source === "cloud") {
+              b64Data = await StorageEngine.getItem('cloud_cache_' + card.dataset.id);
+            }
+          } catch (e) {
+            showToast(T('toast_seq_skip', "Skipped — read failed."), "error");
+            continue;
+          }
+
+          if (!b64Data) { showToast(T('toast_seq_skip', "Skipped — asset unmapped."), "error"); continue; }
+
+          const rowName = (card.querySelector('.cb-label') && card.querySelector('.cb-label').textContent) || 'payload';
+
+          // Wait for THIS send to finish, then delay, then next
+          const r = await sendPayloadOnlyAsync(b64Data, getPayloadPort());
+          if (r && r !== 'ok') {
+            showToast(shortErr(r) + ' @ ' + rowName, 'error');
+          } else {
+            sent++;
+          }
+
+          if (i < checkedRows.length - 1)
+            await new Promise(r => setTimeout(r, delayMs));
         }
-
-        if (source === "local") {
-          const index = parseInt(card.dataset.index);
-          const file = localPayloadFiles[index];
-          if (!file) { showToast(T('toast_seq_skip', "Skipped — asset unmapped."), "error"); continue; }
-          const buffer = await file.arrayBuffer();
-          b64Data = arrayBufferToBase64(buffer);
-        } else if (source === "local_cached") {
-          b64Data = await StorageEngine.getItem(`local_cache_${card.dataset.id}`);
-        } else if (source === "cloud") {
-          b64Data = await StorageEngine.getItem(`cloud_cache_${card.dataset.id}`);
-        }
-
-        if (!b64Data) { showToast(T('toast_seq_skip', "Skipped — asset unmapped."), "error"); continue; }
-
-        const rowName = (card.querySelector('.cb-label') && card.querySelector('.cb-label').textContent) || 'payload';
-        executeRawStream(b64Data, getPayloadPort(), rowName);
-
-        if (i < checkedRows.length - 1) await new Promise(r => setTimeout(r, delayMs));
+      } finally {
+        _streamBusy = false;
+        progressFill.style.width = '100%';
+        await new Promise(r => setTimeout(r, 300));
+        progressFill.style.width = '0%';
+        if (btnTextSpan) btnTextSpan.textContent = originalText;
+        btn.disabled = false;
       }
-
-      // Hold full bar briefly before reset
-      await new Promise(r => setTimeout(r, 4000));
-      progressFill.style.width = '0%';
-      btnTextSpan.textContent = originalText;
-      btn.disabled = false;
-      showToast(T('toast_sent_ok', "Sequence executed."));
+      showToast(T('toast_sent_ok', 'Sequence done (' + sent + '/' + checkedRows.length + ').'));
     }
 
     function onNativeResponse(successFlag, messageString) { showToast(messageString, successFlag ? 'success' : 'error'); }

@@ -1,96 +1,64 @@
 name: Release
 
+# Tag only. Does not compile. Pulls the APK from the latest successful Build
+# artifact for this commit (or the newest Build on the default branch).
 on:
   push:
     tags:
-      - 'v*'
       - '*'
 
 permissions:
   contents: write
-
-env:
-  ANDROID_HOME: ${{ github.workspace }}/android-sdk
-  ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+  actions: read
 
 jobs:
-  build-and-release:
+  release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout (for metadata only)
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - name: Download APK from Build workflow
+        uses: dawidd6/action-download-artifact@v6
         with:
-          distribution: temurin
-          java-version: '17'
+          workflow: build.yml
+          name: nexus-apk
+          # Prefer artifact from the same commit as the tag
+          commit: ${{ github.sha }}
+          # If this commit never built, fall back to the newest successful Build run
+          search_artifacts: true
+          workflow_conclusion: success
+          path: artifact
+          if_no_artifact_found: warn
 
-      # Manual SDK install — avoids android-actions/setup-android license flakiness
-      - name: Install Android cmdline-tools
-        run: |
-          set -euo pipefail
-          mkdir -p "$ANDROID_HOME/cmdline-tools"
-          curl -fsSL -o /tmp/cmdtools.zip \
-            https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip -qo /tmp/cmdtools.zip -d "$ANDROID_HOME/cmdline-tools"
-          # Required layout: cmdline-tools/latest/bin/sdkmanager
-          mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
-          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
-          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+      - name: Fallback — latest successful Build artifact
+        if: ${{ hashFiles('artifact/**/*.apk') == '' }}
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: build.yml
+          name: nexus-apk
+          search_artifacts: true
+          workflow_conclusion: success
+          path: artifact
+          if_no_artifact_found: fail
 
-      - name: Accept licenses + install platform 34
-        run: |
-          set -euo pipefail
-          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          # Accept every license non-interactively (yes spam is the reliable way)
-          yes | "$SDKM" --sdk_root="$ANDROID_HOME" --licenses >/tmp/sdk-licenses.txt || true
-          # Show last lines so CI logs prove licenses were accepted
-          tail -20 /tmp/sdk-licenses.txt || true
-          "$SDKM" --sdk_root="$ANDROID_HOME" \
-            "platforms;android-34" \
-            "build-tools;34.0.0" \
-            "platform-tools"
-          test -d "$ANDROID_HOME/platforms/android-34"
-          test -d "$ANDROID_HOME/build-tools/34.0.0"
-          echo "sdk.dir=$ANDROID_HOME" > local.properties
-          cat local.properties
-
-      - name: Install Gradle 8.7
-        run: |
-          set -euo pipefail
-          curl -fsSL -o /tmp/gradle-8.7-bin.zip \
-            https://services.gradle.org/distributions/gradle-8.7-bin.zip
-          sudo unzip -qo /tmp/gradle-8.7-bin.zip -d /opt
-          echo "/opt/gradle-8.7/bin" >> "$GITHUB_PATH"
-          /opt/gradle-8.7/bin/gradle --version
-
-      - name: Build release APK
-        run: |
-          set -euo pipefail
-          export ANDROID_HOME ANDROID_SDK_ROOT
-          gradle assembleRelease --no-daemon --stacktrace
-          find app/build/outputs/apk -type f -name '*.apk' -ls
-
-      - name: Rename APK to tag
+      - name: Rename APK to tag name
         id: apk
         run: |
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
-          SRC=$(find app/build/outputs/apk -type f -name '*.apk' | head -1)
+          SRC=$(find artifact -type f -name '*.apk' | head -1)
           if [ -z "$SRC" ]; then
-            echo "No APK found"
-            find app/build -type f -name '*.apk' || true
+            echo "No APK artifact found. Run the Build workflow first, then tag."
             exit 1
           fi
           OUT="Nexus-${TAG}.apk"
           cp -f "$SRC" "$OUT"
-          echo "name=$OUT" >> "$GITHUB_OUTPUT"
           echo "path=$OUT" >> "$GITHUB_OUTPUT"
           ls -lh "$OUT"
           sha256sum "$OUT"
 
-      - name: Create GitHub Release
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}

@@ -153,16 +153,16 @@ public class MainActivity extends Activity {
             return "ERR:SEND_FAIL";
         }
 
-        /** Upload only (legacy). */
+        /** Upload only — never blocks on payload stdout. */
         @JavascriptInterface
         public String sendBase64(String host, int port, String b64) {
             Socket sock = null;
             try {
                 byte[] data = Base64.decode(b64, Base64.DEFAULT);
                 sock = new Socket();
-                sock.connect(new InetSocketAddress(host, port), 4000);
-                sock.setSoTimeout(5000);
+                sock.connect(new InetSocketAddress(host, port), 3000);
                 sock.setTcpNoDelay(true);
+                sock.setSoTimeout(5000);
                 sock.getOutputStream().write(data);
                 sock.getOutputStream().flush();
                 try { sock.shutdownOutput(); } catch (Exception ignored) {}
@@ -182,17 +182,14 @@ public class MainActivity extends Activity {
         public String sendAndCaptureBase64(String host, int port, String b64, int idleMs) {
             Socket sock = null;
             StringBuilder log = new StringBuilder();
-            final long t0 = System.currentTimeMillis();
             try {
-                /* Keep capture short so the JS bridge is not blocked for minutes */
                 if (idleMs < 500) idleMs = 500;
-                if (idleMs > 8000) idleMs = 8000;
-                final int hardMs = Math.min(15000, Math.max(idleMs + 2000, 4000));
+                if (idleMs > 8000) idleMs = 8000; /* never hang WebView bridge */
                 byte[] data = Base64.decode(b64, Base64.DEFAULT);
                 sock = new Socket();
-                sock.connect(new InetSocketAddress(host, port), 4000);
-                sock.setSoTimeout(idleMs);
+                sock.connect(new InetSocketAddress(host, port), 3000);
                 sock.setTcpNoDelay(true);
+                sock.setSoTimeout(idleMs);
                 sock.getOutputStream().write(data);
                 sock.getOutputStream().flush();
                 try { sock.shutdownOutput(); } catch (Exception ignored) {}
@@ -202,8 +199,6 @@ public class MainActivity extends Activity {
                 try {
                     while ((n = sock.getInputStream().read(buf)) > 0) {
                         log.append(new String(buf, 0, n, StandardCharsets.UTF_8));
-                        if (System.currentTimeMillis() - t0 > hardMs)
-                            break;
                     }
                 } catch (java.net.SocketTimeoutException ste) {
                     if (log.length() == 0)
@@ -230,8 +225,36 @@ public class MainActivity extends Activity {
                     return "{\"ok\":false,\"error\":\"ERR:SEND_FAIL\",\"log\":\"\"}";
                 }
             } finally {
-                try { if (sock != null) { sock.close(); } } catch (Exception ignored) {}
+                try { if (sock != null) sock.close(); } catch (Exception ignored) {}
             }
+        }
+
+        /**
+         * Same as sendAndCaptureBase64 but off the WebView binder thread.
+         * Invokes window.__tcpCaptureCb(callbackId, jsonString) on the UI thread.
+         */
+        @JavascriptInterface
+        public void sendAndCaptureBase64Async(final String host, final int port,
+                                              final String b64, final int idleMs,
+                                              final String callbackId) {
+            new Thread(new Runnable() {
+                @Override public void run() {
+                    final String json = sendAndCaptureBase64(host, port, b64, idleMs);
+                    if (webView == null) return;
+                    webView.post(new Runnable() {
+                        @Override public void run() {
+                            try {
+                                String id = JSONObject.quote(callbackId != null ? callbackId : "");
+                                String payload = JSONObject.quote(json != null ? json : "{}");
+                                webView.evaluateJavascript(
+                                    "(function(){try{window.__tcpCaptureCb&&window.__tcpCaptureCb("
+                                        + id + "," + payload + ");}catch(e){}})();",
+                                    null);
+                            } catch (Exception ignored) {}
+                        }
+                    });
+                }
+            }, "nexus-tcp-capture").start();
         }
 
         @JavascriptInterface

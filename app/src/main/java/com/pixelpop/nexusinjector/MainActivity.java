@@ -380,31 +380,45 @@ public class MainActivity extends Activity {
     }
 
     public class NativeHttp {
+        /** Bumped by cancelAll(); any download started before the bump aborts at its next read. */
+        private volatile int cancelEpoch = 0;
+
         private String fetchB64(String url) {
+            final int myEpoch = cancelEpoch;
+            HttpURLConnection c = null;
             try {
                 if (!url.startsWith("https://") && !url.startsWith("http://")) return "ERR:bad url";
-                HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+                c = (HttpURLConnection) new URL(url).openConnection();
                 c.setConnectTimeout(8000);
                 c.setReadTimeout(30000);
                 c.setInstanceFollowRedirects(true);
                 c.setRequestProperty("User-Agent", "Nexus-Android");
                 int code = c.getResponseCode();
+                if (myEpoch != cancelEpoch) return "ERR:cancelled";
                 if (code != 200) return "ERR:HTTP " + code;
                 InputStream in = c.getInputStream();
                 ByteArrayOutputStream o = new ByteArrayOutputStream();
                 byte[] b = new byte[16384];
                 int k, total = 0;
                 while ((k = in.read(b)) > 0) {
+                    if (myEpoch != cancelEpoch) { in.close(); return "ERR:cancelled"; }
                     total += k;
                     if (total > 64 * 1024 * 1024) return "ERR:file too large";
                     o.write(b, 0, k);
                 }
                 in.close();
+                if (myEpoch != cancelEpoch) return "ERR:cancelled";
                 return Base64.encodeToString(o.toByteArray(), Base64.NO_WRAP);
             } catch (Exception e) {
+                if (myEpoch != cancelEpoch) return "ERR:cancelled";
                 return "ERR:" + (e.getMessage() != null ? e.getMessage() : "network");
+            } finally {
+                try { if (c != null) c.disconnect(); } catch (Exception ignored) {}
             }
         }
+
+        /** Stop every in-flight download (called when the official-repo toggle switches source). */
+        @JavascriptInterface public void cancelAll() { cancelEpoch++; }
 
         @JavascriptInterface public String getB64(String url) { return fetchB64(url); }
 

@@ -24,11 +24,6 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.net.URL;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -145,42 +140,29 @@ public class MainActivity extends Activity {
 
     public class AndroidTCPInterface {
         private volatile String lastCapture = "";
-        private final ExecutorService netExec = Executors.newCachedThreadPool();
-        private final AtomicInteger captureSeq = new AtomicInteger(1);
 
         private String errTag(Exception e) {
             String m = e.getMessage() != null ? e.getMessage() : "";
             String low = m.toLowerCase();
             if (low.contains("econnrefused") || low.contains("connection refused") || low.contains("failed to connect"))
                 return "ERR:CONN_REFUSED";
-            if (low.contains("etimedout") || low.contains("timed out") || low.contains("timeout"))
+            if (low.contains("etimedout") || low.contains("timed out"))
                 return "ERR:TIMEOUT";
             if (low.contains("enetunreach") || low.contains("ehostunreach") || low.contains("network is unreachable") || low.contains("no route"))
                 return "ERR:UNREACHABLE";
             return "ERR:SEND_FAIL";
         }
 
-        private void forceClose(Socket sock) {
-            if (sock == null) return;
-            try { sock.setSoLinger(true, 0); } catch (Exception ignored) {}
-            try { sock.shutdownOutput(); } catch (Exception ignored) {}
-            try { sock.shutdownInput(); } catch (Exception ignored) {}
-            try { sock.close(); } catch (Exception ignored) {}
-        }
-
-        /**
-         * Fast path: write payload and close. Does NOT wait for console stdout.
-         * Connect 3s, write soTimeout 5s. Use for sequences and UI-critical sends.
-         */
+        /** Upload only (legacy). */
         @JavascriptInterface
         public String sendBase64(String host, int port, String b64) {
             Socket sock = null;
             try {
                 byte[] data = Base64.decode(b64, Base64.DEFAULT);
                 sock = new Socket();
-                sock.connect(new InetSocketAddress(host, port), 3000);
-                sock.setTcpNoDelay(true);
+                sock.connect(new InetSocketAddress(host, port), 4000);
                 sock.setSoTimeout(5000);
+                sock.setTcpNoDelay(true);
                 sock.getOutputStream().write(data);
                 sock.getOutputStream().flush();
                 try { sock.shutdownOutput(); } catch (Exception ignored) {}
@@ -188,27 +170,29 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
                 return errTag(e);
             } finally {
-                forceClose(sock);
+                try { if (sock != null) sock.close(); } catch (Exception ignored) {}
             }
         }
 
         /**
-         * Sync capture with hard limits so a dead console cannot hang the WebView.
-         * idleMs clamped 500..8000; total read window max 12s.
+         * Upload ELF/payload then read stdout/stderr that elfldr wires to this socket
+         * (same model as send_elf_capture.py). idleMs: max wait between recv chunks.
          */
         @JavascriptInterface
         public String sendAndCaptureBase64(String host, int port, String b64, int idleMs) {
             Socket sock = null;
             StringBuilder log = new StringBuilder();
-            long deadline = System.currentTimeMillis() + 12000;
+            final long t0 = System.currentTimeMillis();
             try {
+                /* Keep capture short so the JS bridge is not blocked for minutes */
                 if (idleMs < 500) idleMs = 500;
                 if (idleMs > 8000) idleMs = 8000;
+                final int hardMs = Math.min(15000, Math.max(idleMs + 2000, 4000));
                 byte[] data = Base64.decode(b64, Base64.DEFAULT);
                 sock = new Socket();
-                sock.connect(new InetSocketAddress(host, port), 3000);
-                sock.setTcpNoDelay(true);
+                sock.connect(new InetSocketAddress(host, port), 4000);
                 sock.setSoTimeout(idleMs);
+                sock.setTcpNoDelay(true);
                 sock.getOutputStream().write(data);
                 sock.getOutputStream().flush();
                 try { sock.shutdownOutput(); } catch (Exception ignored) {}
@@ -216,9 +200,10 @@ public class MainActivity extends Activity {
                 byte[] buf = new byte[65536];
                 int n;
                 try {
-                    while (System.currentTimeMillis() < deadline && (n = sock.getInputStream().read(buf)) > 0) {
+                    while ((n = sock.getInputStream().read(buf)) > 0) {
                         log.append(new String(buf, 0, n, StandardCharsets.UTF_8));
-                        sock.setSoTimeout(idleMs);
+                        if (System.currentTimeMillis() - t0 > hardMs)
+                            break;
                     }
                 } catch (java.net.SocketTimeoutException ste) {
                     if (log.length() == 0)
@@ -245,45 +230,8 @@ public class MainActivity extends Activity {
                     return "{\"ok\":false,\"error\":\"ERR:SEND_FAIL\",\"log\":\"\"}";
                 }
             } finally {
-                forceClose(sock);
+                try { if (sock != null) { sock.close(); } } catch (Exception ignored) {}
             }
-        }
-
-        /**
-         * Non-blocking capture: returns job id immediately; result delivered via
-         * window.__nativeCaptureCb(id, jsonString) on the WebView thread.
-         */
-        @JavascriptInterface
-        public String sendAndCaptureBase64Async(String host, int port, String b64, int idleMs) {
-            final int id = captureSeq.getAndIncrement();
-            final String hostF = host;
-            final int portF = port;
-            final String b64F = b64;
-            final int idleF = idleMs;
-            netExec.execute(() -> {
-                String result = sendAndCaptureBase64(hostF, portF, b64F, idleF);
-                final String js = "(function(){try{window.__nativeCaptureCb&&window.__nativeCaptureCb("
-                        + id + "," + JSONObject.quote(result) + ");}catch(e){}})();";
-                if (webView != null) {
-                    webView.post(() -> webView.evaluateJavascript(js, null));
-                }
-            });
-            return String.valueOf(id);
-        }
-
-        /** Cancel is best-effort; sockets are always force-closed after deadline. */
-        @JavascriptInterface
-        public String sendBase64Async(String host, int port, String b64, String callbackId) {
-            final String cb = callbackId != null ? callbackId : "0";
-            netExec.execute(() -> {
-                String result = sendBase64(host, port, b64);
-                final String js = "(function(){try{window.__nativeSendCb&&window.__nativeSendCb("
-                        + JSONObject.quote(cb) + "," + JSONObject.quote(result) + ");}catch(e){}})();";
-                if (webView != null) {
-                    webView.post(() -> webView.evaluateJavascript(js, null));
-                }
-            });
-            return "STARTED";
         }
 
         @JavascriptInterface

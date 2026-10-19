@@ -22,7 +22,7 @@ jobs:
         uses: dawidd6/action-download-artifact@v6
         with:
           workflow: build.yml
-          name: nexus-apk
+          name: Nexus-Payload-Injector-APK
           # Prefer artifact from the same commit as the tag
           commit: ${{ github.sha }}
           # If this commit never built, fall back to the newest successful Build run
@@ -36,7 +36,7 @@ jobs:
         uses: dawidd6/action-download-artifact@v6
         with:
           workflow: build.yml
-          name: nexus-apk
+          name: Nexus-Payload-Injector-APK
           search_artifacts: true
           workflow_conclusion: success
           path: artifact

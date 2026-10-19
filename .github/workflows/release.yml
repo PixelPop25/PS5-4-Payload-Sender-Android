@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+env:
+  ANDROID_HOME: ${{ github.workspace }}/android-sdk
+  ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
@@ -22,45 +26,60 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Accept licenses + install SDK packages
+      # Manual SDK install — avoids android-actions/setup-android license flakiness
+      - name: Install Android cmdline-tools
         run: |
-          set -e
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          ls "$ANDROID_HOME/platforms"
-          ls "$ANDROID_HOME/build-tools"
+          set -euo pipefail
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          curl -fsSL -o /tmp/cmdtools.zip \
+            https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -qo /tmp/cmdtools.zip -d "$ANDROID_HOME/cmdline-tools"
+          # Required layout: cmdline-tools/latest/bin/sdkmanager
+          mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
 
-      - name: Write local.properties
-        run: echo "sdk.dir=$ANDROID_HOME" > local.properties
+      - name: Accept licenses + install platform 34
+        run: |
+          set -euo pipefail
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          # Accept every license non-interactively (yes spam is the reliable way)
+          yes | "$SDKM" --sdk_root="$ANDROID_HOME" --licenses >/tmp/sdk-licenses.txt || true
+          # Show last lines so CI logs prove licenses were accepted
+          tail -20 /tmp/sdk-licenses.txt || true
+          "$SDKM" --sdk_root="$ANDROID_HOME" \
+            "platforms;android-34" \
+            "build-tools;34.0.0" \
+            "platform-tools"
+          test -d "$ANDROID_HOME/platforms/android-34"
+          test -d "$ANDROID_HOME/build-tools/34.0.0"
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          cat local.properties
 
-      # This repo's ./gradlew is a stub and gradle-wrapper.jar is NOT checked in.
-      # Install Gradle 8.7 and call it directly (matches gradle-wrapper.properties).
       - name: Install Gradle 8.7
         run: |
-          set -e
-          curl -fsSL -o /tmp/gradle-8.7-bin.zip https://services.gradle.org/distributions/gradle-8.7-bin.zip
+          set -euo pipefail
+          curl -fsSL -o /tmp/gradle-8.7-bin.zip \
+            https://services.gradle.org/distributions/gradle-8.7-bin.zip
           sudo unzip -qo /tmp/gradle-8.7-bin.zip -d /opt
           echo "/opt/gradle-8.7/bin" >> "$GITHUB_PATH"
           /opt/gradle-8.7/bin/gradle --version
 
       - name: Build release APK
         run: |
-          set -e
+          set -euo pipefail
+          export ANDROID_HOME ANDROID_SDK_ROOT
           gradle assembleRelease --no-daemon --stacktrace
           find app/build/outputs/apk -type f -name '*.apk' -ls
 
       - name: Rename APK to tag
         id: apk
         run: |
-          set -e
+          set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
           SRC=$(find app/build/outputs/apk -type f -name '*.apk' | head -1)
           if [ -z "$SRC" ]; then
-            echo "No APK found under app/build/outputs/apk"
+            echo "No APK found"
             find app/build -type f -name '*.apk' || true
             exit 1
           fi

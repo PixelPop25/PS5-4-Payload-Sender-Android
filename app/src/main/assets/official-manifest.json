@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "name": "Kstuff Lite (Echo)",
+      "repo": "EchoStretch/kstuff-lite",
+      "asset": "kstuff.elf"
+    },
+    {
+      "name": "Kstuff Lite (Drakmor)",
+      "repo": "drakmor/kstuff-lite",
+      "asset": "kstuff.elf"
+    },
+    {
+      "name": "ShadowMountPlus",
+      "repo": "drakmor/ShadowMountPlus",
+      "asset": "*ShadowMount*.elf"
+    },
+    {
+      "name": "FTP Server",
+      "repo": "ps5-payload-dev/ftpsrv",
+      "asset": "*.elf"
+    },
+    {
+      "name": "PS5 Upload",
+      "repo": "phantomptr/ps5upload",
+      "asset": "*.elf"
+    },
+    {
+      "name": "NanoDNS",
+      "repo": "drakmor/nanoDNS",
+      "asset": "nanodns.elf"
+    },
+    {
+      "name": "Payload Manager",
+      "repo": "itsPLK/ps5-payload-manager",
+      "asset": "pldmgr*.elf"
+    },
+    {
+      "name": "CheatRunner",
+      "repo": "notmaj0r/CheatRunner",
+      "asset": "*.elf"
+    },
+    {
+      "name": "OnionHEN",
+      "repo": "aydencharles/onionHEN",
+      "asset": "OnionHEN.elf"
+    },
+    {
+      "name": "EtaHEN",
+      "repo": "etaHEN/etaHEN",
+      "asset": "*.bin"
+    },
+    {
+      "name": "BFPilot",
+      "repo": "ItsBlurf/BFpilot",
+      "asset": "*.elf"
+    },
+    {
+      "name": "ELF Loader",
+      "repo": "ps5-payload-dev/elfldr",
+      "asset": "*.elf"
+    }
+  ]
+}

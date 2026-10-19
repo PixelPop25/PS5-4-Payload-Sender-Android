@@ -14,8 +14,8 @@
       --ps5-error: #ff4d6d;
       --oled-black: #000000;
       --bg-gradient: radial-gradient(circle at 80% 0%, #0a1428 0%, #000000 55%, #000000 100%);
-      --glass-bg: rgba(255, 255, 255, 0.03);
-      --glass-border: rgba(255, 255, 255, 0.10);
+      --glass-bg: rgba(255, 255, 255, 0.04);
+      --glass-border: rgba(255, 255, 255, 0.08);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
@@ -42,10 +42,10 @@
 
     .app-card {
       position: relative; z-index: 10;
-      /* Literal glass — near-clear so wallpaper text stays readable */
+      /* Near-clear glass — wallpaper text stays readable */
       background: var(--glass-bg);
-      backdrop-filter: blur(4px) saturate(1.02);
-      -webkit-backdrop-filter: blur(4px) saturate(1.02);
+      backdrop-filter: blur(1px) saturate(1.0);
+      -webkit-backdrop-filter: blur(1px) saturate(1.0);
       border: 1px solid var(--glass-border);
       border-radius: 28px;
       padding: 25px 22px; width: 94%; max-width: 430px;
@@ -565,6 +565,12 @@
 
     .delay-clear-row { display: flex; gap: 8px; align-items: flex-end; }
     .delay-clear-row .input-group { flex: 1; }
+    .payload-dl-spin {
+      display: inline-block; width: 14px; height: 14px; margin-right: 8px;
+      border: 2px solid rgba(77,157,255,0.25); border-top-color: #4d9dff;
+      border-radius: 50%; animation: pdlspin 0.7s linear infinite; vertical-align: middle;
+    }
+    @keyframes pdlspin { to { transform: rotate(360deg); } }
     .btn-clear-list {
       flex-shrink: 0; height: 42px; padding: 0 14px;
       background: transparent; border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.4);
@@ -572,6 +578,12 @@
       letter-spacing: 0.5px; cursor: pointer; transition: all 0.2s ease; white-space: nowrap;
       display: flex; align-items: center; gap: 5px;
     }
+    .payload-dl-spin {
+      display: inline-block; width: 14px; height: 14px; margin-right: 8px;
+      border: 2px solid rgba(77,157,255,0.25); border-top-color: #4d9dff;
+      border-radius: 50%; animation: pdlspin 0.7s linear infinite; vertical-align: middle;
+    }
+    @keyframes pdlspin { to { transform: rotate(360deg); } }
     .btn-clear-list:hover {
       border-color: var(--ps5-error); color: var(--ps5-error);
       background: rgba(255, 42, 95, 0.08); box-shadow: 0 0 10px rgba(255, 42, 95, 0.15);
@@ -1153,7 +1165,7 @@
       <div class="delay-clear-row">
         <div class="input-group">
           <label data-i18n="delayLabel">Injection Delay (ms)</label>
-          <input type="number" id="delay" value="2000" oninput="saveConfigDebounced()">
+          <input type="number" id="delay" value="4000" oninput="saveConfigDebounced()">
         </div>
         <button class="btn-clear-list" onclick="clearPayloadList()" title="Clear list">🗑 Clear</button>
       </div>
@@ -1456,11 +1468,12 @@
     let currentEnv = 'luac0re';
     let localFolderMode = false;
     let payloadsLoaded = false;
-    let _downloadingKey = null;
+    let _downloadingKey = null; try { updateDownloadSpinners(); } catch (e) {}
     let _lastExploitPortMem = null; // in-memory; avoids await glitch on tab switch
     let _pendingCache = null; // {key,b64} commit previous only when next download starts
     let localPayloadFiles = [];
     let _syncLock = false;
+    let _syncGen = 0; // bump to cancel in-flight payload downloads
 
     window.onload = async () => {
       // Boot badge draws + flies to header while storage warms up
@@ -1482,16 +1495,7 @@
       if (lep) _lastExploitPortMem = lep;
       else if (port) _lastExploitPortMem = port;
       const delay = boot['nexus_delay'];
-      if (delay != null && delay !== '') {
-        const d = parseInt(delay, 10);
-        /* Migrate old 4000/5000 defaults to 2000; keep intentional custom values */
-        if (!isNaN(d) && d >= 500 && d !== 4000 && d !== 5000)
-          document.getElementById('delay').value = String(d);
-        else
-          document.getElementById('delay').value = '2000';
-      } else {
-        document.getElementById('delay').value = '2000';
-      }
+      if (delay) document.getElementById('delay').value = delay;
 
       // Defaults: all effects DISABLED until the user turns them on
       let bVal = boot['nexus_disable_bubbles'];
@@ -1740,23 +1744,39 @@
       officialReposEnabled = !!on;
       var el = document.getElementById('officialReposToggle');
       if (el) el.checked = officialReposEnabled;
-      await StorageEngine.setItem('nexus_official_repos', officialReposEnabled ? 'true' : 'false');
-      // Only update source *list* metadata — never download here. User taps Sync.
+      // Cancel any in-flight Nexus/official downloads immediately
+      _syncGen++;
+      _downloadingKey = null; try { updateDownloadSpinners(); } catch (e) {}
+      StorageEngine.setItem('nexus_official_repos', officialReposEnabled ? 'true' : 'false').catch(function(){});
+      // UI-only work here; network later via Sync
       if (officialReposEnabled) {
         try { await seedOfficialSources(); } catch (e) {}
       }
-      try { await renderPayloads(); } catch (e) {}
+      try {
+        setTimeout(function() {
+          renderPayloads().catch(function(){});
+        }, 0);
+      } catch (e) {}
       showToast(officialReposEnabled
         ? T('toast_official_on', 'Official repos on — tap Sync to download')
-        : T('toast_official_off_ok', 'Official repos off'));
+        : T('toast_official_off_ok', 'Official repos off — downloads cancelled'));
     }
 
     async function seedOfficialSources() {
       if (!officialReposEnabled) return;
-      // Merge: official names overwrite matching entries; user-added custom sources kept
-      const officialNames = new Set(OFFICIAL_SOURCES.map(s => s.name));
+      var list = OFFICIAL_SOURCES.slice();
+      try {
+        var r = await fetch('file:///android_asset/official-manifest.json');
+        if (!r.ok) r = await fetch('official-manifest.json');
+        if (r.ok) {
+          var man = await r.json();
+          if (man && Array.isArray(man.sources) && man.sources.length)
+            list = man.sources;
+        }
+      } catch (e) {}
+      const officialNames = new Set(list.map(s => s.name));
       const custom = (await getSources()).filter(s => !officialNames.has(s.name));
-      const merged = OFFICIAL_SOURCES.map(s => ({ name: s.name, repo: s.repo, asset: s.asset || '*.elf' })).concat(custom);
+      const merged = list.map(s => ({ name: s.name, repo: s.repo, asset: s.asset || '*.elf' })).concat(custom);
       await StorageEngine.setItem('nexus_sources', JSON.stringify(merged));
       return merged;
     }
@@ -1809,7 +1829,7 @@
           } catch (dlE) {
             setRowDownloadState(id, s.name, 'sync');
             throw dlE;
-          } finally { _downloadingKey = null; }
+          } finally { _downloadingKey = null; try { updateDownloadSpinners(); } catch (e) {} }
           // Keep display name clean (no version tag) per product request
           rel = rel.filter(x => x.id !== id); rel.push({ id, name: s.name, tag: tag }); updated++;
         } catch (e) { showToast(`${s.name}: ${e.message}`, 'error'); await new Promise(r => setTimeout(r, 1200)); }
@@ -1849,7 +1869,7 @@
       }
       _macroBusy = true;
       try {
-        const delayMs = Math.max(parseInt(document.getElementById('delay').value, 10) || 2000, 500);
+        const delayMs = Math.max(parseInt(document.getElementById('delay').value) || 4000, 500);
         const wait = ms => new Promise(r => setTimeout(r, ms));
         await wait(delayMs);  // give the exploit time to land
         for (let i = 0; i < l.payloads.length; i++) {
@@ -1857,7 +1877,7 @@
           const b64 = await StorageEngine.getItem(p.source === 'cloud' ? `cloud_cache_${p.id}` : `local_cache_${p.id || 'local_' + p.name}`);
           if (!b64) { showToast(T('toast_seq_skip', "Skipped — asset unmapped."), "error"); continue; }
           showToast(`${l.name}: ${i + 1}/${l.payloads.length} ${p.name}`);
-          executeRawStream(b64, 9021, p.name, { fast: true });
+          executeRawStream(b64, 9021, p.name); /* upload only */
           if (i < l.payloads.length - 1) await wait(delayMs);
         }
       } finally { _macroBusy = false; }
@@ -1893,45 +1913,59 @@
     function handleBgUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
+      // Instant preview (no IDB on UI path) — store in background
+      try {
+        if (window._bgObjectUrl) { try { URL.revokeObjectURL(window._bgObjectUrl); } catch (e) {} }
+        window._bgObjectUrl = URL.createObjectURL(file);
+      } catch (e) { window._bgObjectUrl = null; }
+
       if (file.type && file.type.startsWith('video/')) {
+        if (window._bgObjectUrl) showWallpaperVideo(window._bgObjectUrl);
+        showToast(T('toast_wallpaper_updated', "Wallpaper updated!"));
         const reader = new FileReader();
-        reader.onload = async function(e) {
+        reader.onload = function(e) {
           const dataUrl = e.target.result;
-          try {
-            await StorageEngine.setItem('nexus_bg_video', dataUrl);
-            await StorageEngine.removeItem('nexus_bg');
-            showWallpaperVideo(dataUrl);
-            showToast(T('toast_wallpaper_updated', "Wallpaper updated!"));
-          } catch (err) {
-            showToast(T('toast_wallpaper_too_big', "Video too large for storage, try a smaller one."), "error");
-          }
+          setTimeout(function() {
+            StorageEngine.setItem('nexus_bg_video', dataUrl).then(function() {
+              return StorageEngine.removeItem('nexus_bg');
+            }).catch(function() {
+              showToast(T('toast_wallpaper_too_big', "Video too large for storage, try a smaller one."), "error");
+            });
+          }, 0);
         };
         reader.onerror = function() {
           showToast(T('toast_wallpaper_too_big', "Could not read video."), "error");
         };
         reader.readAsDataURL(file);
+        event.target.value = '';
         return;
       }
+      const wv = document.getElementById('wallpaper-video');
+      if (wv) { try { wv.pause(); } catch (e) {} wv.removeAttribute('src'); wv.style.display = 'none'; }
+      if (window._bgObjectUrl) {
+        document.getElementById('wallpaper-layer').style.backgroundImage = 'url(' + window._bgObjectUrl + ')';
+      }
+      const g = document.getElementById('gradient-layer'); if (g) g.style.background = 'transparent';
+      showToast(T('toast_wallpaper_updated', "Wallpaper updated!"));
       const reader = new FileReader();
-      reader.onload = async function(e) {
+      reader.onload = function(e) {
         const b64 = e.target.result;
-        const wv = document.getElementById('wallpaper-video');
-        if (wv) { try { wv.pause(); } catch (e) {} wv.removeAttribute('src'); wv.style.display = 'none'; }
-        document.getElementById('wallpaper-layer').style.backgroundImage = 'url(' + b64 + ')';
-        const g = document.getElementById('gradient-layer'); if (g) g.style.background = 'transparent';
-        try {
-          await StorageEngine.setItem('nexus_bg', b64);
-          await StorageEngine.removeItem('nexus_bg_video');
-          showToast(T('toast_wallpaper_updated', "Wallpaper updated!"));
-        } catch (err) {
-          showToast(T('toast_wallpaper_too_big', "Image too large for storage, try a smaller one."), "error");
-        }
+        setTimeout(function() {
+          StorageEngine.setItem('nexus_bg', b64).then(function() {
+            return StorageEngine.removeItem('nexus_bg_video');
+          }).catch(function() {
+            showToast(T('toast_wallpaper_too_big', "Image too large for storage, try a smaller one."), "error");
+          });
+        }, 0);
       };
       reader.onerror = function() {
         showToast(T('toast_wallpaper_too_big', "Could not read image."), "error");
       };
+
       reader.readAsDataURL(file);
+      event.target.value = '';
     }
+
 
     // ── Tablet split view (Exploits left / Payloads right) ──
     // Keep in sync with the tablet-landscape @media rule in the CSS.
@@ -2034,19 +2068,20 @@
         function go() {
           splash.classList.add('ready');
           if (vid) {
+            // 1.2x normal speed; finish when video ends (no hard max)
+            var applyRate = function() { try { vid.playbackRate = 1.3; } catch (e) {} };
+            if (vid.readyState >= 1) applyRate();
+            else vid.addEventListener('loadedmetadata', applyRate, { once: true });
             vid.play().catch(function(){});
-            // Start HTML fade slightly before video ends so it syncs cleanly
-            // (video was trimmed to ~4.33s at the point screen begins to darken)
             var startFade = function() {
-              var remaining = (vid.duration || 4.3) - vid.currentTime;
-              if (remaining <= 0.55) finish();
-              else setTimeout(finish, Math.max(0, (remaining - 0.55) * 1000));
+              var remaining = ((vid.duration || 4.3) / 1.3) - vid.currentTime;
+              if (remaining <= 0.45) finish();
+              else setTimeout(finish, Math.max(0, (remaining - 0.45) * 1000));
             };
             if (vid.readyState >= 1) startFade();
             else vid.addEventListener('loadedmetadata', startFade, { once: true });
             vid.addEventListener('ended', finish, { once: true });
-            // safety net
-            setTimeout(finish, 5500);
+            setTimeout(finish, 20000); // stall safety only
           } else {
             setTimeout(finish, 2400);
           }
@@ -2474,21 +2509,24 @@
       } catch (e) {}
 
       _syncLock = true;
+      const myGen = _syncGen;
       let downloaded = 0;
       try {
         try {
+          if (myGen !== _syncGen) return;
           const res = await fetch(CLOUD_URL + 'manifest.json');
           if (res.ok) {
             const manifest = await res.json();
             await StorageEngine.setItem('nexus_cloud_manifest', JSON.stringify(manifest));
             const payloadItems = manifest.payloads || [];
             for (let i = 0; i < payloadItems.length; i++) {
+              if (myGen !== _syncGen) break;
               const item = payloadItems[i];
               const cacheKey = item.id ? ('cloud_cache_' + item.id) : ('cloud_cache_' + (item.file || item.name));
               if (await cacheHas(cacheKey)) continue;
               try {
                 await beginNextDownload();
-                _downloadingKey = cacheKey;
+                _downloadingKey = cacheKey; try { updateDownloadSpinners(); } catch (e) {}
                 setRowDownloadState(item.id, item.file || item.name, 'downloading');
                 const fRes = await fetch(CLOUD_URL + item.file);
                 if (!fRes.ok) {
@@ -2502,7 +2540,7 @@
               } catch (e2) {
                 setRowDownloadState(item.id, item.file || item.name, 'sync');
               } finally {
-                _downloadingKey = null;
+                _downloadingKey = null; try { updateDownloadSpinners(); } catch (e) {}
               }
             }
             await commitPendingCache();
@@ -2582,6 +2620,8 @@
 
 
     async function syncCloud(showerr = 1) {
+      const myGen = _syncGen;
+
       if (localFolderMode) {
         localFolderMode = false;
         updateArmoryTitle();
@@ -2725,25 +2765,27 @@
       const activeLoadoutId = loadoutSelector ? loadoutSelector.value : 'default';
       const isCloudArmory = !localFolderMode && activeLoadoutId === 'default';
 
-      // Cloud armory: only deselect — do not remove rows or rebuild list
+      // Cloud armory: deselect immediately, persist NOW (before any animation)
       if (isCloudArmory) {
         const checked = list ? Array.from(list.querySelectorAll('.payload-cb-row.is-checked')) : [];
+        if (checked.length === 0) {
+          showToast(T('toast_nothing_selected', 'Nothing selected'), 'error');
+          return;
+        }
+        checked.forEach(function(row) {
+          row.classList.remove('is-checked');
+          var cb = row.querySelector('input[type="checkbox"]');
+          if (cb) cb.checked = false;
+        });
+        await persistPayloadSelection(); // save empty selection on the spot
         checked.forEach(function(row, i) {
           setTimeout(function() {
-            row.classList.remove('is-checked');
-            var cb = row.querySelector('input[type="checkbox"]');
-            if (cb) cb.checked = false;
             row.classList.remove('deselect-bump');
             void row.offsetWidth;
             row.classList.add('deselect-bump');
-          }, i * 40);
+          }, i * 30);
         });
-        await persistPayloadSelection();
-        if (checked.length === 0) {
-          showToast(T('toast_nothing_selected', 'Nothing selected'), 'error');
-        } else {
-          showToast(T('toast_deselected', 'Selection cleared'));
-        }
+        showToast(T('toast_deselected', 'Selection cleared'));
         return;
       }
 
@@ -2929,16 +2971,47 @@
       }
 
       rowEl.remove();
-      if (loadoutVal === 'default' && localFolderMode) await renderPayloads();  // refresh rows so indexes can't go stale
       await persistLocalStash();
       await persistPayloadSelection();
+
+      if (loadoutVal === 'default' && localFolderMode) {
+        if (localPayloadFiles.length === 0) {
+          localFolderMode = false;
+          await persistLocalStash();
+          updateArmoryTitle();
+          payloadsLoaded = false;
+          try { await ensurePayloadsLoadedBackground(); } catch (e) {}
+          try { await renderPayloads(); } catch (e) {}
+          showToast(T('toast_item_removed', 'Removed ✓ · back to cloud armory'));
+          return;
+        }
+        await renderPayloads();
+      }
       showToast(T('toast_item_removed', "Removed ✓"));
 
-      // If list now empty, show empty state
       const list = document.getElementById('payload-cb-list');
-      if (list.querySelectorAll('.payload-cb-row').length === 0) {
+      if (list && list.querySelectorAll('.payload-cb-row').length === 0) {
         list.innerHTML = `<div class="payload-cb-empty">${dictionary[currentLang].armoryEmpty}</div>`;
       }
+    }
+
+    function updateDownloadSpinners() {
+      var rows = document.querySelectorAll('#payload-cb-list .payload-cb-row');
+      rows.forEach(function(row) {
+        var id = row.dataset.id || '';
+        var key = row.dataset.source === 'cloud' ? ('cloud_cache_' + id) : ('local_cache_' + id);
+        var lab = row.querySelector('.cb-label');
+        if (!lab) return;
+        var spinning = (_downloadingKey && (_downloadingKey === key || _downloadingKey.indexOf(id) >= 0));
+        var spin = lab.querySelector('.payload-dl-spin');
+        if (spinning && !spin) {
+          spin = document.createElement('span');
+          spin.className = 'payload-dl-spin';
+          lab.insertBefore(spin, lab.firstChild);
+        } else if (!spinning && spin) {
+          spin.remove();
+        }
+      });
     }
 
     async function renderPayloads() {
@@ -3205,51 +3278,130 @@
 
     let _streamBusy = false;
 
+
+    /* Async capture callback from AndroidTCP.sendAndCaptureBase64Async */
+    window.__tcpCaptureCb = function(id, jsonStr) {
+      try {
+        var parsed = null;
+        try { parsed = JSON.parse(jsonStr); } catch (e) { parsed = null; }
+        var ip = (document.getElementById('ip') && document.getElementById('ip').value) || '';
+        var port = (document.getElementById('port') && document.getElementById('port').value) || '';
+        var target = ip + ':' + port;
+        if (parsed && parsed.log) {
+          try { setSocketLog(parsed.log, target, _lastPayloadName); } catch (e) {}
+        }
+        if (window.__tcpCaptureWaiters && window.__tcpCaptureWaiters[id]) {
+          var fn = window.__tcpCaptureWaiters[id];
+          delete window.__tcpCaptureWaiters[id];
+          try { fn(parsed); } catch (e) {}
+        }
+      } catch (e) {}
+    };
+    window.__tcpCaptureWaiters = window.__tcpCaptureWaiters || {};
+    var _tcpCbSeq = 0;
+    function captureLogAsync(base64Data, portOverride, payloadName) {
+      if (!window.AndroidTCP || typeof AndroidTCP.sendAndCaptureBase64Async !== 'function') return;
+      var ip = document.getElementById('ip').value;
+      var port = (portOverride != null && portOverride !== undefined)
+        ? portOverride
+        : parseInt(document.getElementById('port').value, 10);
+      if (payloadName) _lastPayloadName = payloadName;
+      var id = 'c' + (++_tcpCbSeq);
+      try {
+        AndroidTCP.sendAndCaptureBase64Async(ip, port, base64Data, 2500, id);
+      } catch (e) {}
+    }
+
     function executeRawStream(base64Data, portOverride, payloadName, opts) {
       opts = opts || {};
-      const fast = !!opts.fast; /* sequence: upload only, do not block on log drain */
+      /* fast=true: upload only (sequence / no log wait). Default send is also
+         upload-first so UI never blocks on elfldr stdout. Optional short
+         capture runs only when opts.capture === true. */
+      const wantCapture = opts.capture === true;
       const ip = document.getElementById('ip').value;
       const port = (portOverride != null && portOverride !== undefined)
         ? portOverride
         : parseInt(document.getElementById('port').value, 10);
       const target = ip + ':' + port;
       if (payloadName) _lastPayloadName = payloadName;
-      /* Sequence / multi-send: never wait on socket log (console crash hangs Wi‑Fi path) */
-      if (fast && window.AndroidTCP && typeof AndroidTCP.sendBase64 === 'function') {
+
+      if (!window.AndroidTCP) {
+        showToast('Native TCP bridge missing', 'error');
+        return false;
+      }
+
+      /* Sequence / explicit fast: upload only, never wait for logs */
+      if (opts.asyncLog === false && typeof AndroidTCP.sendBase64 === 'function') {
         try {
           const r = AndroidTCP.sendBase64(ip, port, base64Data);
           if (r && r !== 'ok') {
             showToast(shortErr(r), 'error');
             return false;
           }
-          showToast('Sent ' + (payloadName || ''));
+          showToast(payloadName ? ('Sent ' + payloadName) : 'Sent');
           return true;
         } catch (e) {
           showToast(shortErr(e && e.message ? e.message : e), 'error');
           return false;
         }
       }
-      // Prefer capture path (elfldr wires payload stdout back on this socket)
-      if (window.AndroidTCP && typeof AndroidTCP.sendAndCaptureBase64 === 'function') {
+
+      /* Single send: same-socket write+read on a background Java thread.
+         UI returns immediately; log lands later via __tcpCaptureCb. */
+      if (!wantCapture && typeof AndroidTCP.sendAndCaptureBase64Async === 'function') {
         try {
-          const idleMs = Math.min(3000, Math.max(500, parseInt(opts.idleMs, 10) || 2500));
+          var id = 'c' + (++_tcpCbSeq);
+          window.__tcpCaptureWaiters = window.__tcpCaptureWaiters || {};
+          window.__tcpCaptureWaiters[id] = function(parsed) {
+            if (!parsed) return;
+            if (parsed.ok) {
+              /* toast already shown on send */
+            } else if (parsed.error) {
+              try { showToast(shortErr(parsed.error), 'error'); } catch (e) {}
+            }
+          };
+          AndroidTCP.sendAndCaptureBase64Async(ip, port, base64Data, 2500, id);
+          showToast(payloadName ? ('Sent ' + payloadName) : 'Sent');
+          return true;
+        } catch (e) {
+          /* fall through to sendBase64 */
+        }
+      }
+
+      if (typeof AndroidTCP.sendBase64 === 'function') {
+        try {
+          const r = AndroidTCP.sendBase64(ip, port, base64Data);
+          if (r && r !== 'ok') {
+            showToast(shortErr(r), 'error');
+            return false;
+          }
+          showToast(payloadName ? ('Sent ' + payloadName) : 'Sent');
+          return true;
+        } catch (e) {
+          showToast(shortErr(e && e.message ? e.message : e), 'error');
+          return false;
+        }
+      }
+
+      /* Optional short capture (never 120s — that freezes WebView bridge) */
+      if (wantCapture && typeof AndroidTCP.sendAndCaptureBase64 === 'function') {
+        try {
+          const idleMs = Math.min(3000, Math.max(500, parseInt(opts.idleMs, 10) || 2000));
           const raw = AndroidTCP.sendAndCaptureBase64(ip, port, base64Data, idleMs);
           let parsed = null;
           try { parsed = JSON.parse(raw); } catch (je) { parsed = null; }
           if (parsed && parsed.ok) {
-            setSocketLog(parsed.log || '', target, _lastPayloadName);
-            if (parsed.log && String(parsed.log).trim().length)
-              showToast('Sent · log ' + (parsed.bytes || 0) + ' B');
-            else
-              showToast('Sent (no socket output)');
+            try { setSocketLog(parsed.log || '', target, _lastPayloadName); } catch (e) {}
+            showToast(parsed.log && String(parsed.log).trim().length
+              ? ('Sent · log ' + (parsed.bytes || 0) + ' B')
+              : 'Sent (no socket output)');
             return true;
           }
           if (parsed && !parsed.ok) {
-            if (parsed.log) setSocketLog(parsed.log, target, _lastPayloadName);
+            if (parsed.log) try { setSocketLog(parsed.log, target, _lastPayloadName); } catch (e) {}
             showToast(shortErr(parsed.error || 'ERR:SEND_FAIL'), 'error');
             return false;
           }
-          // unexpected non-JSON
           showToast(shortErr(raw || 'ERR:SEND_FAIL'), 'error');
           return false;
         } catch (e) {
@@ -3257,14 +3409,16 @@
           return false;
         }
       }
-      if (window.AndroidTCP && typeof AndroidTCP.sendBase64 === 'function') {
+
+      /* Fallback */
+      if (typeof AndroidTCP.sendBase64 === 'function') {
         try {
           const r = AndroidTCP.sendBase64(ip, port, base64Data);
           if (r && r !== 'ok') {
             showToast(shortErr(r), 'error');
             return false;
           }
-          showToast('Sent (no capture bridge)');
+          showToast('Sent');
           return true;
         } catch (e) {
           showToast(shortErr(e && e.message ? e.message : e), 'error');
@@ -3314,7 +3468,7 @@
       const progressFill = document.getElementById('injectProgressFill');
       const originalText = dictionary[currentLang].btnInjectSeq;
       const btn = document.getElementById('injectSeqBtn');
-      const delayMs = Math.max(parseInt(document.getElementById('delay').value, 10) || 2000, 500);
+      const delayMs = Math.max(parseInt(document.getElementById('delay').value, 10) || 4000, 500);
 
       btn.disabled = true;
       progressFill.style.width = '0%';
@@ -3350,13 +3504,14 @@
         if (!b64Data) { showToast(T('toast_seq_skip', "Skipped — asset unmapped."), "error"); continue; }
 
         const rowName = (card.querySelector('.cb-label') && card.querySelector('.cb-label').textContent) || 'payload';
-        executeRawStream(b64Data, getPayloadPort(), rowName, { fast: true });
+        executeRawStream(b64Data, getPayloadPort(), rowName, { asyncLog: false }); /* upload only */
+        await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
 
         if (i < checkedRows.length - 1) await new Promise(r => setTimeout(r, delayMs));
       }
 
       // Hold full bar briefly before reset
-      await new Promise(r => setTimeout(r, 800));
+      await new Promise(r => setTimeout(r, 600));
       progressFill.style.width = '0%';
       btnTextSpan.textContent = originalText;
       btn.disabled = false;

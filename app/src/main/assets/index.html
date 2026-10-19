@@ -15,7 +15,7 @@
       --oled-black: #000000;
       --bg-gradient: radial-gradient(circle at 80% 0%, #0a1428 0%, #000000 55%, #000000 100%);
       --glass-bg: rgba(255, 255, 255, 0.04);
-      --glass-border: rgba(255, 255, 255, 0.08);
+      --glass-border: rgba(255, 255, 255, 0.10);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
@@ -42,10 +42,13 @@
 
     .app-card {
       position: relative; z-index: 10;
-      /* Near-clear glass — wallpaper text stays readable */
+      /* Literal glass — near-clear so wallpaper text stays readable */
       background: var(--glass-bg);
-      backdrop-filter: blur(1px) saturate(1.0);
-      -webkit-backdrop-filter: blur(1px) saturate(1.0);
+      /* No blur: wallpaper text stays fully readable through the card (and no per-frame blur cost).
+         Want frosted glass back? Replace the two lines below with
+           backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); */
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
       border: 1px solid var(--glass-border);
       border-radius: 28px;
       padding: 25px 22px; width: 94%; max-width: 430px;
@@ -565,12 +568,6 @@
 
     .delay-clear-row { display: flex; gap: 8px; align-items: flex-end; }
     .delay-clear-row .input-group { flex: 1; }
-    .payload-dl-spin {
-      display: inline-block; width: 14px; height: 14px; margin-right: 8px;
-      border: 2px solid rgba(77,157,255,0.25); border-top-color: #4d9dff;
-      border-radius: 50%; animation: pdlspin 0.7s linear infinite; vertical-align: middle;
-    }
-    @keyframes pdlspin { to { transform: rotate(360deg); } }
     .btn-clear-list {
       flex-shrink: 0; height: 42px; padding: 0 14px;
       background: transparent; border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.4);
@@ -578,12 +575,6 @@
       letter-spacing: 0.5px; cursor: pointer; transition: all 0.2s ease; white-space: nowrap;
       display: flex; align-items: center; gap: 5px;
     }
-    .payload-dl-spin {
-      display: inline-block; width: 14px; height: 14px; margin-right: 8px;
-      border: 2px solid rgba(77,157,255,0.25); border-top-color: #4d9dff;
-      border-radius: 50%; animation: pdlspin 0.7s linear infinite; vertical-align: middle;
-    }
-    @keyframes pdlspin { to { transform: rotate(360deg); } }
     .btn-clear-list:hover {
       border-color: var(--ps5-error); color: var(--ps5-error);
       background: rgba(255, 42, 95, 0.08); box-shadow: 0 0 10px rgba(255, 42, 95, 0.15);
@@ -1208,6 +1199,7 @@
     </div>
   </div>
 
+  <script src="nexus_net.js"></script>
   <script>
     // ── StorageEngine: hybrid ──
     // Small settings → Android SharedPreferences (fast, survives restarts)
@@ -1305,6 +1297,37 @@
           try { if (window.AndroidNativeStorage) window.AndroidNativeStorage.removeItem(key); } catch (e) {}
           try { await this._idbDel(key); } catch (e) {}
         } catch (e) { console.error("Storage delete failure:", key, e); }
+      },
+      /** Cheap existence check — counts keys, never loads the (multi-MB) value. */
+      hasMany: async function(keys) {
+        const out = {};
+        (keys || []).forEach(function(k) { out[k] = false; });
+        if (!keys || !keys.length) return out;
+        try {
+          const db = await this.initDB();
+          await new Promise(function(resolve) {
+            const tx = db.transaction("store", "readonly");
+            const os = tx.objectStore("store");
+            keys.forEach(function(k) {
+              const r = os.count(k);
+              r.onsuccess = function() { out[k] = r.result > 0; };
+            });
+            tx.oncomplete = resolve; tx.onerror = resolve; tx.onabort = resolve;
+          });
+        } catch (e) { console.error("Storage hasMany failure:", e); }
+        return out;
+      },
+      has: async function(key) {
+        if (!key) return false;
+        const r = await this.hasMany([key]);
+        if (r[key]) return true;
+        try { if (window.AndroidNativeStorage) { const n = window.AndroidNativeStorage.getItem(key); return n != null && n !== ''; } } catch (e) {}
+        return false;
+      },
+      /** Blobs go straight into IndexedDB (no base64 inflation, no giant strings). */
+      putBlob: async function(key, blob) { await this._idbSet(key, blob); },
+      getBlob: async function(key) {
+        try { const v = await this._idbGet(key); return (v && typeof v !== 'string') ? v : null; } catch (e) { return null; }
       },
       getItems: async function(keys) {
         try {
@@ -1468,12 +1491,8 @@
     let currentEnv = 'luac0re';
     let localFolderMode = false;
     let payloadsLoaded = false;
-    let _downloadingKey = null; try { updateDownloadSpinners(); } catch (e) {}
     let _lastExploitPortMem = null; // in-memory; avoids await glitch on tab switch
-    let _pendingCache = null; // {key,b64} commit previous only when next download starts
     let localPayloadFiles = [];
-    let _syncLock = false;
-    let _syncGen = 0; // bump to cancel in-flight payload downloads
 
     window.onload = async () => {
       // Boot badge draws + flies to header while storage warms up
@@ -1529,8 +1548,9 @@
       if (savedVid) showWallpaperVideo(savedVid);
       const savedBg = await StorageEngine.getItem('nexus_bg');
       if (savedBg) {
-        document.getElementById('wallpaper-layer').style.backgroundImage = `url(${savedBg})`;
-        document.getElementById('gradient-layer').style.background = 'transparent';
+        document.getElementById('wallpaper-layer').style.backgroundImage = 'url(' + savedBg + ')';
+        var g = document.getElementById('gradient-layer');
+        if (g) g.style.background = 'transparent';
       }
 
       await refreshLoadoutSelector();
@@ -1614,75 +1634,6 @@
     const relId = n => 'rel_' + n.toLowerCase().replace(/[^a-z0-9]+/g, '_');
     const niceTag = t => String(t).replace(/^[vV]\s*/, '').replace(/[-_]+/g, ' ').trim();
     const globRe = g => new RegExp('^' + g.trim().replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$', 'i');
-    // Async HTTP: prefer native background thread; else fetch(). Never blocks UI.
-    const __httpWaiters = {};
-    let __httpSeq = 0;
-    window.__nativeHttpCb = function(id, result) {
-      const w = __httpWaiters[id];
-      if (!w) return;
-      delete __httpWaiters[id];
-      if (typeof result === 'string' && result.startsWith('ERR:')) w.reject(new Error(result.slice(4)));
-      else w.resolve(result);
-    };
-
-    function arrayBufferToB64(buf) {
-      const u8 = new Uint8Array(buf);
-      const chunk = 0x8000;
-      let s = '';
-      for (let i = 0; i < u8.length; i += chunk) {
-        s += String.fromCharCode.apply(null, u8.subarray(i, Math.min(i + chunk, u8.length)));
-      }
-      return btoa(s);
-    }
-
-    async function fetchB64(url, timeoutMs) {
-      const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-      const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs || 15000) : null;
-      try {
-        const res = await fetch(url, ctrl ? { signal: ctrl.signal } : undefined);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return arrayBufferToB64(await res.arrayBuffer());
-      } finally {
-        if (timer) clearTimeout(timer);
-      }
-    }
-
-    async function nativeGet(url) {
-      // 1) Native async bridge (off UI thread)
-      if (window.AndroidNativeHttp && typeof AndroidNativeHttp.getB64Async === 'function') {
-        return new Promise((resolve, reject) => {
-          const id = 'h' + (++__httpSeq);
-          __httpWaiters[id] = { resolve, reject };
-          try {
-            AndroidNativeHttp.getB64Async(url, id);
-          } catch (e) {
-            delete __httpWaiters[id];
-            reject(e);
-          }
-          // Safety timeout so a dead callback never hangs Sync forever
-          setTimeout(() => {
-            if (__httpWaiters[id]) {
-              delete __httpWaiters[id];
-              reject(new Error('timeout'));
-            }
-          }, 30000);
-        });
-      }
-      // 2) JS fetch (also non-blocking)
-      try {
-        return await fetchB64(url, 15000);
-      } catch (e) {
-        // 3) Legacy sync bridge last resort (can hitch UI — avoid if possible)
-        if (window.AndroidNativeHttp && typeof AndroidNativeHttp.getB64 === 'function') {
-          await new Promise(r => setTimeout(r, 0));
-          const r = AndroidNativeHttp.getB64(url);
-          if (typeof r === 'string' && r.startsWith('ERR:')) throw new Error(r.slice(4));
-          return r;
-        }
-        throw e;
-      }
-    }
-
     function yieldUI() { return new Promise(r => setTimeout(r, 0)); }
     const getSources = async () => JSON.parse(await StorageEngine.getItem('nexus_sources') || '[]');
     function toggleSrcPanel() { if (document.getElementById('srcPanel').classList.toggle('open')) renderSources(); }
@@ -1713,131 +1664,34 @@
       await StorageEngine.setItem('nexus_releases', JSON.stringify(rel)); await StorageEngine.removeItem('cloud_cache_' + relId(s.name)); await clearDownloadComplete('cloud_cache_' + relId(s.name));
       renderSources(); renderPayloads();
     }
-    // Curated official list (order fixed). Display names have no version tags.
-    // asset: glob against GitHub release assets. url: optional direct URL (skips API).
-    const OFFICIAL_SOURCES = [
-      { name: "Kstuff Lite (Echo)",    repo: "EchoStretch/kstuff-lite",              asset: "kstuff.elf" },
-      { name: "Kstuff Lite (Drakmor)", repo: "drakmor/kstuff-lite",                  asset: "kstuff.elf" },
-      { name: "ShadowMountPlus",       repo: "drakmor/ShadowMountPlus",              asset: "*ShadowMount*.elf" },
-      { name: "FTP Server",            repo: "ps5-payload-dev/ftpsrv",               asset: "*.elf" },
-      { name: "PS5 Upload",            repo: "phantomptr/ps5upload",                 asset: "*.elf" },
-      { name: "NanoDNS",               repo: "drakmor/nanoDNS",                      asset: "nanodns.elf" },
-      { name: "Payload Manager",       repo: "itsPLK/ps5-payload-manager",           asset: "pldmgr*.elf" },
-      { name: "CheatRunner",           repo: "notmaj0r/CheatRunner",                 asset: "*.elf" },
-      { name: "OnionHEN",              repo: "aydencharles/onionHEN",                asset: "OnionHEN.elf" },
-      { name: "EtaHEN",                repo: "etaHEN/etaHEN",                        asset: "*.bin" },
-      { name: "BFPilot",               repo: "ItsBlurf/BFpilot",                     asset: "*.elf" },
-      { name: "PS Patch System",       repo: "illusionyy/ps-patch-system",           asset: "*.elf" },
-      { name: "WebFile Manager",       repo: "owendswang/ps5-web-file-manager",      asset: "*.elf" },
-      { name: "Fan Control",           repo: "owendswang/ps5-fan-control",           asset: "ps5-fan-control.elf" },
-      { name: "Fan Target",            repo: "drakmor/fan_target",                   asset: "fan_target*.elf" },
-      { name: "Linux Loader",          repo: "ps5-linux/ps5-linux-loader",           asset: "*linux*.elf" },
-      { name: "Game Compressor",       repo: "juma-sayeh/PS5-Game-Compressor",       asset: "game-compressor.elf" },
-      { name: "LZ4 Compression",       repo: "theghostonline/PS5-LZ4-Compression",   asset: "lz4-compression.elf" },
-      { name: "UnRAR",                 repo: "bizkut/unrar-ps5",                     asset: "unrar*.elf" },
-      { name: "PKG Manager",           repo: "itsPLK/ps5-pkg-manager",               asset: "*.elf" },
-      { name: "ELF Loader",            repo: "ps5-payload-dev/elfldr",               asset: "*.elf" }
-    ];
+    // ── Official repos ───────────────────────────────────────────────────
+    // UI only. The repo list comes from official_repos.json (see nexus_net.js) and every
+    // download is done by NexusNet — nothing in here touches the network.
+    // Toggle OFF = Nexus payloads list. Toggle ON = official repos list. Switching cancels the
+    // other source's downloads on the spot and starts the new source in the background.
     let officialReposEnabled = false; // payloads tab only; default OFF
+    const currentPayloadMode = () => officialReposEnabled ? 'official' : 'nexus';
+    let _toggleSeq = 0;
 
     async function setOfficialRepos(on) {
-      officialReposEnabled = !!on;
-      var el = document.getElementById('officialReposToggle');
-      if (el) el.checked = officialReposEnabled;
-      // Cancel any in-flight Nexus/official downloads immediately
-      _syncGen++;
-      _downloadingKey = null; try { updateDownloadSpinners(); } catch (e) {}
-      StorageEngine.setItem('nexus_official_repos', officialReposEnabled ? 'true' : 'false').catch(function(){});
-      // UI-only work here; network later via Sync
-      if (officialReposEnabled) {
-        try { await seedOfficialSources(); } catch (e) {}
-      }
-      try {
-        setTimeout(function() {
-          renderPayloads().catch(function(){});
-        }, 0);
-      } catch (e) {}
-      showToast(officialReposEnabled
-        ? T('toast_official_on', 'Official repos on — tap Sync to download')
-        : T('toast_official_off_ok', 'Official repos off — downloads cancelled'));
+      on = !!on;
+      const seq = ++_toggleSeq;
+      officialReposEnabled = on;
+      const el = document.getElementById('officialReposToggle');
+      if (el) el.checked = on;
+      NexusNet.cancel();                       // stop whatever is downloading right now
+      payloadsLoaded = true;
+      StorageEngine.setItem('nexus_official_repos', on ? 'true' : 'false').catch(function() {});
+      try { await renderPayloads(); } catch (e) { console.warn(e); }
+      if (seq !== _toggleSeq) return;          // flipped again while rendering
+      showToast(on ? T('toast_official_on', 'Official repos — downloading…')
+                   : T('toast_official_off_ok', 'Nexus repo'));
+      NexusNet.syncPayloads(currentPayloadMode()).catch(function() {});
     }
 
-    async function seedOfficialSources() {
-      if (!officialReposEnabled) return;
-      var list = OFFICIAL_SOURCES.slice();
-      try {
-        var r = await fetch('file:///android_asset/official-manifest.json');
-        if (!r.ok) r = await fetch('official-manifest.json');
-        if (r.ok) {
-          var man = await r.json();
-          if (man && Array.isArray(man.sources) && man.sources.length)
-            list = man.sources;
-        }
-      } catch (e) {}
-      const officialNames = new Set(list.map(s => s.name));
-      const custom = (await getSources()).filter(s => !officialNames.has(s.name));
-      const merged = list.map(s => ({ name: s.name, repo: s.repo, asset: s.asset || '*.elf' })).concat(custom);
-      await StorageEngine.setItem('nexus_sources', JSON.stringify(merged));
-      return merged;
-    }
-
-    async function updateFromOfficialRepo() {
-      if (!officialReposEnabled) {
-        showToast(T('toast_official_off', 'Turn on Official repos first'), 'error');
-        return;
-      }
-      showToast(T('toast_official_updating', 'Updating from official repo...'));
-      await seedOfficialSources();
-      // Also pull Nexus cloud manifest payloads (concatenate / overwrite by id)
-      try { await syncCloud(0); } catch (e) {}
-      await updateAllSources();
-    }
-
+    // "Update All" in the Updates panel: re-check release tags of every official/custom source
     async function updateAllSources() {
-      if (!(await hasInternet())) {
-        showToast(T('toast_no_internet', 'No internet — showing cached files'), 'error');
-        return;
-      }
-      const src = await getSources(); if (!src.length) return showToast('Add a source first', 'error');
-      let rel = JSON.parse(await StorageEngine.getItem('nexus_releases') || '[]'), updated = 0;
-      for (const s of src) {
-        try {
-          showToast(`Checking ${s.name}...`);
-          let downloadUrl = s.url || null, tag = s.tag || '';
-          if (!downloadUrl) {
-            const info = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(await nativeGet(`https://api.github.com/repos/${s.repo}/releases?per_page=5`)), c => c.charCodeAt(0))));
-            const re = globRe(s.asset || '*.elf');
-            let a = null, chosen = null;
-            for (const relInfo of (Array.isArray(info) ? info : [])) {
-              a = (relInfo.assets || []).find(x => re.test(x.name));
-              if (a) { chosen = relInfo; break; }
-            }
-            if (!a || !chosen) throw new Error('no file matches ' + (s.asset || '*.elf'));
-            downloadUrl = a.browser_download_url;
-            tag = chosen.tag_name || chosen.name || '';
-          }
-          const id = relId(s.name), cur = rel.find(x => x.id === id);
-          if (cur && cur.tag === tag && await StorageEngine.getItem('cloud_cache_' + id)) continue;  // already latest
-          showToast(`Downloading ${s.name}...`);
-          _downloadingKey = 'cloud_cache_' + id;
-          setRowDownloadState(id, s.name, 'downloading');
-          try {
-            var _b64rel = await nativeGet(downloadUrl);
-            await StorageEngine.setItem('cloud_cache_' + id, _b64rel);
-            await markDownloadComplete('cloud_cache_' + id, (_b64rel && _b64rel.length) || 0);
-            setRowDownloadState(id, s.name, 'ready');
-          } catch (dlE) {
-            setRowDownloadState(id, s.name, 'sync');
-            throw dlE;
-          } finally { _downloadingKey = null; try { updateDownloadSpinners(); } catch (e) {} }
-          // Keep display name clean (no version tag) per product request
-          rel = rel.filter(x => x.id !== id); rel.push({ id, name: s.name, tag: tag }); updated++;
-        } catch (e) { showToast(`${s.name}: ${e.message}`, 'error'); await new Promise(r => setTimeout(r, 1200)); }
-      }
-      await StorageEngine.setItem('nexus_releases', JSON.stringify(rel));
-      showToast(updated ? `${updated} updated ✓` : 'Everything is up to date');
-      renderSources();
-      await renderPayloads();
+      NexusNet.syncPayloads('official', { refresh: true, force: true }).then(function() { renderSources(); }).catch(function() {});
     }
 
     // ── Macro: after an exploit is sent, auto-send the one saved loadout switched on (always to port 9021) ──
@@ -1883,6 +1737,7 @@
       } finally { _macroBusy = false; }
     }
 
+    // ── Wallpaper ────────────────────────────────────────────────────────
     function triggerBgUpload() { document.getElementById('bgUploader').click(); }
 
     function showWallpaperVideo(src) {
@@ -1901,10 +1756,14 @@
       document.getElementById('wallpaper-layer').style.backgroundImage = 'none';
       document.getElementById('gradient-layer').style.background = 'transparent';
     }
-    document.addEventListener('visibilitychange', () => { const v = document.getElementById('wallpaper-video'); if (v.src) document.hidden ? v.pause() : v.play().catch(()=>{}); });
+    document.addEventListener('visibilitychange', () => { const v = document.getElementById('wallpaper-video'); if (v && v.src) document.hidden ? v.pause() : v.play().catch(()=>{}); });
     async function resetWallpaper() {
-      await StorageEngine.removeItem('nexus_bg'); await StorageEngine.removeItem('nexus_bg_video');
-      const wv = document.getElementById('wallpaper-video'); wv.pause(); wv.removeAttribute('src'); wv.style.display = 'none';
+      await StorageEngine.removeItem('nexus_bg');
+      await StorageEngine.removeItem('nexus_bg_video');
+      await StorageEngine.removeItem('nexus_bg_blob');
+      await StorageEngine.removeItem('nexus_bg_video_blob');
+      const wv = document.getElementById('wallpaper-video');
+      if (wv) { try { wv.pause(); } catch (e) {} wv.removeAttribute('src'); wv.style.display = 'none'; }
       document.getElementById('wallpaper-layer').style.backgroundImage = 'none';
       document.getElementById('gradient-layer').style.background = 'var(--bg-gradient)';
       showToast(T('toast_wallpaper_cleared', "Wallpaper cleared!"));
@@ -1913,59 +1772,47 @@
     function handleBgUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
-      // Instant preview (no IDB on UI path) — store in background
-      try {
-        if (window._bgObjectUrl) { try { URL.revokeObjectURL(window._bgObjectUrl); } catch (e) {} }
-        window._bgObjectUrl = URL.createObjectURL(file);
-      } catch (e) { window._bgObjectUrl = null; }
-
       if (file.type && file.type.startsWith('video/')) {
-        if (window._bgObjectUrl) showWallpaperVideo(window._bgObjectUrl);
-        showToast(T('toast_wallpaper_updated', "Wallpaper updated!"));
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = async function(e) {
           const dataUrl = e.target.result;
-          setTimeout(function() {
-            StorageEngine.setItem('nexus_bg_video', dataUrl).then(function() {
-              return StorageEngine.removeItem('nexus_bg');
-            }).catch(function() {
-              showToast(T('toast_wallpaper_too_big', "Video too large for storage, try a smaller one."), "error");
-            });
-          }, 0);
+          try {
+            await StorageEngine.setItem('nexus_bg_video', dataUrl);
+            await StorageEngine.removeItem('nexus_bg');
+            showWallpaperVideo(dataUrl);
+            showToast(T('toast_wallpaper_updated', "Wallpaper updated!"));
+          } catch (err) {
+            showToast(T('toast_wallpaper_too_big', "Video too large for storage, try a smaller one."), "error");
+          }
         };
         reader.onerror = function() {
           showToast(T('toast_wallpaper_too_big', "Could not read video."), "error");
         };
         reader.readAsDataURL(file);
-        event.target.value = '';
+        try { event.target.value = ''; } catch (e) {}
         return;
       }
-      const wv = document.getElementById('wallpaper-video');
-      if (wv) { try { wv.pause(); } catch (e) {} wv.removeAttribute('src'); wv.style.display = 'none'; }
-      if (window._bgObjectUrl) {
-        document.getElementById('wallpaper-layer').style.backgroundImage = 'url(' + window._bgObjectUrl + ')';
-      }
-      const g = document.getElementById('gradient-layer'); if (g) g.style.background = 'transparent';
-      showToast(T('toast_wallpaper_updated', "Wallpaper updated!"));
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = async function(e) {
         const b64 = e.target.result;
-        setTimeout(function() {
-          StorageEngine.setItem('nexus_bg', b64).then(function() {
-            return StorageEngine.removeItem('nexus_bg_video');
-          }).catch(function() {
-            showToast(T('toast_wallpaper_too_big', "Image too large for storage, try a smaller one."), "error");
-          });
-        }, 0);
+        const wv = document.getElementById('wallpaper-video');
+        if (wv) { try { wv.pause(); } catch (e) {} wv.removeAttribute('src'); wv.style.display = 'none'; }
+        document.getElementById('wallpaper-layer').style.backgroundImage = 'url(' + b64 + ')';
+        const g = document.getElementById('gradient-layer'); if (g) g.style.background = 'transparent';
+        try {
+          await StorageEngine.setItem('nexus_bg', b64);
+          await StorageEngine.removeItem('nexus_bg_video');
+          showToast(T('toast_wallpaper_updated', "Wallpaper updated!"));
+        } catch (err) {
+          showToast(T('toast_wallpaper_too_big', "Image too large for storage, try a smaller one."), "error");
+        }
       };
       reader.onerror = function() {
         showToast(T('toast_wallpaper_too_big', "Could not read image."), "error");
       };
-
       reader.readAsDataURL(file);
-      event.target.value = '';
+      try { event.target.value = ''; } catch (e) {}
     }
-
 
     // ── Tablet split view (Exploits left / Payloads right) ──
     // Keep in sync with the tablet-landscape @media rule in the CSS.
@@ -2051,6 +1898,7 @@
 
 
     function playBootSequence() {
+      var BOOT_RATE = 1.3;   // boot video speed
       return new Promise(function(resolve) {
         var splash = document.getElementById('bootSplash');
         if (!splash) { resolve(); return; }
@@ -2068,13 +1916,14 @@
         function go() {
           splash.classList.add('ready');
           if (vid) {
-            // 1.2x normal speed; finish when video ends (no hard max)
-            var applyRate = function() { try { vid.playbackRate = 1.3; } catch (e) {} };
-            if (vid.readyState >= 1) applyRate();
-            else vid.addEventListener('loadedmetadata', applyRate, { once: true });
+            // BOOT_RATE x normal speed; finish when video ends (no hard max)
+            var applyRate = function() { try { vid.defaultPlaybackRate = BOOT_RATE; vid.playbackRate = BOOT_RATE; } catch (e) {} };
+            applyRate();
+            vid.addEventListener('loadedmetadata', applyRate, { once: true });
+            vid.addEventListener('playing', applyRate, { once: true });   // some WebViews reset the rate on play()
             vid.play().catch(function(){});
             var startFade = function() {
-              var remaining = ((vid.duration || 4.3) / 1.3) - vid.currentTime;
+              var remaining = ((vid.duration || 4.3) - vid.currentTime) / BOOT_RATE;
               if (remaining <= 0.45) finish();
               else setTimeout(finish, Math.max(0, (remaining - 0.45) * 1000));
             };
@@ -2087,7 +1936,8 @@
           }
         }
         if (vid) {
-          if (vid.readyState >= 2) go();
+          if (vid.error) setTimeout(finish, 300);          // video already failed to load: don't sit on the splash
+          else if (vid.readyState >= 2) go();
           else {
             vid.addEventListener('canplay', go, { once: true });
             vid.addEventListener('error', function() { setTimeout(finish, 800); }, { once: true });
@@ -2227,16 +2077,6 @@
 
 
     /** Startup / Sync: exploits only (no payload binaries). */
-    async function commitPendingCache() {
-      if (_pendingCache && _pendingCache.key && _pendingCache.b64) {
-        try {
-          await StorageEngine.setItem(_pendingCache.key, _pendingCache.b64);
-          await markDownloadComplete(_pendingCache.key, _pendingCache.b64.length);
-        } catch (e) {}
-      }
-      _pendingCache = null;
-    }
-
     /** Persistent "fully downloaded" registry — Sync never re-fetches these. */
     async function getCompleteMap() {
       try {
@@ -2265,47 +2105,17 @@
       } catch (e) {}
     }
 
-    /** Hold completed download in memory. Previous held file is written when the NEXT download is about to start. */
-
-    function setRowDownloadState(itemId, file, state) {
-      // state: 'downloading' | 'ready' | 'sync'
-      var list = document.getElementById('payload-cb-list');
-      if (!list) return;
-      var rows = list.querySelectorAll('.payload-cb-row');
-      var matchId = itemId || file || '';
-      rows.forEach(function(row) {
-        var id = row.dataset.id || '';
-        var label = (row.querySelector('.cb-label') || {}).textContent || '';
-        var hit = (matchId && (id === matchId || id === String(matchId))) ||
-                  (file && label.indexOf(file) !== -1);
-        if (!hit && matchId) {
-          // cloud_cache_foo style
-          hit = id === matchId.replace(/^cloud_cache_/, '');
-        }
-        if (!hit) return;
-        var badge = row.querySelector('.cb-badge');
-        if (!badge) return;
-        if (state === 'downloading') {
-          badge.textContent = '';
-          badge.className = 'cb-badge downloading';
-        } else if (state === 'ready') {
-          badge.textContent = '';
-          badge.className = 'cb-badge';
-        } else {
-          badge.textContent = 'SYNC REQ';
-          badge.className = 'cb-badge sync-req';
-        }
-      });
-    }
-
-    async function beginNextDownload() {
-      // Called immediately before starting a new network fetch
-      await commitPendingCache();
-    }
-
-    async function holdCompletedDownload(key, b64) {
-      // Do not write yet — wait until beginNextDownload() or final flush
-      _pendingCache = { key: key, b64: b64 };
+    /** Update ONE row's badge in place (spinner / ready / sync-req). Never rebuilds the list. */
+    function setRowDownloadState(id, state) {
+      const list = document.getElementById('payload-cb-list');
+      if (!list || id == null) return;
+      const row = list.querySelector('.payload-cb-row[data-source="cloud"][data-id="' + CSS.escape(String(id)) + '"]');
+      if (!row) return;
+      const badge = row.querySelector('.cb-badge');
+      if (!badge) return;
+      if (state === 'downloading') { badge.textContent = ''; badge.className = 'cb-badge downloading'; }
+      else if (state === 'ready') { badge.textContent = ''; badge.className = 'cb-badge'; }
+      else { badge.textContent = 'SYNC REQ'; badge.className = 'cb-badge sync-req'; }   // failed | idle
     }
 
         async function hasInternet() {
@@ -2334,66 +2144,10 @@
       }
     }
 
-    async function cacheHas(key) {
-      if (!key) return false;
-      const v = await StorageEngine.getItem(key);
-      if (!(v && v.length > 8)) return false;
-      // Explicit complete flag — once set, Sync will not re-download
-      try {
-        const map = await getCompleteMap();
-        if (map[key] && map[key].complete) return true;
-        // Migrate older caches: non-empty blob counts as complete
-        if (v.length > 32) {
-          await markDownloadComplete(key, v.length);
-          return true;
-        }
-      } catch (e) {}
-      return true; // blob present
-    }
+    async function cacheHas(key) { return !!key && await StorageEngine.has(key); }
 
-    async function syncExploitsOnly(showerr) {
-      if (_syncLock) return;
-      _syncLock = true;
-      try {
-        if (!(await hasInternet())) {
-          if (showerr) showToast(T('toast_no_internet', 'No internet — showing cached files'), 'error');
-          return;
-        }
-        if (showerr) showToast(T('toast_syncing', 'Syncing exploits…'));
-        await yieldUI();
-        const res = await fetch(CLOUD_URL + 'manifest.json');
-        if (!res.ok) throw new Error('Manifest fetch failed.');
-        const manifest = await res.json();
-        await StorageEngine.setItem('nexus_cloud_manifest', JSON.stringify(manifest));
-        const exploitItems = [
-          ...(manifest.luac0re || []),
-          ...(manifest.yarp2jb || []),
-          ...(manifest.lua || []),
-          ...(manifest.y2jb || [])
-        ];
-        for (let i = 0; i < exploitItems.length; i++) {
-          const item = exploitItems[i];
-          const cacheKey = item.id ? ('cloud_cache_' + item.id) : ('cloud_cache_' + (item.file || item.name));
-          if (await cacheHas(cacheKey)) continue; // already cached — skip
-          try {
-            await beginNextDownload(); // cache previous only when this download starts
-            await yieldUI();
-            const fRes = await fetch(CLOUD_URL + item.file);
-            if (!fRes.ok) continue;
-            const b64 = arrayBufferToB64(await fRes.arrayBuffer());
-            await holdCompletedDownload(cacheKey, b64);
-          } catch (e2) {}
-        }
-        await commitPendingCache(); // flush last held file
-        await renderExploits();
-        if (showerr) showToast(T('toast_sync_done', 'Exploits ready.'));
-      } catch (e) {
-        console.warn('exploit sync failed', e);
-        if (showerr) showToast(T('toast_sync_fail', 'Exploit sync failed — offline?'), 'error');
-      } finally {
-        _syncLock = false;
-      }
-    }
+    /** Startup quiet exploit fetch — the work itself is done by NexusNet. */
+    async function syncExploitsOnly() { return NexusNet.syncExploits(); }
 
     /** Persist local mapped names (File handles can't survive reload). */
     async function persistLocalStash() {
@@ -2472,205 +2226,52 @@
     }
 
     /**
-     * Background cloud fill only. Never clears local stash / selection.
-     * Called via setTimeout from switchTab — does not block UI.
+     * Auto-download of whatever is missing for the ACTIVE source (Nexus or official).
+     * Runs once per visit; the Sync button / the official toggle force it again.
+     * All the work is in NexusNet — this only starts it.
      */
     async function ensurePayloadsLoadedBackground() {
-      if (_syncLock || payloadsLoaded) return;
-
-      // Offline: never start network; keep UI on cache
-      if (!(await hasInternet())) {
-        payloadsLoaded = true;
-        return;
-      }
-
-      try {
-        const manStr = await StorageEngine.getItem('nexus_cloud_manifest');
-        const relStr = await StorageEngine.getItem('nexus_releases');
-        const man = manStr ? JSON.parse(manStr) : null;
-        const rel = relStr ? JSON.parse(relStr) : [];
-        const items = ((man && man.payloads) ? man.payloads : []).concat(rel || []);
-        let missing = 0;
-        for (let i = 0; i < items.length; i++) {
-          const it = items[i];
-          const ck = it.id ? ('cloud_cache_' + it.id) : ('cloud_cache_' + (it.file || it.name));
-          if (!(await cacheHas(ck))) missing++;
-        }
-        // Fully cached → silent exit, no toast, no render
-        if (items.length > 0 && missing === 0) {
-          payloadsLoaded = true;
-          return;
-        }
-        // Manifest exists but empty payload list
-        if (manStr && items.length === 0) {
-          payloadsLoaded = true;
-          return;
-        }
-      } catch (e) {}
-
-      _syncLock = true;
-      const myGen = _syncGen;
-      let downloaded = 0;
-      try {
-        try {
-          if (myGen !== _syncGen) return;
-          const res = await fetch(CLOUD_URL + 'manifest.json');
-          if (res.ok) {
-            const manifest = await res.json();
-            await StorageEngine.setItem('nexus_cloud_manifest', JSON.stringify(manifest));
-            const payloadItems = manifest.payloads || [];
-            for (let i = 0; i < payloadItems.length; i++) {
-              if (myGen !== _syncGen) break;
-              const item = payloadItems[i];
-              const cacheKey = item.id ? ('cloud_cache_' + item.id) : ('cloud_cache_' + (item.file || item.name));
-              if (await cacheHas(cacheKey)) continue;
-              try {
-                await beginNextDownload();
-                _downloadingKey = cacheKey; try { updateDownloadSpinners(); } catch (e) {}
-                setRowDownloadState(item.id, item.file || item.name, 'downloading');
-                const fRes = await fetch(CLOUD_URL + item.file);
-                if (!fRes.ok) {
-                  setRowDownloadState(item.id, item.file || item.name, 'sync');
-                  continue;
-                }
-                const b64 = arrayBufferToB64(await fRes.arrayBuffer());
-                await holdCompletedDownload(cacheKey, b64);
-                setRowDownloadState(item.id, item.file || item.name, 'ready');
-                downloaded++;
-              } catch (e2) {
-                setRowDownloadState(item.id, item.file || item.name, 'sync');
-              } finally {
-                _downloadingKey = null; try { updateDownloadSpinners(); } catch (e) {}
-              }
-            }
-            await commitPendingCache();
-          }
-        } catch (e) { console.warn('nexus payloads bg', e); }
-
-        try {
-          const src = await getSources();
-          let rel = JSON.parse(await StorageEngine.getItem('nexus_releases') || '[]');
-          for (let si = 0; si < src.length; si++) {
-            const s = src[si];
-            try {
-              let releases;
-              try {
-                const r = await fetch('https://api.github.com/repos/' + s.repo + '/releases?per_page=5');
-                if (!r.ok) throw new Error('gh ' + r.status);
-                releases = await r.json();
-              } catch (fe) { continue; }
-              if (!releases || !releases.length) continue;
-              const latest = releases[0];
-              const tag = latest.tag_name || '';
-              const assets = latest.assets || [];
-              let asset = null;
-              const mask = (s.asset || '*.elf').replace('*', '');
-              for (const a of assets) {
-                const n = (a.name || '').toLowerCase();
-                if (s.asset && s.asset.indexOf('*') >= 0) {
-                  if (n.endsWith(mask.replace('.', '')) || n.indexOf(mask.replace('*', '').toLowerCase()) >= 0 || n.endsWith('.elf') || n.endsWith('.bin')) {
-                    asset = a; break;
-                  }
-                } else if (s.asset && n === s.asset.toLowerCase()) {
-                  asset = a; break;
-                }
-              }
-              if (!asset) asset = assets.find(function(a) { return /\.(elf|bin)$/i.test(a.name || ''); }) || assets[0];
-              if (!asset || !asset.browser_download_url) continue;
-              const id = relId(s.name);
-              if (await cacheHas('cloud_cache_' + id)) {
-                rel = rel.filter(function(x) { return x.id !== id; });
-                rel.push({ id: id, name: s.name, tag: tag });
-                continue;
-              }
-              await beginNextDownload();
-              const b64 = await nativeGet(asset.browser_download_url);
-              if (!b64 || b64.length < 8) continue;
-              await holdCompletedDownload('cloud_cache_' + id, b64);
-              downloaded++;
-              rel = rel.filter(function(x) { return x.id !== id; });
-              rel.push({ id: id, name: s.name, tag: tag });
-            } catch (e) { console.warn('official', s.name, e); }
-          }
-          await commitPendingCache();
-          await StorageEngine.setItem('nexus_releases', JSON.stringify(rel));
-        } catch (e) { console.warn('official payloads bg', e); }
-
-        payloadsLoaded = true;
-        // Toast only if we downloaded something AND user is viewing cloud list
-        if (downloaded > 0 && !localFolderMode) {
-          const payloadsTab = document.getElementById('tab-payloads');
-          if (payloadsTab && payloadsTab.classList.contains('active')) {
-            await persistPayloadSelection();
-            await renderPayloads();
-            applyPendingSelection();
-            showToast(downloaded + ' new payload(s) cached');
-          }
-        }
-      } finally {
-        _syncLock = false;
-      }
+      if (payloadsLoaded) return;
+      payloadsLoaded = true;
+      NexusNet.syncPayloads(currentPayloadMode()).catch(function(e) { console.warn(e); });
     }
-
-    async function ensurePayloadsLoaded() {
-      // Manual Sync / legacy callers — same background path, no UI wipe
-      await ensurePayloadsLoadedBackground();
-    }
-
-
+    async function ensurePayloadsLoaded() { return ensurePayloadsLoadedBackground(); }
 
     async function syncCloud(showerr = 1) {
-      const myGen = _syncGen;
-
       if (localFolderMode) {
         localFolderMode = false;
         updateArmoryTitle();
         await renderPayloads();
         return;
       }
-      if (_syncLock) {
-        showToast(T('toast_sync_busy', 'Sync already running in background…'));
-        return;
-      }
-      // Exploits first (always). Payloads if Payloads tab is active, already visited, or split view (both panes visible).
-      const payloadsTab = document.getElementById('tab-payloads');
-      const wantPayloads = payloadsLoaded || isSplit() || (payloadsTab && payloadsTab.classList.contains('active'));
-      // Non-blocking: never freeze UI on toggle or sync
-      setTimeout(function() {
-      (async () => {
-        const online = await hasInternet();
-        if (!online) {
-          if (showerr) showToast(T('toast_no_internet', 'No internet — showing cached files'), 'error');
-          try { await renderExploits(); } catch (e) {}
-          try { await renderPayloads(); } catch (e) {}
-          return;
-        }
-        await syncExploitsOnly(showerr);
-        if (wantPayloads) {
-          // Only reopen the downloader if something is not fully cached
-          let missing = 0;
-          try {
-            const manStr = await StorageEngine.getItem('nexus_cloud_manifest');
-            const relStr = await StorageEngine.getItem('nexus_releases');
-            const man = manStr ? JSON.parse(manStr) : null;
-            const rel = (officialReposEnabled && relStr) ? JSON.parse(relStr) : [];
-            const items = ((man && man.payloads) ? man.payloads : []).concat(rel || []);
-            for (let i = 0; i < items.length; i++) {
-              const it = items[i];
-              const ck = it.id ? ('cloud_cache_' + it.id) : ('cloud_cache_' + (it.file || it.name));
-              if (!(await cacheHas(ck))) missing++;
-            }
-          } catch (e) { missing = 1; }
-          if (missing > 0) {
-            payloadsLoaded = false; // allow fetch of missing only
-            await ensurePayloadsLoaded();
-          } else {
-            payloadsLoaded = true;
-            if (showerr) showToast(T('toast_all_cached', 'Everything already downloaded'));
-          }
-        }
-      })(); }, 0);
+      // Fire and forget: the UI never waits on the network
+      NexusNet.syncAll({ mode: currentPayloadMode() }).catch(function(e) { console.warn(e); });
     }
+
+    // ── UI <-> NexusNet bridge: the ONLY place network events touch the UI ──
+    (function() {
+      const timers = {};
+      function relist(kind) {
+        clearTimeout(timers[kind]);
+        timers[kind] = setTimeout(function() {
+          if (kind === 'exploits') renderExploits().catch(function() {});
+          else renderPayloads().catch(function() {});
+        }, 120);
+      }
+      NexusNet.subscribe(function(type, d) {
+        if (type === 'item') setRowDownloadState(d.id, d.state);
+        else if (type === 'list-changed') relist(d.kind === 'exploits' ? 'exploits' : 'payloads');
+        else if (type === 'status') {
+          if (d.code === 'syncing') showToast(T('toast_syncing', 'Syncing…'));
+          else if (d.code === 'busy') showToast(T('toast_sync_busy', 'Sync already running…'));
+          else if (d.code === 'offline') showToast(T('toast_no_internet', 'No internet — showing cached files'), 'error');
+          else if (d.code === 'done') showToast(T('toast_synced', 'Sync complete. Assets cached.'));
+          else if (d.code === 'allcached') showToast(T('toast_all_cached', 'Everything already downloaded'));
+          else if (d.code === 'failed') showToast(d.failed + ' download(s) failed — tap Sync to retry', 'error');
+          else if (d.code === 'item-error') showToast(d.name + ': ' + d.message, 'error');
+        }
+      });
+    })();
 
     async function renderExploits() {
       const manifestStr = await StorageEngine.getItem('nexus_cloud_manifest');
@@ -2765,27 +2366,28 @@
       const activeLoadoutId = loadoutSelector ? loadoutSelector.value : 'default';
       const isCloudArmory = !localFolderMode && activeLoadoutId === 'default';
 
-      // Cloud armory: deselect immediately, persist NOW (before any animation)
+      // 1) Deselect + SAVE right now — before any animation/timer, so closing the app can't lose it
+      //    and a re-render can't bring the old ticks back.
+      const checked = list ? Array.from(list.querySelectorAll('.payload-cb-row.is-checked')) : [];
+      checked.forEach(function(row) {
+        row.classList.remove('is-checked');
+        const cb = row.querySelector('input[type="checkbox"]');
+        if (cb) cb.checked = false;
+      });
+      window.__pendingPayloadSelection = [];
+      try { await StorageEngine.setItem('nexus_payload_selection', '[]'); } catch (e) { console.warn(e); }
+
+      // Cloud armory: only deselect — do not remove rows or rebuild list
       if (isCloudArmory) {
-        const checked = list ? Array.from(list.querySelectorAll('.payload-cb-row.is-checked')) : [];
-        if (checked.length === 0) {
-          showToast(T('toast_nothing_selected', 'Nothing selected'), 'error');
-          return;
-        }
-        checked.forEach(function(row) {
-          row.classList.remove('is-checked');
-          var cb = row.querySelector('input[type="checkbox"]');
-          if (cb) cb.checked = false;
-        });
-        await persistPayloadSelection(); // save empty selection on the spot
-        checked.forEach(function(row, i) {
+        checked.forEach(function(row, i) {            // animation only — state is already final
           setTimeout(function() {
             row.classList.remove('deselect-bump');
             void row.offsetWidth;
             row.classList.add('deselect-bump');
-          }, i * 30);
+          }, i * 40);
         });
-        showToast(T('toast_deselected', 'Selection cleared'));
+        if (checked.length === 0) showToast(T('toast_nothing_selected', 'Nothing selected'), 'error');
+        else showToast(T('toast_deselected', 'Selection cleared'));
         return;
       }
 
@@ -2798,7 +2400,6 @@
         for (const n of old) await dropOrphanLocalCache(n);
         await persistLocalStash();
       }
-      await persistPayloadSelection();
       updateArmoryTitle();
       // Soft crossfade rebuild
       if (list) {
@@ -2995,116 +2596,96 @@
       }
     }
 
-    function updateDownloadSpinners() {
-      var rows = document.querySelectorAll('#payload-cb-list .payload-cb-row');
-      rows.forEach(function(row) {
-        var id = row.dataset.id || '';
-        var key = row.dataset.source === 'cloud' ? ('cloud_cache_' + id) : ('local_cache_' + id);
-        var lab = row.querySelector('.cb-label');
-        if (!lab) return;
-        var spinning = (_downloadingKey && (_downloadingKey === key || _downloadingKey.indexOf(id) >= 0));
-        var spin = lab.querySelector('.payload-dl-spin');
-        if (spinning && !spin) {
-          spin = document.createElement('span');
-          spin.className = 'payload-dl-spin';
-          lab.insertBefore(spin, lab.firstChild);
-        } else if (!spinning && spin) {
-          spin.remove();
-        }
+    let _renderSeq = 0;
+
+    function collectSelection() {
+      const sel = [];
+      document.querySelectorAll('#payload-cb-list .payload-cb-row.is-checked').forEach(function(row) {
+        sel.push({
+          source: row.dataset.source || '',
+          id: row.dataset.id || '',
+          name: (row.querySelector('.cb-label') || {}).textContent || ''
+        });
       });
+      return sel;
     }
 
+    /**
+     * Builds the whole list off-screen, then swaps it in one synchronous step.
+     *  - no more "empty list while loading" flicker
+     *  - two overlapping renders (toggle + download finishing) can no longer duplicate rows:
+     *    only the newest render is allowed to touch the DOM
+     *  - badges use a key-count check, never load the cached multi-MB files
+     */
     async function renderPayloads() {
+      const seq = ++_renderSeq;
       syncMacroToggle();
       const list = document.getElementById('payload-cb-list');
-      list.innerHTML = '';
-      const fragment = document.createDocumentFragment();
+      if (!list) return;
+      const emptyHtml = '<div class="payload-cb-empty">' + dictionary[currentLang].armoryEmpty + '</div>';
+
+      // keep the on-screen ticks across the rebuild
+      if (list.querySelector('.payload-cb-row')) window.__pendingPayloadSelection = collectSelection();
 
       const loadoutSelector = document.getElementById('loadoutSelector');
       const activeLoadoutId = loadoutSelector ? loadoutSelector.value : 'default';
       const isLoadout = activeLoadoutId !== 'default';
+      const nodes = [];
+      const ticked = function(row) { row.classList.add('is-checked'); row.querySelector('input[type="checkbox"]').checked = true; return row; };
 
       if (isLoadout) {
-        const loadoutsStr = await StorageEngine.getItem('nexus_loadouts');
-        const loadouts = JSON.parse(loadoutsStr || '[]');
+        const loadouts = JSON.parse(await StorageEngine.getItem('nexus_loadouts') || '[]');
         const target = loadouts.find(l => l.id == activeLoadoutId);
         const relAll = JSON.parse(await StorageEngine.getItem('nexus_releases') || '[]');
-        if (target && target.payloads.length > 0) {
-          for (let i = 0; i < target.payloads.length; i++) {
-            const p = target.payloads[i];
-            const rn = (relAll.find(r => r.id === p.id) || {}).name; if (rn) p.name = rn;
-            let badge = 'MISSING'; let uid = `loadout_${i}`;
-            if (p.source === 'cloud') {
-              const cached = await StorageEngine.getItem(`cloud_cache_${p.id}`);
-              badge = cached !== null ? 'READY' : 'SYNC REQ';
-              const row = makeCheckRow(uid, p.name, badge, 'cloud', null, p.id, true);
-              row.classList.add('is-checked');
-              row.querySelector('input[type="checkbox"]').checked = true;
-              fragment.appendChild(row);
-            } else if (p.source === 'local') {
-              const localId = p.id || `local_${p.name}`;
-              const cached = await StorageEngine.getItem(`local_cache_${localId}`);
-              const localIdx = localPayloadFiles.findIndex(f => f.name === p.name);
-              if (localIdx !== -1) {
-                badge = p.name.substring(p.name.lastIndexOf('.') + 1).toUpperCase();
-                const row = makeCheckRow(uid, p.name, badge, 'local', String(localIdx), localId, true);
-                row.classList.add('is-checked'); row.querySelector('input[type="checkbox"]').checked = true;
-                fragment.appendChild(row);
-              } else if (cached !== null) {
-                badge = 'CACHED';
-                const row = makeCheckRow(uid, p.name, badge, 'local_cached', null, localId, true);
-                row.classList.add('is-checked'); row.querySelector('input[type="checkbox"]').checked = true;
-                fragment.appendChild(row);
-              } else {
-                const row = makeCheckRow(uid, p.name, 'UNMAPPED', 'local_missing', null, null, true);
-                row.classList.add('local-missing', 'is-checked'); row.querySelector('input[type="checkbox"]').checked = true;
-                fragment.appendChild(row);
-              }
+        const pl = (target && target.payloads) || [];
+        const keys = pl.map(p => p.source === 'cloud' ? 'cloud_cache_' + p.id : 'local_cache_' + (p.id || ('local_' + p.name)));
+        const have = await StorageEngine.hasMany(keys);
+        pl.forEach(function(p, i) {
+          const rn = (relAll.find(r => r.id === p.id) || {}).name; if (rn) p.name = rn;
+          const uid = 'loadout_' + i;
+          if (p.source === 'cloud') {
+            nodes.push(ticked(makeCheckRow(uid, p.name, have[keys[i]] ? 'READY' : 'SYNC REQ', 'cloud', null, p.id, true)));
+          } else if (p.source === 'local') {
+            const localId = p.id || ('local_' + p.name);
+            const localIdx = localPayloadFiles.findIndex(f => f.name === p.name);
+            if (localIdx !== -1) {
+              const badge = p.name.substring(p.name.lastIndexOf('.') + 1).toUpperCase();
+              nodes.push(ticked(makeCheckRow(uid, p.name, badge, 'local', String(localIdx), localId, true)));
+            } else if (have[keys[i]]) {
+              nodes.push(ticked(makeCheckRow(uid, p.name, 'CACHED', 'local_cached', null, localId, true)));
+            } else {
+              const row = ticked(makeCheckRow(uid, p.name, 'UNMAPPED', 'local_missing', null, null, true));
+              row.classList.add('local-missing');
+              nodes.push(row);
             }
           }
-          list.appendChild(fragment); return;
-        } else {
-          list.innerHTML = `<div class="payload-cb-empty">${dictionary[currentLang].armoryEmpty}</div>`; return;
-        }
-      }
-
-      if (localFolderMode) {
-        if (localPayloadFiles.length === 0) {
-          list.innerHTML = `<div class="payload-cb-empty">${dictionary[currentLang].armoryEmpty}</div>`; return;
-        }
+        });
+      } else if (localFolderMode) {
         for (let index = 0; index < localPayloadFiles.length; index++) {
           const file = localPayloadFiles[index];
           const fname = (typeof file === 'string') ? file : (file && file.name) ? file.name : '';
           if (!fname) continue;
-          const localId = 'local_' + fname;
           const isStub = (typeof file === 'string') || !file || file.__cachedOnly || typeof file.arrayBuffer !== 'function';
           const ext = fname.substring(fname.lastIndexOf('.') + 1).toUpperCase();
-          // After restart stubs have no File handle — use local_cached so Save/send use IndexedDB
-          const source = isStub ? 'local_cached' : 'local';
-          const badge = isStub ? 'CACHED' : ext;
-          fragment.appendChild(makeCheckRow('local_' + index, fname, badge, source, String(index), localId, true));
+          // After restart stubs have no File handle — local_cached so Save/send use IndexedDB
+          nodes.push(makeCheckRow('local_' + index, fname, isStub ? 'CACHED' : ext, isStub ? 'local_cached' : 'local', String(index), 'local_' + fname, true));
         }
-        list.appendChild(fragment);
       } else {
-        const manifestStr = await StorageEngine.getItem('nexus_cloud_manifest');
-        const relRaw = JSON.parse(await StorageEngine.getItem('nexus_releases') || '[]');
-        // Official-repo releases only when toggle is on (exploits tab unaffected)
-        const rel = officialReposEnabled ? relRaw : [];
-        const items = ((manifestStr ? JSON.parse(manifestStr).payloads : null) || []).concat(rel);
-        if (items.length === 0) {
-          list.innerHTML = `<div class="payload-cb-empty">${dictionary[currentLang].armoryEmpty}</div>`; return;
-        }
-        for (let item of items) {
-          const cached = await StorageEngine.getItem(`cloud_cache_${item.id}`);
-          const badge = cached !== null ? '' : 'SYNC REQ';
+        const items = await NexusNet.listItems(currentPayloadMode());
+        const keys = items.map(it => 'cloud_cache_' + it.id);
+        const have = await StorageEngine.hasMany(keys);
+        items.forEach(function(it, i) {
           // Cloud armory rows: NO remove button (read-only)
-          fragment.appendChild(makeCheckRow(`cloud_${item.id}`, item.name, badge, 'cloud', null, item.id, false));
-        }
-        list.appendChild(fragment);
+          nodes.push(makeCheckRow('cloud_' + it.id, it.name, have[keys[i]] ? '' : 'SYNC REQ', 'cloud', null, it.id, false));
+        });
       }
 
-      applyPendingSelection();
-
+      if (seq !== _renderSeq) return;            // a newer render took over — don't touch the DOM
+      const frag = document.createDocumentFragment();
+      if (nodes.length) nodes.forEach(n => frag.appendChild(n));
+      list.textContent = '';
+      if (nodes.length) list.appendChild(frag); else list.innerHTML = emptyHtml;
+      if (!isLoadout && nodes.length) applyPendingSelection();
     }
 
     // showRemove: true for loadout rows and local mapped, false for cloud armory
@@ -3112,43 +2693,32 @@
       const row = document.createElement('div');
       row.className = 'payload-cb-row';
       row.dataset.source = source;
-      if (index !== null) row.dataset.index = index;
-      if (id !== null) row.dataset.id = id;
+      if (index !== null && index !== undefined) row.dataset.index = index;
+      if (id !== null && id !== undefined) row.dataset.id = id;
 
-      const removeBtn = showRemove
-        ? `<button class="cb-remove-btn" title="Remove">✕</button>`
-        : '';
-
-      var isDl = (_downloadingKey && id && (_downloadingKey === ('cloud_cache_' + id) || _downloadingKey.indexOf(id) !== -1));
-      const badgeClass = isDl ? 'cb-badge downloading' : ((badge === 'SYNC REQ') ? 'cb-badge sync-req' : 'cb-badge');
-      const badgeText = isDl ? '' : badge;
-      row.innerHTML = `
-        <input type="checkbox" id="cb_${uid}">
-        <div class="cb-box"></div>
-        <label class="cb-label">${name}</label>
-        <span class="${badgeClass}">${badgeText}</span>
-        ${removeBtn}
-      `;
+      const dl = !!(id && source === 'cloud' && NexusNet.isDownloading(id));
+      const input = document.createElement('input'); input.type = 'checkbox'; input.id = 'cb_' + uid;
+      const box = document.createElement('div'); box.className = 'cb-box';
+      const label = document.createElement('label'); label.className = 'cb-label'; label.textContent = name;
+      const b = document.createElement('span');
+      b.className = dl ? 'cb-badge downloading' : ((badge === 'SYNC REQ') ? 'cb-badge sync-req' : 'cb-badge');
+      b.textContent = dl ? '' : badge;
+      row.appendChild(input); row.appendChild(box); row.appendChild(label); row.appendChild(b);
 
       // Toggle check on row click (not on the remove btn)
       row.addEventListener('click', (e) => {
         if (e.target.classList.contains('cb-remove-btn')) return;
         row.classList.toggle('is-checked');
-        row.querySelector('input[type="checkbox"]').checked = row.classList.contains('is-checked');
+        input.checked = row.classList.contains('is-checked');
         persistPayloadSelection();
       });
 
-      // Wire remove button
       if (showRemove) {
-        const btn = row.querySelector('.cb-remove-btn');
-        if (btn) {
-          btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            removePayloadItem(row, source, id, index);
-          });
-        }
+        const btn = document.createElement('button');
+        btn.className = 'cb-remove-btn'; btn.title = 'Remove'; btn.textContent = '✕';
+        btn.addEventListener('click', (e) => { e.stopPropagation(); removePayloadItem(row, source, id, index); });
+        row.appendChild(btn);
       }
-
       return row;
     }
 

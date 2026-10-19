@@ -25,33 +25,51 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install platform 34 + build-tools
+      - name: Accept licenses + install SDK packages
         run: |
-          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+          set -e
           yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls "$ANDROID_HOME/platforms"
+          ls "$ANDROID_HOME/build-tools"
 
-      - name: Grant execute to gradlew
-        run: chmod +x ./gradlew
+      - name: Write local.properties
+        run: echo "sdk.dir=$ANDROID_HOME" > local.properties
+
+      # This repo's ./gradlew is a stub and gradle-wrapper.jar is NOT checked in.
+      # Install Gradle 8.7 and call it directly (matches gradle-wrapper.properties).
+      - name: Install Gradle 8.7
+        run: |
+          set -e
+          curl -fsSL -o /tmp/gradle-8.7-bin.zip https://services.gradle.org/distributions/gradle-8.7-bin.zip
+          sudo unzip -qo /tmp/gradle-8.7-bin.zip -d /opt
+          echo "/opt/gradle-8.7/bin" >> "$GITHUB_PATH"
+          /opt/gradle-8.7/bin/gradle --version
 
       - name: Build release APK
-        run: ./gradlew assembleRelease --no-daemon
+        run: |
+          set -e
+          gradle assembleRelease --no-daemon --stacktrace
+          find app/build/outputs/apk -type f -name '*.apk' -ls
 
       - name: Rename APK to tag
         id: apk
         run: |
+          set -e
           TAG="${GITHUB_REF_NAME}"
-          # strip leading v for nicer names if you want both — keep full tag as filename
-          SRC=$(find app/build/outputs/apk -name '*.apk' | head -1)
+          SRC=$(find app/build/outputs/apk -type f -name '*.apk' | head -1)
           if [ -z "$SRC" ]; then
-            echo "No APK found"
+            echo "No APK found under app/build/outputs/apk"
+            find app/build -type f -name '*.apk' || true
             exit 1
           fi
-          # Nexus-<tag>.apk  e.g. Nexus-v1.0.40.apk or Nexus-1.0.40.apk
           OUT="Nexus-${TAG}.apk"
           cp -f "$SRC" "$OUT"
           echo "name=$OUT" >> "$GITHUB_OUTPUT"
           echo "path=$OUT" >> "$GITHUB_OUTPUT"
           ls -lh "$OUT"
+          sha256sum "$OUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

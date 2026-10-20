@@ -158,9 +158,12 @@ public class MainActivity extends Activity {
         public String sendBase64(String host, int port, String b64) {
             Socket sock = null;
             try {
+                if (host == null || host.trim().isEmpty()) return "ERR:CONN_REFUSED";
                 byte[] data = Base64.decode(b64, Base64.DEFAULT);
+                if (data == null || data.length == 0) return "ERR:SEND_FAIL";
                 sock = new Socket();
-                sock.connect(new InetSocketAddress(host, port), 3000);
+                // Local LAN only — no DNS/internet required for numeric IPs
+                sock.connect(new InetSocketAddress(host.trim(), port), 5000);
                 sock.setTcpNoDelay(true);
                 sock.setSoTimeout(5000);
                 sock.getOutputStream().write(data);
@@ -184,10 +187,11 @@ public class MainActivity extends Activity {
             StringBuilder log = new StringBuilder();
             try {
                 if (idleMs < 500) idleMs = 500;
-                if (idleMs > 8000) idleMs = 8000; /* never hang WebView bridge */
+                if (idleMs > 12000) idleMs = 12000; /* cap so WebView path stays responsive */
                 byte[] data = Base64.decode(b64, Base64.DEFAULT);
+                if (host == null || host.trim().isEmpty()) throw new java.net.ConnectException("connection refused");
                 sock = new Socket();
-                sock.connect(new InetSocketAddress(host, port), 3000);
+                sock.connect(new InetSocketAddress(host.trim(), port), 5000);
                 sock.setTcpNoDelay(true);
                 sock.setSoTimeout(idleMs);
                 sock.getOutputStream().write(data);

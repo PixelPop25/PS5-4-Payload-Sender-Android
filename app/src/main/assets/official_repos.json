@@ -82,18 +82,6 @@
       "asset": "*.elf"
     },
     {
-      "id": "rel_fan_control",
-      "name": "Fan Control",
-      "repo": "owendswang/ps5-fan-control",
-      "asset": "ps5-fan-control.elf"
-    },
-    {
-      "id": "rel_fan_target",
-      "name": "Fan Target",
-      "repo": "drakmor/fan_target",
-      "asset": "fan_target*.elf"
-    },
-    {
       "id": "rel_linux_loader",
       "name": "Linux Loader",
       "repo": "ps5-linux/ps5-linux-loader",
@@ -104,12 +92,6 @@
       "name": "Game Compressor",
       "repo": "juma-sayeh/PS5-Game-Compressor",
       "asset": "game-compressor.elf"
-    },
-    {
-      "id": "rel_lz4_compression",
-      "name": "LZ4 Compression",
-      "repo": "theghostonline/PS5-LZ4-Compression",
-      "asset": "lz4-compression.elf"
     },
     {
       "id": "rel_unrar",

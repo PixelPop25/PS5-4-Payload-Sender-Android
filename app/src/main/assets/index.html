@@ -1091,7 +1091,7 @@
             <div class="upload-icon">📁</div>
             <div id="fileNameText" class="file-name-display" data-i18n="loadLocal">Load Local Payload...</div>
           </label>
-          <input type="file" id="fileInput" onchange="handleFileSelected()">
+          <input type="file" id="fileInput" accept="*/*" onchange="handleFileSelected()">
         </div>
       
         <div class="cloud-deck">
@@ -1592,7 +1592,9 @@
     let _toastTimer = null;
     function shortErr(msg) {
       msg = String(msg == null ? 'error' : msg);
-      if (msg.indexOf('ERR:') === 0) msg = msg.slice(4);
+      // TCP bridge tags (ERR:CONN_REFUSED etc.) are local LAN sends — never call them "no internet"
+      var fromTcp = msg.indexOf('ERR:') === 0;
+      if (fromTcp) msg = msg.slice(4);
       // Strip Java exception class names + stack traces
       msg = msg.replace(/^java\.[\w.$]+(?::\s*)?/i, '');
       msg = msg.replace(/^[\w.$]+(Exception|Error)(?::\s*)?/i, '');
@@ -1601,17 +1603,18 @@
       var portEl = document.getElementById('port');
       var port = (portEl && portEl.value) ? portEl.value : '9021';
       var low = msg.toLowerCase();
-      if (/no internet|offline|network request failed|failed to fetch|net::err|err_internet|err_name_not_resolved|unknownhost|unable to resolve|dns/i.test(low))
+      // Cloud/sync-only wording — never for TCP payload sends
+      if (!fromTcp && /no internet|\boffline\b|network request failed|failed to fetch|err_internet|err_name_not_resolved|unknownhost|unable to resolve|dns/i.test(low))
         return 'No internet — using cached files only';
-      if (/conn_refused|connection refused|failed to connect|econnrefused|connectexception/i.test(low))
-        return 'Host unreachable — make sure port ' + port + ' is listening';
-      if (/timeout|etimedout|timed out|abort/i.test(low))
+      if (/conn_refused|connection refused|failed to connect|econnrefused|connectexception|send_fail/i.test(low))
+        return 'Host unreachable — make sure port ' + port + ' is listening on the console';
+      if (/timeout|etimedout|timed out/i.test(low))
         return 'Timed out — is the console on and port ' + port + ' open?';
       if (/unreachable|network is unreachable|enotreach|no route|enetunreach|ehostunreach/i.test(low))
-        return 'No route to host — check IP and Wi‑Fi';
+        return 'No route to host — same Wi‑Fi as the console? Check IP';
       if (/ssl|certificate|handshake/i.test(low))
         return 'Secure connection failed — try again later';
-      if (!msg || msg === 'error') return 'Something went wrong';
+      if (!msg || msg === 'error' || msg === 'SEND_FAIL') return 'Send failed — check IP/port (no internet needed for LAN)';
       return msg;
     }
 
@@ -1898,7 +1901,7 @@
 
 
     function playBootSequence() {
-      var BOOT_RATE = 1.3;   // boot video speed
+      var BOOT_RATE = 1.43;   // boot video speed
       return new Promise(function(resolve) {
         var splash = document.getElementById('bootSplash');
         if (!splash) { resolve(); return; }
@@ -2857,15 +2860,15 @@
         var ip = (document.getElementById('ip') && document.getElementById('ip').value) || '';
         var port = (document.getElementById('port') && document.getElementById('port').value) || '';
         var target = ip + ':' + port;
-        if (parsed && parsed.log) {
-          try { setSocketLog(parsed.log, target, _lastPayloadName); } catch (e) {}
+        if (parsed && parsed.log != null) {
+          try { setSocketLog(String(parsed.log), target, _lastPayloadName); } catch (e) {}
         }
         if (window.__tcpCaptureWaiters && window.__tcpCaptureWaiters[id]) {
           var fn = window.__tcpCaptureWaiters[id];
           delete window.__tcpCaptureWaiters[id];
           try { fn(parsed); } catch (e) {}
         }
-      } catch (e) {}
+      } catch (e) { console.warn('__tcpCaptureCb', e); }
     };
     window.__tcpCaptureWaiters = window.__tcpCaptureWaiters || {};
     var _tcpCbSeq = 0;
@@ -2884,10 +2887,9 @@
 
     function executeRawStream(base64Data, portOverride, payloadName, opts) {
       opts = opts || {};
-      /* fast=true: upload only (sequence / no log wait). Default send is also
-         upload-first so UI never blocks on elfldr stdout. Optional short
-         capture runs only when opts.capture === true. */
+      // LAN send only — never gate on internet / hasInternet / navigator.onLine
       const wantCapture = opts.capture === true;
+      const noLog = opts.asyncLog === false;
       const ip = document.getElementById('ip').value;
       const port = (portOverride != null && portOverride !== undefined)
         ? portOverride
@@ -2899,9 +2901,13 @@
         showToast('Native TCP bridge missing', 'error');
         return false;
       }
+      if (!base64Data || !String(base64Data).length) {
+        showToast('Empty payload', 'error');
+        return false;
+      }
 
-      /* Sequence / explicit fast: upload only, never wait for logs */
-      if (opts.asyncLog === false && typeof AndroidTCP.sendBase64 === 'function') {
+      // Sequence: upload only, ordered, no log wait
+      if (noLog && typeof AndroidTCP.sendBase64 === 'function') {
         try {
           const r = AndroidTCP.sendBase64(ip, port, base64Data);
           if (r && r !== 'ok') {
@@ -2916,25 +2922,25 @@
         }
       }
 
-      /* Single send: same-socket write+read on a background Java thread.
-         UI returns immediately; log lands later via __tcpCaptureCb. */
-      if (!wantCapture && typeof AndroidTCP.sendAndCaptureBase64Async === 'function') {
+      // Default single send: async write+read on Java thread → LOG panel (no UI block)
+      if (typeof AndroidTCP.sendAndCaptureBase64Async === 'function') {
         try {
           var id = 'c' + (++_tcpCbSeq);
           window.__tcpCaptureWaiters = window.__tcpCaptureWaiters || {};
           window.__tcpCaptureWaiters[id] = function(parsed) {
             if (!parsed) return;
-            if (parsed.ok) {
-              /* toast already shown on send */
-            } else if (parsed.error) {
+            if (parsed.log != null && String(parsed.log).length) {
+              try { setSocketLog(String(parsed.log), target, _lastPayloadName); } catch (e) {}
+            }
+            if (parsed.ok === false && parsed.error) {
               try { showToast(shortErr(parsed.error), 'error'); } catch (e) {}
             }
           };
-          AndroidTCP.sendAndCaptureBase64Async(ip, port, base64Data, 2500, id);
+          AndroidTCP.sendAndCaptureBase64Async(ip, port, base64Data, 4000, id);
           showToast(payloadName ? ('Sent ' + payloadName) : 'Sent');
           return true;
         } catch (e) {
-          /* fall through to sendBase64 */
+          /* fall through */
         }
       }
 
@@ -2953,22 +2959,22 @@
         }
       }
 
-      /* Optional short capture (never 120s — that freezes WebView bridge) */
       if (wantCapture && typeof AndroidTCP.sendAndCaptureBase64 === 'function') {
         try {
-          const idleMs = Math.min(3000, Math.max(500, parseInt(opts.idleMs, 10) || 2000));
+          const idleMs = Math.min(5000, Math.max(500, parseInt(opts.idleMs, 10) || 3000));
           const raw = AndroidTCP.sendAndCaptureBase64(ip, port, base64Data, idleMs);
           let parsed = null;
           try { parsed = JSON.parse(raw); } catch (je) { parsed = null; }
+          if (parsed && parsed.log) {
+            try { setSocketLog(parsed.log, target, _lastPayloadName); } catch (e) {}
+          }
           if (parsed && parsed.ok) {
-            try { setSocketLog(parsed.log || '', target, _lastPayloadName); } catch (e) {}
             showToast(parsed.log && String(parsed.log).trim().length
               ? ('Sent · log ' + (parsed.bytes || 0) + ' B')
               : 'Sent (no socket output)');
             return true;
           }
           if (parsed && !parsed.ok) {
-            if (parsed.log) try { setSocketLog(parsed.log, target, _lastPayloadName); } catch (e) {}
             showToast(shortErr(parsed.error || 'ERR:SEND_FAIL'), 'error');
             return false;
           }
@@ -2980,21 +2986,6 @@
         }
       }
 
-      /* Fallback */
-      if (typeof AndroidTCP.sendBase64 === 'function') {
-        try {
-          const r = AndroidTCP.sendBase64(ip, port, base64Data);
-          if (r && r !== 'ok') {
-            showToast(shortErr(r), 'error');
-            return false;
-          }
-          showToast('Sent');
-          return true;
-        } catch (e) {
-          showToast(shortErr(e && e.message ? e.message : e), 'error');
-          return false;
-        }
-      }
       showToast('Native TCP bridge missing', 'error');
       return false;
     }
@@ -3002,15 +2993,25 @@
     async function transmitLocalPayload(event) {
       if (event && !fountainDisabled) triggerFountain(event);
       const fileInput = document.getElementById('fileInput');
-      if (fileInput.files.length > 0) {
-        playTurbo(); 
+      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        showToast(dictionary[currentLang].loadLocal || "Select a local payload first.", "error");
+        return;
+      }
+      try {
+        playTurbo();
         const file = fileInput.files[0];
         const arrayBuffer = await file.arrayBuffer();
-        showToast(T('toast_sending', `Sending ${file.name}...`).replace('${file.name}', file.name));
-        executeRawStream(arrayBufferToBase64(arrayBuffer), undefined, file.name);
-        runMacro();
-      } else {
-        showToast(dictionary[currentLang].loadLocal || "Select a local payload first.", "error");
+        if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+          showToast('File is empty', 'error');
+          return;
+        }
+        const b64 = arrayBufferToBase64(arrayBuffer);
+        showToast(T('toast_sending', 'Sending ' + file.name + '...'));
+        // Exploit tab port from #port — capture logs for LOG panel (LAN only, no internet)
+        executeRawStream(b64, undefined, file.name);
+        try { runMacro(); } catch (e) {}
+      } catch (e) {
+        showToast(shortErr(e && e.message ? e.message : e), 'error');
       }
     }
 
